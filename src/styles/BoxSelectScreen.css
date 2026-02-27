@@ -1,0 +1,94 @@
+/* BoxSelectScreen.css */
+
+.boxselect-root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    font-family: 'Segoe UI', sans-serif;
+    gap: 16px;
+}
+
+.boxselect-header {
+    width: 100%;
+    max-width: 920px;
+    text-align: center;
+    flex-shrink: 0;
+    padding: 20px 24px 18px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.06) 0%, rgba(123,97,255,0.06) 100%);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    animation: headerSlideIn 0.5s ease both;
+}
+
+@keyframes headerSlideIn {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/*.boxselect-badge {*/
+/*    display: inline-flex;*/
+/*    align-items: center;*/
+/*    gap: 7px;*/
+/*    background: rgba(255,215,0,0.12);*/
+/*    border: 1px solid rgba(255,215,0,0.4);*/
+/*    border-radius: 100px;*/
+/*    padding: 5px 16px;*/
+/*    font-size: 0.78rem;*/
+/*    font-weight: 800;*/
+/*    color: #ffd200;*/
+/*    letter-spacing: 2px;*/
+/*    text-transform: uppercase;*/
+/*    margin-bottom: 14px;*/
+/*}*/
+
+/*.boxselect-badge::before {*/
+/*    content: '';*/
+/*    display: inline-block;*/
+/*    width: 7px;*/
+/*    height: 7px;*/
+/*    border-radius: 50%;*/
+/*    background: #ffd200;*/
+/*    box-shadow: 0 0 8px #ffd200;*/
+/*    animation: badgeDot 1.5s ease-in-out infinite;*/
+/*}*/
+
+@keyframes badgeDot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px #ffd200; }
+    50%       { opacity: 0.5; box-shadow: 0 0 14px #ffd200; }
+}
+
+.boxselect-title {
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+    font-weight: 900;
+    margin: 0 0 8px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, #FFD93D 50%, #FF6B6B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.boxselect-subtitle {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.5;
+    letter-spacing: 0.2px;
+}
+
+.boxselect-canvas-wrap {
+    width: 100%;
+    max-width: 920px;
+    flex-shrink: 0;
+}
+
+.boxselect-hint {
+    color: rgba(255,255,255,0.25);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}

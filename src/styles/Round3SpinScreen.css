@@ -1,0 +1,509 @@
+/* Round3SpinScreen.css — cinematic game-show spin screen styles */
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes pulseGlow {
+    from { opacity: 0.7; transform: translate(-50%, -50%) translateY(-26px) scale(0.97); }
+    to   { opacity: 1;   transform: translate(-50%, -50%) translateY(-26px) scale(1.03); }
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1);   }
+}
+
+@keyframes btnPulse {
+    0%, 100% { box-shadow: 0 8px 0 #8B0000, 0 12px 40px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25); }
+    50%       { box-shadow: 0 8px 0 #8B0000, 0 18px 60px rgba(232,25,44,0.9), inset 0 2px 0 rgba(255,255,255,0.25); }
+}
+
+@keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 6px #FFD700; }
+    50%       { box-shadow: 0 0 14px #FFD700, 0 0 28px rgba(255,215,0,0.5); }
+}
+
+@keyframes shineSweep {
+    0%   { transform: translateX(-200%); }
+    100% { transform: translateX(200%);  }
+}
+
+@keyframes gradientShift {
+    to { background-position: -200% center; }
+}
+
+@keyframes bounceDot {
+    from { transform: translateY(0);     opacity: 0.4; }
+    to   { transform: translateY(-10px); opacity: 1;   }
+}
+
+@keyframes resultReveal {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+@keyframes spotlightSweep {
+    0%, 100% { transform: translateX(-50%) rotate(-8deg); }
+    50%      { transform: translateX(-50%) rotate(8deg);  }
+}
+
+@keyframes floatHeader {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0);     }
+}
+
+@keyframes wheelGlowSpin {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255,215,0,0.5), 0 0 60px rgba(255,107,107,0.5), 0 0 120px rgba(255,215,0,0.25); }
+    50%       { box-shadow: 0 0 0 6px rgba(255,107,107,0.7), 0 0 80px rgba(255,215,0,0.6),  0 0 160px rgba(255,107,107,0.3); }
+}
+
+/* ── Page root ─────────────────────────────────────────────────────────────── */
+.spin-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── Spotlight beams ───────────────────────────────────────────────────────── */
+.spin-spotlights {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.spin-spotlight {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    width: 300px;
+    height: 130vh;
+    background: linear-gradient(180deg, rgba(255,215,0,0.04) 0%, transparent 80%);
+    transform-origin: top center;
+}
+
+.spin-spotlight-1 { animation: spotlightSweep 6s ease-in-out infinite; }
+.spin-spotlight-2 { animation: spotlightSweep 8s ease-in-out infinite 1.5s; }
+.spin-spotlight-3 { animation: spotlightSweep 10s ease-in-out infinite 3s; }
+
+/* ── Stage floor glow ──────────────────────────────────────────────────────── */
+.spin-stage-glow {
+    position: fixed;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(232,25,44,0.2) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* ── Content wrapper ───────────────────────────────────────────────────────── */
+.spin-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 620px;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.spin-header {
+    text-align: center;
+    animation: floatHeader 0.6s ease forwards;
+}
+
+.spin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,215,0,0.08);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 100px;
+    padding: 6px 20px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(10px);
+}
+
+.spin-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FFD700;
+    box-shadow: 0 0 8px #FFD700;
+    display: inline-block;
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.spin-badge-text {
+    color: #ffd200;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.spin-title {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 0%, #FFD700 50%, #FF6B6B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.spin-subtitle {
+    color: rgba(255,255,255,0.3);
+    font-size: 0.85rem;
+    margin-top: 6px;
+    margin-bottom: 0;
+    letter-spacing: 0.5px;
+}
+
+/* ── Score pill ────────────────────────────────────────────────────────────── */
+.spin-score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 8px 22px;
+    backdrop-filter: blur(10px);
+}
+
+.spin-score-label {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.spin-score-value {
+    color: #FFD700;
+    font-weight: 900;
+    font-size: 1.1rem;
+}
+
+/* ── Wheel wrapper ─────────────────────────────────────────────────────────── */
+.spin-wheel-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Ambient glow behind wheel */
+.spin-glow-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,215,0,0.12) 0%, transparent 60%);
+    transition: background 0.5s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.spin-glow-ring.is-spinning {
+    background: radial-gradient(circle, rgba(255,107,107,0.25) 0%, rgba(255,215,0,0.15) 50%, transparent 70%);
+    animation: pulseGlow 0.6s ease-in-out infinite alternate;
+}
+
+/* Bulb ring SVG container */
+.spin-bulb-ring-wrap {
+    position: relative;
+    width: 520px;
+    height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spin-bulb-ring-svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Inner wheel area */
+.spin-inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Pointer triangle */
+.spin-pointer {
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 48px solid #fff;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,1)) drop-shadow(0 0 12px rgba(255,215,0,0.9));
+    margin-bottom: -10px;
+    z-index: 10;
+    position: relative;
+}
+
+
+
+
+/* Wheel image container */
+.spin-wheel-img-wrap {
+    border-radius: 50%;
+    overflow: hidden;
+    width: min(400px, 78vw);
+    height: min(400px, 78vw);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 60px rgba(0,0,0,0.8);
+    transition: box-shadow 0.4s ease;
+    flex-shrink: 0;
+    /* also works when the element is a <canvas> */
+    display: block;
+}
+
+.spin-wheel-img-wrap.is-spinning {
+    box-shadow: 0 0 0 6px rgba(255,215,0,0.6), 0 0 60px rgba(255,107,107,0.6), 0 0 120px rgba(255,215,0,0.3);
+    animation: wheelGlowSpin 0.8s ease-in-out infinite;
+}
+
+.spin-wheel-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Container to stack wheel + logo */
+.spin-wheel-container {
+    position: relative;
+    width: min(400px, 78vw);
+    height: min(400px, 78vw);
+}
+
+/* Canvas fills container */
+.spin-wheel-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+}
+
+/* 🔥 Center logo */
+.spin-center-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background:transparent;
+    width: 38%;          /* adjust size here */
+    pointer-events: none;
+    user-select: none;
+    z-index: 6;
+
+    /* nice polish */
+    filter: drop-shadow(0 0 20px rgba(0,0,0,0.6));
+    transition: transform 0.3s ease;
+}
+
+.spin-wheel-wrap:hover .spin-center-logo {
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* ── Action area ───────────────────────────────────────────────────────────── */
+.spin-action {
+    margin-top: 8px;
+    text-align: center;
+    min-height: 130px;
+    width: 100%;
+}
+
+/* SPIN button */
+.spin-btn-wrap {
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.spin-btn {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #FF4444 0%, #E8192C 40%, #C0000A 100%);
+    border: none;
+    border-radius: 100px;
+    color: #fff;
+    cursor: pointer;
+    font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    padding: 20px 64px;
+    text-transform: uppercase;
+    box-shadow: 0 8px 0 #8B0000, 0 12px 40px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+    animation: btnPulse 2s ease-in-out infinite;
+}
+
+.spin-btn:hover {
+    transform: scale(1.06) translateY(-3px);
+    box-shadow: 0 11px 0 #8B0000, 0 16px 50px rgba(232,25,44,0.8), inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.spin-btn:active {
+    transform: scale(0.97) translateY(4px);
+    box-shadow: 0 4px 0 #8B0000, 0 6px 20px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.spin-btn-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+    animation: shineSweep 2.5s ease-in-out infinite;
+}
+
+/* Spinning state */
+.spin-spinning-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.spin-spinning-text {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #FF6B6B, #FFD700, #6BCB77, #4D96FF, #FF6B6B);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 1.2s linear infinite;
+}
+
+.spin-dots {
+    display: flex;
+    gap: 8px;
+}
+
+.spin-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #FFD700;
+}
+
+.spin-dot:nth-child(1) { animation: bounceDot 0.6s ease-in-out 0s   infinite alternate; }
+.spin-dot:nth-child(2) { animation: bounceDot 0.6s ease-in-out 0.15s infinite alternate; }
+.spin-dot:nth-child(3) { animation: bounceDot 0.6s ease-in-out 0.3s  infinite alternate; }
+
+/* ── Result card ───────────────────────────────────────────────────────────── */
+.spin-result-card {
+    animation: resultReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    border-radius: 20px;
+    padding: 20px 28px;
+    backdrop-filter: blur(12px);
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.spin-result-card.is-normal {
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05));
+    border: 2px solid rgba(255,215,0,0.35);
+}
+
+.spin-result-card.is-special {
+    background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,215,0,0.1));
+    border: 2px solid rgba(255,107,107,0.5);
+}
+
+.spin-result-label {
+    font-size: clamp(2.2rem, 7vw, 3.5rem);
+    font-weight: 900;
+    font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.spin-result-card.is-normal .spin-result-label {
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.9), 0 0 60px rgba(255,215,0,0.5);
+}
+
+.spin-result-card.is-special .spin-result-label {
+    color: #FF6B6B;
+    text-shadow: 0 0 30px rgba(255,107,107,0.9), 0 0 60px rgba(255,107,107,0.5);
+}
+
+.spin-result-divider {
+    height: 2px;
+    border-radius: 2px;
+    width: 60px;
+    margin: 0 auto 12px;
+}
+
+.spin-result-card.is-normal .spin-result-divider {
+    background: linear-gradient(90deg, transparent, #FFD700, transparent);
+}
+
+.spin-result-card.is-special .spin-result-divider {
+    background: linear-gradient(90deg, transparent, #FF6B6B, transparent);
+}
+
+.spin-result-desc {
+    color: rgba(255,255,255,0.8);
+    font-size: 1rem;
+    line-height: 1.6;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.spin-result-hint {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+/* ── Confetti canvas ───────────────────────────────────────────────────────── */
+.spin-confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+    .spin-bulb-ring-wrap {
+        width: 100vw;
+        height: 100vw;
+    }
+    .spin-bulb-ring-svg {
+        width: 100vw;
+        height: 100vw;
+    }
+    .spin-glow-ring {
+        width: 90vw;
+        height: 90vw;
+    }
+}

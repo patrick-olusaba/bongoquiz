@@ -1,0 +1,351 @@
+/* game.css — shared styles used across Round screens */
+
+.game-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.game-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(16px);
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 36px;
+    max-width: 680px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.game-card--center {
+    text-align: center;
+    max-width: 500px;
+}
+
+/* ── Header row ── */
+.game-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* ── Badges ── */
+.game-badge {
+    display: inline-block;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.82rem;
+    color: #ffd200;
+}
+
+.game-score-badge {
+    display: inline-block;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.82rem;
+    color: #ffd200;
+}
+
+/* ── Timer ── */
+.game-timer-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 6px;
+}
+
+.game-timer-track {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-bottom: 18px;
+}
+
+.game-timer-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s linear, background 0.5s;
+}
+
+/* ── Question box ── */
+.game-question {
+    background: rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+/* ── Option buttons ── */
+.game-option {
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    border-radius: 12px;
+    padding: 13px 20px;
+    color: #fff;
+    font-size: 0.98rem;
+    margin-bottom: 10px;
+    font-weight: 500;
+    transition: all 0.15s;
+    background: rgba(255,255,255,0.07);
+    border: 2px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+}
+.game-option--correct {
+    background: rgba(56,239,125,0.2);
+    border-color: #38ef7d;
+    cursor: default;
+}
+.game-option--wrong {
+    background: rgba(229,45,39,0.2);
+    border-color: #e52d27;
+    cursor: default;
+}
+.game-option--disabled {
+    cursor: default;
+}
+
+.game-power-btn--pass {
+    background: rgba(255,200,0,0.1);
+    border: 1px solid rgba(255,200,0,0.35);
+    color: #ffd200;
+}
+.game-power-btn--pass:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Power action pills ── */
+.game-power-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.game-power-btn {
+    border-radius: 50px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s;
+}
+.game-power-btn:hover { transform: scale(1.04); }
+
+.game-power-btn--freeze {
+    background: rgba(77,208,225,0.15);
+    border: 1px solid rgba(77,208,225,0.4);
+    color: #4dd0e1;
+}
+
+.game-power-btn--swap {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.game-power-btn--hint {
+    background: rgba(162,155,254,0.15);
+    border: 1px solid rgba(162,155,254,0.4);
+    color: #a29bfe;
+}
+
+.game-streak-pill {
+    background: rgba(255,107,53,0.15);
+    border: 1px solid rgba(255,107,53,0.4);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    color: #ff6b35;
+}
+
+/* ── Warning / info banners ── */
+.game-banner {
+    border-radius: 10px;
+    padding: 9px 14px;
+    margin-bottom: 12px;
+    font-size: 0.83rem;
+}
+.game-banner--danger {
+    background: rgba(229,45,39,0.12);
+    border: 1px solid rgba(229,45,39,0.53);
+    color: #ff6b6b;
+}
+.game-banner--success {
+    background: rgba(56,239,125,0.12);
+    border: 1px solid rgba(56,239,125,0.53);
+    color: #38ef7d;
+}
+
+/* ── Result screens ── */
+.game-result-icon { font-size: 4rem; margin-bottom: 10px; }
+.game-result-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin-bottom: 6px; }
+.game-result-sub   { color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+
+.game-big-score {
+    font-size: 3.2rem;
+    font-weight: 900;
+    color: #ffd200;
+    margin-bottom: 8px;
+}
+
+.game-modifier-note {
+    font-size: 0.88rem;
+    margin-bottom: 6px;
+}
+.game-modifier-note--red    { color: #ff6b6b; }
+.game-modifier-note--orange { color: #ff9f1c; }
+.game-modifier-note--green  { color: #38ef7d; }
+
+.game-power-note {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+}
+.game-power-note strong { color: #ffd200; }
+
+/* ── Score breakdown chips ── */
+.game-score-grid {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.game-score-chip {
+    background: rgba(255,255,255,0.05);
+    border-radius: 14px;
+    padding: 14px 20px;
+    min-width: 100px;
+    text-align: center;
+}
+.game-score-chip-label {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+}
+.game-score-chip-value {
+    font-weight: 900;
+    font-size: 1.5rem;
+}
+
+/* ── Category cards ── */
+.game-category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 14px;
+}
+.game-category-card {
+    border-radius: 16px;
+    padding: 20px 12px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform 0.2s;
+    border: 2px solid transparent;
+}
+.game-category-card:hover { transform: scale(1.05); }
+.game-category-icon  { font-size: 2rem; margin-bottom: 6px; }
+.game-category-label { font-size: 0.9rem; }
+
+/* ── Buttons ── */
+.btn {
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 800;
+    transition: transform 0.2s;
+    letter-spacing: 0.5px;
+}
+.btn:hover { transform: scale(1.04); }
+.btn:active { transform: scale(0.98); }
+
+.btn--green {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: #fff;
+    font-size: 1rem;
+    padding: 13px 36px;
+    box-shadow: 0 4px 20px rgba(56,239,125,0.4);
+}
+
+.btn--gold {
+    background: linear-gradient(135deg, #f7971e, #ffd200);
+    color: #1a0a2e;
+    font-size: 1.1rem;
+    padding: 14px 40px;
+    box-shadow: 0 4px 20px rgba(255,210,0,0.4);
+}
+
+.btn--purple {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-size: 1.1rem;
+    padding: 14px 40px;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+}
+
+.btn--spin {
+    background: linear-gradient(135deg, #f7971e, #ffd200);
+    color: #1a0a2e;
+    font-size: 1.15rem;
+    padding: 14px 44px;
+    box-shadow: 0 4px 20px rgba(255,210,0,0.4);
+}
+
+/* ── Final result ── */
+.final-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 900;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+}
+.final-power-note {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+.final-power-note strong { color: #ffd200; }
+.final-power-img {
+    width: 20px; height: 20px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+.final-total-box {
+    background: rgba(255,215,0,0.08);
+    border: 2px solid rgba(255,215,0,0.3);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 28px;
+}
+.final-total-label { color: rgba(255,255,255,0.4); font-size: 0.85rem; }
+.final-total-score {
+    font-size: 4rem;
+    font-weight: 900;
+    color: #ffd200;
+    text-shadow: 0 0 30px rgba(255,210,0,0.5);
+}
+.final-rating { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
