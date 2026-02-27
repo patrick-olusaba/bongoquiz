@@ -25,7 +25,7 @@ function applyR1Power(rawScore: number, power: PrizeItem): number {
     return s;
 }
 
-function applyR2Power(correct: number, total: number, power: PrizeItem, r1Raw: number): number {
+function applyR2Power(correct: number, total: number, power: PrizeItem): number {
     let base = correct * 1000;
     if (power.name === "Double Or Nothing")  base = correct === total ? base * 2 : 0;
     if (power.name === "Point Gamble")       base = Math.random() > 0.5 ? base * 2 : Math.floor(base / 2);
@@ -101,7 +101,7 @@ export const BongoMain: FC = () => {
             <Round2QuestionScreen
                 power={power} category={category} r1Score={r1Score}
                 onComplete={(correct, total) => {
-                    const final = applyR2Power(correct, total, power, r1Raw);
+                    const final = applyR2Power(correct, total, power);
                     setR2Score(final); setR2Correct(correct); setR2Total(total);
                     setScreen("round2_result");
                 }}
