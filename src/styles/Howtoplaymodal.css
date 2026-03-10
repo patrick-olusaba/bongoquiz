@@ -1,0 +1,94 @@
+.htp-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: htpFade 0.2s ease;
+    overflow-y: auto;
+}
+@keyframes htpFade { from { opacity: 0; } to { opacity: 1; } }
+
+.htp-modal {
+    position: relative;
+    background: linear-gradient(160deg, rgba(15,0,40,0.99), rgba(5,0,20,0.99));
+    border: 1px solid rgba(123,97,255,0.3);
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: min(520px, 92vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+    animation: htpSlide 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes htpSlide {
+    from { transform: translateY(24px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+.htp-modal::-webkit-scrollbar { width: 4px; }
+.htp-modal::-webkit-scrollbar-thumb { background: rgba(123,97,255,0.3); border-radius: 4px; }
+
+.htp-close {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(255,255,255,0.08); border: none; border-radius: 50%;
+    color: rgba(255,255,255,0.5); cursor: pointer;
+    font-size: 0.9rem; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+}
+.htp-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+.htp-title {
+    font-size: 1.6rem; font-weight: 900; color: #fff;
+    margin: 0 0 20px; text-align: center;
+}
+.htp-section-title {
+    font-size: 1rem; font-weight: 800; color: #ffd200;
+    margin: 20px 0 12px; letter-spacing: 1px; text-transform: uppercase;
+}
+
+.htp-rounds { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.htp-round {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 14px; padding: 14px 16px;
+    border-left: 3px solid;
+}
+.htp-round--1 { border-color: #7B61FF; }
+.htp-round--2 { border-color: #FF6B6B; }
+.htp-round--3 { border-color: #FFD700; }
+.htp-round-icon { font-size: 1.6rem; flex-shrink: 0; }
+.htp-round strong { display: block; color: #fff; font-size: 0.95rem; margin-bottom: 4px; }
+.htp-round p { color: rgba(255,255,255,0.45); font-size: 0.82rem; margin: 0; line-height: 1.5; }
+
+.htp-powers { display: flex; flex-direction: column; gap: 8px; }
+.htp-power-row {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px; padding: 10px 12px;
+}
+.htp-power-emoji {
+    font-size: 1.1rem; width: 28px; text-align: center;
+    flex-shrink: 0; font-weight: 900; color: #ffd200;
+}
+.htp-power-row strong { display: block; color: #fff; font-size: 0.82rem; }
+.htp-power-row span   { color: rgba(255,255,255,0.4); font-size: 0.76rem; line-height: 1.4; }
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — HowToPlayModal.css
+═══════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+    .htp-overlay { padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); align-items: flex-start; }
+    .htp-modal   { padding: 20px 16px; border-radius: 18px; max-height: 92svh; width: 100%; }
+    .htp-title   { font-size: 1.3rem; margin-bottom: 14px; }
+    .htp-round   { padding: 10px 12px; gap: 10px; }
+    .htp-round-icon { font-size: 1.3rem; }
+    .htp-round strong { font-size: 0.88rem; }
+    .htp-round p   { font-size: 0.76rem; }
+}
+
+@media (max-width: 375px) {
+    .htp-modal   { padding: 16px 12px; }
+    .htp-title   { font-size: 1.15rem; }
+}

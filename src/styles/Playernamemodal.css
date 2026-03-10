@@ -1,0 +1,73 @@
+.pnm-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    animation: pnmFadeIn 0.2s ease;
+}
+@keyframes pnmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.pnm-modal {
+    background: linear-gradient(160deg, rgba(30,20,60,0.98), rgba(10,5,30,0.98));
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 24px;
+    padding: 36px 32px 28px;
+    width: min(420px, 90vw);
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+    animation: pnmSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes pnmSlideUp {
+    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.pnm-emoji { font-size: 2.5rem; margin-bottom: 8px; }
+.pnm-title { font-size: 1.5rem; font-weight: 900; color: #fff; margin: 0 0 4px; }
+.pnm-sub   { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin: 0 0 20px; }
+
+.pnm-input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,215,0,0.3);
+    border-radius: 12px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 12px 16px;
+    text-align: center;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+.pnm-input:focus { border-color: rgba(255,215,0,0.7); }
+.pnm-input::placeholder { color: rgba(255,255,255,0.2); }
+
+.pnm-actions { display: flex; gap: 10px; margin-top: 18px; }
+.pnm-btn {
+    flex: 1; border: none; border-radius: 100px;
+    cursor: pointer; font-family: inherit;
+    font-size: 0.95rem; font-weight: 800;
+    padding: 12px; transition: transform 0.15s;
+}
+.pnm-btn:hover { transform: scale(1.04); }
+.pnm-btn--save   { background: linear-gradient(135deg,#6bcb77,#38b04a); color: #fff; }
+.pnm-btn--cancel { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — PlayerNameModal.css
+═══════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+    .pnm-modal  { padding: 24px 20px 20px; border-radius: 18px; }
+    .pnm-emoji  { font-size: 2rem; }
+    .pnm-title  { font-size: 1.3rem; }
+    .pnm-input  { font-size: 1rem; padding: 10px 14px; }
+    .pnm-btn    { font-size: 0.88rem; padding: 10px; }
+}
+
+@media (max-width: 375px) {
+    .pnm-modal  { padding: 18px 14px 16px; }
+    .pnm-title  { font-size: 1.15rem; }
+}

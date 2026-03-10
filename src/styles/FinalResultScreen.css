@@ -1,0 +1,243 @@
+/* FinalResultScreen.css */
+
+/* ── Keyframes ── */
+@keyframes frNewBest {
+    0%   { transform: translateY(-60px); opacity: 0; }
+    20%  { transform: translateY(0);     opacity: 1; }
+    80%  { transform: translateY(0);     opacity: 1; }
+    100% { transform: translateY(-60px); opacity: 0; }
+}
+@keyframes frTrophyBounce {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50%       { transform: translateY(-6px) rotate(3deg); }
+}
+@keyframes frSlideIn {
+    from { opacity: 0; transform: translateY(40px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes frToastIn {
+    0%   { transform: translateX(120%); opacity: 0; }
+    20%  { transform: translateX(0);    opacity: 1; }
+    80%  { transform: translateX(0);    opacity: 1; }
+    100% { transform: translateX(120%); opacity: 0; }
+}
+@keyframes frBadgeChipIn {
+    from { opacity: 0; transform: scale(0.7) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Base (>1080px) ── */
+.fr-root {
+    min-height: 100svh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.fr-new-best-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(90deg, #FFD700, #FF6B6B, #FFD700);
+    color: #000;
+    font-weight: 900;
+    font-size: 0.95rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 12px;
+    z-index: 50;
+    animation: frNewBest 4s ease forwards;
+}
+
+.fr-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 560px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 28px;
+    padding: 28px 24px 24px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+    text-align: center;
+    animation: frSlideIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.fr-trophy {
+    font-size: 2.8rem;
+    margin-bottom: 4px;
+    display: block;
+    animation: frTrophyBounce 2s ease-in-out infinite;
+}
+
+.fr-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: linear-gradient(90deg, #FFD700, #FF6B6B, #7B61FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 2px 0 4px;
+    letter-spacing: -0.5px;
+}
+
+.fr-power-line {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.fr-power-line strong { color: #ffd200; }
+.fr-power-img { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; }
+
+.fr-breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.fr-breakdown-cell {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 12px 6px;
+    border: 1px solid;
+}
+.fr-breakdown-label { color: rgba(255,255,255,0.4); font-size: 0.68rem; margin-bottom: 4px; }
+.fr-breakdown-value { font-weight: 900; font-size: 1.3rem; }
+
+.fr-total-box {
+    background: rgba(255,215,0,0.06);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 18px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+.fr-total-label {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.fr-total-value {
+    font-size: 3.4rem;
+    font-weight: 900;
+    color: #ffd200;
+    text-shadow: 0 0 30px rgba(255,210,0,0.4);
+    line-height: 1;
+}
+.fr-rating { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin-top: 4px; }
+
+.fr-badges-row {
+    background: rgba(255,215,0,0.04);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+.fr-badges-title {
+    font-size: 0.72rem; font-weight: 800;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.fr-badges-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fr-badge-chip {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(255,215,0,0.08);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 100px;
+    padding: 5px 12px;
+    animation: frBadgeChipIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.fr-badge-chip-emoji { font-size: 1rem; }
+.fr-badge-chip-name  { font-size: 0.78rem; font-weight: 800; color: #ffd200; }
+
+.fr-actions { display: flex; gap: 10px; }
+.fr-btn {
+    flex: 1; border: none; border-radius: 50px;
+    cursor: pointer; font-family: inherit;
+    font-size: 0.92rem; font-weight: 800;
+    padding: 12px 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.fr-btn:hover  { transform: scale(1.04) translateY(-2px); }
+.fr-btn:active { transform: scale(0.98); }
+.fr-btn--play  { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; box-shadow: 0 4px 20px rgba(102,126,234,0.4); }
+.fr-btn--share { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+
+.fr-badge-toast {
+    position: fixed;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    right: 16px;
+    background: linear-gradient(135deg, rgba(20,10,50,0.98), rgba(10,5,30,0.98));
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(255,215,0,0.15);
+    animation: frToastIn 2s ease forwards;
+    max-width: min(260px, 80vw);
+}
+.fr-badge-toast-emoji  { font-size: 1.8rem; flex-shrink: 0; }
+.fr-badge-toast-title  { font-size: 0.65rem; font-weight: 700; color: #ffd200; letter-spacing: 2px; text-transform: uppercase; }
+.fr-badge-toast-name   { font-size: 0.92rem; font-weight: 900; color: #fff; }
+
+/* ── @media (min-width: 1080px) — large desktop, already base above ── */
+@media (min-width: 1080px) {
+    .fr-card { max-width: 580px; }
+}
+
+/* ── @media (max-width: 756px) — tablet / large phone ── */
+@media (max-width: 756px) {
+    .fr-card         { max-width: 480px; padding: 22px 18px 20px; border-radius: 22px; }
+    .fr-trophy       { font-size: 2.4rem; }
+    .fr-title        { font-size: 1.9rem; }
+    .fr-total-value  { font-size: 2.8rem; }
+    .fr-btn          { font-size: 0.88rem; padding: 11px 14px; }
+}
+
+/* ── @media (max-width: 450px) — standard phone ── */
+@media (max-width: 450px) {
+    .fr-root         { /*align-items: flex-start;*/ overflow-y: auto; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+    .fr-card         { max-width: 100%; border-radius: 20px; padding: 16px 12px 14px; }
+    .fr-trophy       { font-size: 2rem; }
+    .fr-title        { font-size: 1.6rem; }
+    .fr-power-line   { font-size: 0.75rem; margin-bottom: 10px; }
+    .fr-breakdown    { gap: 6px; margin-bottom: 10px; }
+    .fr-breakdown-cell { padding: 10px 4px; }
+    .fr-breakdown-value { font-size: 1.05rem; }
+    .fr-total-box    { padding: 12px 12px; margin-bottom: 10px; }
+    .fr-total-value  { font-size: 2.2rem; }
+    .fr-badges-row   { padding: 8px 10px; margin-bottom: 10px; }
+    .fr-actions      { gap: 8px; }
+    .fr-btn          { font-size: 0.84rem; padding: 10px 10px; }
+}
+
+/* ── @media (max-width: 320px) — small phone ── */
+@media (max-width: 320px) {
+    .fr-card         { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
+    .fr-trophy       { font-size: 1.7rem; }
+    .fr-title        { font-size: 1.35rem; }
+    .fr-breakdown-cell { padding: 8px 3px; }
+    .fr-breakdown-value { font-size: 0.9rem; }
+    .fr-total-value  { font-size: 1.8rem; }
+    .fr-btn          { font-size: 0.76rem; padding: 9px 8px; }
+}
