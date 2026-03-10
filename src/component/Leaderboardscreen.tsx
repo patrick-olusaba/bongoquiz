@@ -12,16 +12,16 @@ interface LeaderboardEntry {
 
 // Dummy data — replace with API call when backend is ready
 const DUMMY_LEADERS: LeaderboardEntry[] = [
-    { rank: 1,  name: "NairobiNinja",    score: 47500, badge: "👑" },
-    { rank: 2,  name: "SavannaScholar",  score: 41200, badge: "🥈" },
-    { rank: 3,  name: "KilimanjaroKid",  score: 38900, badge: "🥉" },
-    { rank: 4,  name: "MombasaMaster",   score: 34100, badge: "⭐" },
-    { rank: 5,  name: "SerengtiSage",    score: 29800, badge: "⭐" },
-    { rank: 6,  name: "RiftValleyRex",   score: 27400, badge: "⭐" },
-    { rank: 7,  name: "LakeVictoriaVip", score: 24600, badge: "⭐" },
-    { rank: 8,  name: "NakuruNerd",      score: 21300, badge: "⭐" },
-    { rank: 9,  name: "AberdareAce",     score: 18700, badge: "⭐" },
-    { rank: 10, name: "TsavoTrivia",     score: 15200, badge: "⭐" },
+    { rank: 1,  name: "NairobiNinja",    score: 45000, badge: "👑" },
+    { rank: 2,  name: "SavannaScholar",  score: 40000, badge: "🥈" },
+    { rank: 3,  name: "KilimanjaroKid",  score: 35000, badge: "🥉" },
+    { rank: 4,  name: "MombasaMaster",   score: 30000, badge: "⭐" },
+    { rank: 5,  name: "SerengtiSage",    score: 25000, badge: "⭐" },
+    { rank: 6,  name: "RiftValleyRex",   score: 20000, badge: "⭐" },
+    { rank: 7,  name: "LakeVictoriaVip", score: 15000, badge: "⭐" },
+    { rank: 8,  name: "NakuruNerd",      score: 13000, badge: "⭐" },
+    { rank: 9,  name: "AberdareAce",     score: 12000, badge: "⭐" },
+    { rank: 10, name: "TsavoTrivia",     score: 10000, badge: "⭐" },
 ];
 
 interface Props {
