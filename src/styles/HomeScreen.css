@@ -21,8 +21,8 @@
     z-index: 0;
 }
 
- /*── Faded Background Logo ──*/
- /*── Faded Rotating Background Logo ──*/
+/*── Faded Background Logo ──*/
+/*── Faded Rotating Background Logo ──*/
 .home-logo-bg {
     position: fixed;
     top: 50%;
@@ -107,10 +107,12 @@
     z-index: 2;
     width: 100%;
     max-width: 780px;
-    padding: 24px 20px;
+    padding: 20px 20px 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-height: 100svh;
+    justify-content: center;
 }
 
 /* ── Live badge ── */
@@ -122,7 +124,7 @@
     border: 1px solid rgba(255,80,80,0.5);
     border-radius: 100px;
     padding: 6px 18px;
-    margin-bottom: 28px;
+    margin-bottom: 12px;
     animation: badgePop 0.6s ease forwards;
     backdrop-filter: blur(10px);
 }
@@ -145,12 +147,12 @@
 /* ── Title ── */
 .home-title-wrap {
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
     animation: floatUp 0.7s ease 0.1s both;
 }
 
 .home-title-image {
-    width: clamp(300px, 55vw, 750px);
+    width: clamp(180px, 38vw, 420px);
     height: auto;
     display: block;
     margin: 0 auto;
@@ -160,36 +162,14 @@
     filter: drop-shadow(0 0 40px rgba(255,0,150,0.4))
     drop-shadow(0 0 80px rgba(0,100,255,0.3));
 }
-/*.home-title-solid {*/
-/*    font-size: clamp(3.5rem, 10vw, 7rem);*/
-/*    font-weight: 900;*/
-/*    letter-spacing: -3px;*/
-/*    line-height: 0.9;*/
-/*    margin: 0;*/
-/*    background: linear-gradient(135deg, #fff 0%, #FFD93D 30%, #FF6B6B 60%, #7B61FF 100%);*/
-/*    -webkit-background-clip: text;*/
-/*    -webkit-text-fill-color: transparent;*/
-/*    background-clip: text;*/
-/*    animation: titlePulse 3s ease-in-out infinite;*/
-/*}*/
-/*.home-title-outline {*/
-/*    font-size: clamp(3.5rem, 10vw, 7rem);*/
-/*    font-weight: 900;*/
-/*    letter-spacing: -3px;*/
-/*    line-height: 0.9;*/
-/*    margin: 0;*/
-/*    -webkit-text-stroke: 2px rgba(255,255,255,0.3);*/
-/*    color: transparent;*/
-/*    text-shadow: 0 0 40px rgba(123,97,255,0.6);*/
-/*}*/
 
 /* ── Subtitle ── */
 .home-subtitle {
     color: rgba(255,255,255,0.5);
     font-size: 1.05rem;
     text-align: center;
-    margin-bottom: 44px;
-    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
     max-width: 480px;
     animation: floatUp 0.7s ease 0.25s both;
     opacity: 0;
@@ -201,7 +181,7 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
     width: 100%;
-    margin-bottom: 44px;
+    margin-bottom: 20px;
     animation: floatUp 0.7s ease 0.4s both;
     opacity: 0;
 }
@@ -209,7 +189,7 @@
     background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 20px;
-    padding: 22px 16px;
+    padding: 14px 12px;
     text-align: center;
     transition: all 0.3s ease;
     cursor: default;
@@ -229,19 +209,19 @@
     text-transform: uppercase;
 }
 .home-round-icon {
-    font-size: 2.2rem;
-    margin-bottom: 10px;
+    font-size: 1.8rem;
+    margin-bottom: 6px;
 }
 .home-round-label {
     font-weight: 800;
-    font-size: 1rem;
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
 }
 .home-round-divider {
     width: 30px;
     height: 2px;
-    margin: 0 auto 10px;
+    margin: 0 auto 6px;
 }
 .home-round-desc {
     font-size: 0.72rem;
@@ -249,45 +229,150 @@
     line-height: 1.5;
 }
 
-/* ── CTA button ── */
+/* ── CTA buttons ── */
 .home-cta-wrap {
     animation: floatUp 0.7s ease 0.65s both;
     opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
+
+/* Shared base for both CTA buttons */
+.home-btn,
+.home-lb-btn {
+    border-radius: 100px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: transform 0.2s ease;
+}
+
+/* Primary — PLAY NOW */
 .home-btn {
     position: relative;
     background: linear-gradient(135deg, #FF6B6B 0%, #FF4444 30%, #7B61FF 70%, #5B41DF 100%);
     border: none;
-    border-radius: 100px;
     color: #fff;
-    cursor: pointer;
-    font-family: inherit;
     font-size: 1.2rem;
     font-weight: 900;
-    padding: 18px 60px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    padding: 14px 52px;
     animation: btnGlow 2.5s ease-in-out infinite;
-    transition: transform 0.2s ease;
     overflow: hidden;
 }
-.home-btn:hover {
-    transform: scale(1.06) translateY(-2px);
-}
-.home-btn:active {
-    transform: scale(0.98);
-}
+.home-btn:hover { transform: scale(1.06) translateY(-2px); }
+.home-btn:active { transform: scale(0.98); }
 .home-btn-shine {
     position: absolute;
     inset: 0;
     background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
 }
 
+/* Secondary — Leaderboard ghost style */
+.home-lb-btn {
+    background: transparent;
+    border: 2px solid rgba(255,215,0,0.4);
+    color: #ffd200;
+    font-size: 0.92rem;
+    padding: 9px 28px;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+.home-lb-btn:hover {
+    background: rgba(255,215,0,0.1);
+    border-color: rgba(255,215,0,0.75);
+    color: #ffe84d;
+    transform: scale(1.04) translateY(-2px);
+    box-shadow: 0 0 22px rgba(255,215,0,0.25);
+}
+.home-lb-btn:active { transform: scale(0.97); }
+
+
+/* ── Player bar ── */
+.home-player-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    animation: floatUp 0.7s ease 0.3s both;
+    opacity: 0;
+    width: 100%;
+}
+.home-player-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.home-player-name-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 18px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.home-player-name-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+    transform: scale(1.03);
+}
+.home-player-edit { font-size: 0.75rem; opacity: 0.5; }
+.home-best-score {
+    background: rgba(255,215,0,0.12);
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 100px;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.home-best-score strong { color: #ffd200; font-size: 1rem; }
+.home-streak-badge {
+    background: rgba(255,107,107,0.15);
+    border: 1px solid rgba(255,107,107,0.45);
+    border-radius: 100px;
+    color: #ff9966;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 18px;
+    animation: streakPulse 2s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+@keyframes streakPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,107,107,0); }
+    50%       { box-shadow: 0 0 12px rgba(255,107,107,0.3); }
+}
+
+/* ── Secondary buttons row ── */
+.home-secondary-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 /* ── Footer hint ── */
 .home-hint {
     color: rgba(255,255,255,0.2);
     font-size: 0.75rem;
-    margin-top: 24px;
+    margin-top: 12px;
     letter-spacing: 1px;
     animation: floatUp 0.7s ease 0.8s both;
     opacity: 0;
@@ -328,4 +413,64 @@
 @keyframes scanline {
     0%   { transform: translateY(-100%); }
     100% { transform: translateY(100vh); }
+}
+
+
+/* ── Mobile squeeze fixes ── */
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — HomeScreen.css
+═══════════════════════════════════════════════════ */
+
+@media (max-width: 1279px) {
+    .home-content  { max-width: 680px; }
+}
+
+@media (max-width: 899px) {
+    .home-content       { max-width: 560px; padding: 16px; }
+    .home-title-image   { width: clamp(180px, 42vw, 320px); }
+    .home-rounds        { gap: 10px; }
+    .home-btn           { font-size: 1.1rem; padding: 13px 44px; }
+}
+
+@media (max-width: 600px) {
+    .home-content {
+        padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+        min-height: 100svh;
+        justify-content: center;
+    }
+    .home-title-image   { width: clamp(160px, 68vw, 300px); }
+    .home-badge         { margin-bottom: 8px; }
+    .home-subtitle      { font-size: 0.88rem; margin-bottom: 12px; }
+    .home-rounds        { gap: 8px; margin-bottom: 14px; }
+    .home-round-card    { padding: 10px 8px; }
+    .home-round-icon    { font-size: 1.5rem; margin-bottom: 4px; }
+    .home-round-desc    { font-size: 0.65rem; }
+    .home-player-bar    { gap: 6px; margin-bottom: 12px; }
+    .home-best-score,
+    .home-streak-badge  { font-size: 0.78rem; padding: 5px 12px; }
+    .home-btn           { font-size: 1rem; padding: 12px 36px; }
+    .home-lb-btn        { font-size: 0.8rem; padding: 8px 20px; }
+}
+
+@media (max-width: 375px) {
+    .home-title-image   { width: clamp(140px, 62vw, 240px); }
+    .home-rounds        { gap: 6px; }
+    .home-round-card    { padding: 8px 6px; border-radius: 14px; }
+    .home-round-icon    { font-size: 1.3rem; }
+    .home-round-label   { font-size: 0.78rem; }
+    .home-round-desc    { font-size: 0.6rem; }
+    .home-btn           { font-size: 0.92rem; padding: 11px 28px; }
+    .home-best-score,
+    .home-streak-badge  { font-size: 0.72rem; padding: 4px 10px; }
+}
+
+@media (max-height: 700px) {
+    .home-badge         { margin-bottom: 4px; }
+    .home-title-image   { width: clamp(120px, 28vw, 240px); }
+    .home-subtitle      { margin-bottom: 8px; font-size: 0.85rem; }
+    .home-rounds        { margin-bottom: 10px; }
+    .home-round-card    { padding: 8px; }
+    .home-player-bar    { margin-bottom: 8px; }
+    .home-hint          { margin-top: 6px; }
 }

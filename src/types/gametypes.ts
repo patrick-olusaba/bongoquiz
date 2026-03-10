@@ -11,7 +11,11 @@ export type GameScreen =
     | "round2_result"
     | "round3_spin"
     | "round3_question"
-    | "final_result";
+    | "final_result"
+    | "leaderboard"
+    | "transition_r1"
+    | "transition_r2"
+    | "transition_r3";
 
 export interface Question {
     q: string;
@@ -20,17 +24,23 @@ export interface Question {
 }
 
 export const POWER_DESC: Record<string, string> = {
-    "Bonus Time":                "⏱ +10 seconds added to your Round 1 timer.",
+    "Bonus Time":                "⏱ +30 seconds added to your Round 1 timer.",
+    "Borrowed Brain":            "🧠 Reveals the correct answer hint once during Round 2.",
+    "Disqualified":              "💀 You lose 200 points at the end of Round 2.",
     "Double Or Nothing":         "🎲 Get ALL Round 2 questions right → score doubles. Any wrong → score resets to 0.",
     "Double Points":             "✨ Your entire Round 1 score is doubled!",
     "Freeze Frame":              "❄️ Pause the Round 1 timer once for 15 seconds.",
     "Insurance":                 "🛡️ Protects you from the worst negative power effects.",
+    "Mirror Effect":             "🪞 Your Round 1 score is added as a bonus on top of Round 2.",
     "No Penalty":                "🟢 Wrong answers are completely safe — no penalties at all.",
+    "Point Chance Brain":        "🎰 50% chance to triple your Round 2 score at the end.",
     "Point Gamble":              "🃏 50/50: your Round 2 score either doubles or is halved.",
     "Question Swap":             "🔀 Skip one Round 2 question with no penalty.",
     "Second Chance":             "🔄 Get one retry on a wrong answer in Round 2.",
+    "Steal A Point":             "🥷 +50 bonus points added at the end of Round 2.",
     "Sudden Death Disqualified": "💣 First wrong answer in Round 2 ends the round immediately!",
-    "Time Tax":                  "💸 Round 1 timer −20 s.",
+    "Swap Fate":                 "🌀 Your final Round 2 score is randomised ±30%.",
+    "Time Tax":                  "💸 Round 1 timer −20 s, but you receive +200 bonus points.",
 };
 
 export const R1_QUESTIONS: Question[] = [
@@ -117,7 +127,6 @@ export const R2_QUESTIONS: Record<Category, Question[]> = {
         { q: "How many seasons does 'Money Heist' have?", options: ["3", "4", "5", "6"], answer: 2 },
         { q: "What genre is Afrobeats?", options: ["Classical", "African pop music", "Jazz", "Blues"], answer: 1 },
     ],
-
 Science: [
     { q: "What planet is closest to the Sun?", options: ["Venus", "Earth", "Mercury", "Mars"], answer: 2 },
     { q: "What is the chemical symbol for gold?", options: ["Go", "Gd", "Au", "Ag"], answer: 2 },

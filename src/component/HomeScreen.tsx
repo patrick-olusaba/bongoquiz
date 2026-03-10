@@ -1,26 +1,40 @@
 // HomeScreen.tsx
-import { type FC, useEffect, useRef } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import logoBg from "../assets/logo.png";
-import mainLogo from "../assets/background.png"
+import mainLogo from "../assets/background.png";
+import { PlayerNameModal } from "./Playernamemodal.tsx";
+import { HowToPlayModal }  from "./Howtoplaymodal.tsx";
+import { getStreakInfo }    from "../utils/streakDays.ts";
 import '../styles/HomeScreen.css';
 
 interface Props {
-    onStart: () => void;
+    onStart:       (playerName: string) => void;
+    onLeaderboard: () => void;
 }
 
-export const HomeScreen: FC<Props> = ({ onStart }) => {
+export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [showNameModal, setShowNameModal] = useState(false);
+    const [showHTP,       setShowHTP]       = useState(false);
+    const [playerName,    setPlayerName]    = useState(() =>
+        localStorage.getItem("bongo_player_name") ?? "Player"
+    );
+    const personalBest = parseInt(localStorage.getItem("bongo_best_score") ?? "0");
+    const streakInfo   = getStreakInfo();
+
+    const saveName = (name: string) => {
+        setPlayerName(name);
+        localStorage.setItem("bongo_player_name", name);
+    };
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d")!;
         let animId: number;
-
         const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
         resize();
         window.addEventListener("resize", resize);
-
         const stars = Array.from({ length: 120 }, () => ({
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
@@ -29,7 +43,6 @@ export const HomeScreen: FC<Props> = ({ onStart }) => {
             opacity: Math.random() * 0.7 + 0.3,
             twinkle: Math.random() * Math.PI * 2,
         }));
-
         const tick = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             stars.forEach(s => {
@@ -49,26 +62,19 @@ export const HomeScreen: FC<Props> = ({ onStart }) => {
     }, []);
 
     const rounds = [
-        { num: "01", label: "Quickfire",  icon: "⚡",  desc: "2 mins · 100 pts per answer · streak bonuses", color: "#7B61FF", glow: "drop-shadow(0 0 12px rgba(123,97,255,0.6))"  },
-        { num: "02", label: "Categories", icon: "🗂️", desc: "Pick your topic · 5 questions · powers apply",  color: "#FF6B6B", glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))" },
-        { num: "03", label: "Spin & Win", icon: "🎡",  desc: "Spin the wheel · answer to claim your bonus",  color: "#FFD93D", glow: "drop-shadow(0 0 12px rgba(255,217,61,0.6))"  },
+        { num: "01", label: "Quickfire",  icon: "⚡",  desc: "90s · 100 pts per answer · race the clock",  color: "#7B61FF", glow: "drop-shadow(0 0 12px rgba(123,97,255,0.6))"  },
+        { num: "02", label: "Categories", icon: "🗂️", desc: "Pick your topic · 5 questions · powers apply", color: "#FF6B6B", glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))" },
+        { num: "03", label: "Spin & Win", icon: "🎡",  desc: "Spin the wheel · answer to claim your bonus", color: "#FFD93D", glow: "drop-shadow(0 0 12px rgba(255,217,61,0.6))"  },
     ];
 
     return (
         <div className="home-root">
             <canvas ref={canvasRef} className="home-canvas" />
-
-            <img src={logoBg} alt="Bongo Quiz Background" className="home-logo-bg" />
-
+            <img src={logoBg} alt="" className="home-logo-bg" />
             <div className="home-orbs">
-                <div className="home-orb1" />
-                <div className="home-orb2" />
-                <div className="home-orb3" />
+                <div className="home-orb1" /><div className="home-orb2" /><div className="home-orb3" />
             </div>
-
-            <div className="home-scanline-wrap">
-                <div className="home-scanline" />
-            </div>
+            <div className="home-scanline-wrap"><div className="home-scanline" /></div>
 
             <div className="home-content">
                 <div className="home-badge">
@@ -84,6 +90,27 @@ export const HomeScreen: FC<Props> = ({ onStart }) => {
                     3 explosive rounds of trivia · hidden powers · a spinning prize wheel
                 </p>
 
+                {/* Player name + personal best bar */}
+                <div className="home-player-bar">
+                    <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}>
+                        👤 {playerName} <span className="home-player-edit">✏️</span>
+                    </button>
+                    {(personalBest > 0 || streakInfo.current > 0) && (
+                        <div className="home-player-bar-row">
+                            {personalBest > 0 && (
+                                <div className="home-best-score">
+                                    🏆 Best: <strong>{personalBest.toLocaleString()}</strong>
+                                </div>
+                            )}
+                            {streakInfo.current > 0 && (
+                                <div className="home-streak-badge">
+                                    🔥 {streakInfo.current} day{streakInfo.current !== 1 ? "s" : ""} streak
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 <div className="home-rounds">
                     {rounds.map(r => (
                         <div key={r.num} className="home-round-card">
@@ -97,14 +124,27 @@ export const HomeScreen: FC<Props> = ({ onStart }) => {
                 </div>
 
                 <div className="home-cta-wrap">
-                    <button className="home-btn" onClick={onStart}>
+                    <button className="home-btn" onClick={() => onStart(playerName)}>
                         <span className="home-btn-shine" />
                         🎯 &nbsp;PLAY NOW
                     </button>
+                    <div className="home-secondary-btns">
+                        <button className="home-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>
+                        <button className="home-lb-btn" onClick={() => setShowHTP(true)}>❓ How to Play</button>
+                    </div>
                 </div>
 
                 <p className="home-hint">Test Your Self</p>
             </div>
+
+            {showNameModal && (
+                <PlayerNameModal
+                    currentName={playerName}
+                    onSave={saveName}
+                    onClose={() => setShowNameModal(false)}
+                />
+            )}
+            {showHTP && <HowToPlayModal onClose={() => setShowHTP(false)} />}
         </div>
     );
 };

@@ -1,8 +1,11 @@
 // FinalResultScreen.tsx
-import type { FC } from "react";
+import { type FC, useEffect, useState } from "react";
 import type { PrizeItem } from "../types/bongotypes.ts";
 import type { WheelSegment } from "../types/gametypes.ts";
+import { checkAchievements, unlockAchievements, type Achievement } from "../utils/achievements.ts";
+import { recordPlayToday } from "../utils/streakDays.ts";
 import '../styles/style.css';
+import '../styles/FinalResultScreen.css';
 
 interface Props {
     power:       PrizeItem;
@@ -11,19 +14,55 @@ interface Props {
     r3Bonus:     number;
     segment:     WheelSegment | null;
     total:       number;
+    playerName:  string;
+    r1TimeLeft:  number;
+    r2Correct:   number;
+    r2Total:     number;
+    maxStreak:   number;
     onPlayAgain: () => void;
 }
 
-export const FinalResultScreen: FC<Props> = ({ power, r1Score, r2Score, r3Bonus, segment, total, onPlayAgain }) => {
+export const FinalResultScreen: FC<Props> = ({
+                                                 power, r1Score, r2Score, r3Bonus, segment, total,
+                                                 playerName, r1TimeLeft, r2Correct, r2Total, maxStreak, onPlayAgain
+                                             }) => {
+    const [isNewBest,    setIsNewBest]    = useState(false);
+    const [prevBest,     setPrevBest]     = useState(0);
+    const [copied,       setCopied]       = useState(false);
+    const [newBadges,    setNewBadges]    = useState<Achievement[]>([]);
+    const [showBadgeIdx, setShowBadgeIdx] = useState(0);
+
+    useEffect(() => {
+        // Personal best
+        const prev = parseInt(localStorage.getItem("bongo_best_score") ?? "0");
+        setPrevBest(prev);
+        if (total > prev) {
+            setIsNewBest(true);
+            localStorage.setItem("bongo_best_score", String(total));
+        }
+
+        // Only show badges earned THIS session
+        const ids    = checkAchievements({ total, r2Correct, r2Total, r1TimeLeft, r1Score, maxStreak });
+        const earned = unlockAchievements(ids);
+        setNewBadges(earned);
+
+        if (earned.length > 0) {
+            earned.forEach((_, i) => {
+                setTimeout(() => setShowBadgeIdx(i), i * 2200);
+            });
+        }
+
+        recordPlayToday();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const rating =
         total >= 20000 ? "🌟 Legendary! You're a Bongo champion!"
-        : total >= 8000  ? "🔥 Amazing score — absolutely crushing it!"
-        : total >= 3000  ? "🎉 Great score — well done!"
-        : total >= 1000  ? "👍 Decent effort — try again!"
-        : "📚 Keep practising, you'll do better!";
+            : total >= 8000  ? "🔥 Amazing score — absolutely crushing it!"
+                : total >= 3000  ? "🎉 Great score — well done!"
+                    : total >= 1000  ? "👍 Decent effort — try again!"
+                        : "📚 Keep practising, you'll do better!";
 
     const isMultiplier = segment?.label === "×3" || segment?.label === "Double Up";
-
     const r3Label = (() => {
         if (!segment) return "🎡 Wheel Bonus";
         if (segment.label === "×3")        return "🎡 ×3 Multiplier";
@@ -32,53 +71,95 @@ export const FinalResultScreen: FC<Props> = ({ power, r1Score, r2Score, r3Bonus,
         return `🎡 ${segment.label}`;
     })();
 
-    return (
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "'Segoe UI', sans-serif" }}>
-            <div style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(16px)", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.12)", padding: "40px", maxWidth: "560px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", textAlign: "center" }}>
-                <div style={{ fontSize: "4rem", marginBottom: 6 }}>🏆</div>
-                <h1 style={{ fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 900, background: "linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginBottom: 6 }}>
-                    Game Over!
-                </h1>
+    const handleShare = () => {
+        const text = `🎯 I scored ${total.toLocaleString()} pts on Bongo Quiz as "${playerName}"!\n${rating}\nCan you beat me? 🏆`;
+        if (navigator.share) {
+            navigator.share({ title: "Bongo Quiz", text }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(text).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            });
+        }
+    };
 
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", marginBottom: 20 }}>
-                    Power used:{" "}
-                    <strong style={{ color: "#ffd200" }}>
-                        <img src={power.img} alt="" style={{ width: 20, height: 20, objectFit: "contain", verticalAlign: "middle", marginRight: 4 }} />
-                        {power.name}
-                    </strong>
+    return (
+        <div className="fr-root">
+            {/* New personal best banner */}
+            {isNewBest && (
+                <div className="fr-new-best-banner">
+                    🏆 NEW PERSONAL BEST! {prevBest > 0 ? `(was ${prevBest.toLocaleString()})` : "First score saved!"}
+                </div>
+            )}
+
+            {/* Achievement toast — slides in for each new badge */}
+            {newBadges.length > 0 && showBadgeIdx < newBadges.length && (
+                <div className="fr-badge-toast" key={showBadgeIdx}>
+                    <span className="fr-badge-toast-emoji">{newBadges[showBadgeIdx].emoji}</span>
+                    <div>
+                        <div className="fr-badge-toast-title">Badge Unlocked!</div>
+                        <div className="fr-badge-toast-name">{newBadges[showBadgeIdx].name}</div>
+                    </div>
+                </div>
+            )}
+
+            <div className="fr-card">
+                <div className="fr-trophy">{isNewBest ? "🥇" : "🏆"}</div>
+                <h1 className="fr-title">Game Over!</h1>
+
+                <p className="fr-power-line">
+                    Power: <img src={power.img} alt="" className="fr-power-img" />
+                    <strong>{power.name}</strong>
                 </p>
 
-                {/* Per-round breakdown */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }}>
+                <div className="fr-breakdown">
                     {[
                         { l: "⚡ Round 1", v: r1Score, c: "#ffd200" },
                         { l: "🗂️ Round 2", v: r2Score, c: "#4d96ff" },
-                        { l: r3Label,      v: isMultiplier && r3Bonus > 0 ? "×" : r3Bonus, c: "#38ef7d" },
+                        { l: r3Label,      v: r3Bonus, c: "#38ef7d" },
                     ].map(s => (
-                        <div key={s.l} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 14, padding: "16px 10px", border: `1px solid ${s.c}44` }}>
-                            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.75rem", marginBottom: 4 }}>{s.l}</div>
-                            <div style={{ fontWeight: 900, fontSize: "1.6rem", color: s.c }}>
+                        <div key={s.l} className="fr-breakdown-cell" style={{ borderColor: `${s.c}44` }}>
+                            <div className="fr-breakdown-label">{s.l}</div>
+                            <div className="fr-breakdown-value" style={{ color: s.c }}>
                                 {isMultiplier && s.l === r3Label
                                     ? (segment?.label === "×3" ? "×3" : "×2")
-                                    : s.v}
+                                    : s.v.toLocaleString()}
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Total */}
-                <div style={{ background: "rgba(255,215,0,0.08)", border: "2px solid rgba(255,215,0,0.3)", borderRadius: 20, padding: 20, marginBottom: 28 }}>
-                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.85rem" }}>FINAL SCORE</div>
-                    <div style={{ fontSize: "clamp(3rem,8vw,4.5rem)", fontWeight: 900, color: "#ffd200", textShadow: "0 0 30px rgba(255,210,0,0.5)", lineHeight: 1 }}>
-                        {total.toLocaleString()}
-                    </div>
-                    <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9rem", marginTop: 6 }}>{rating}</div>
+                <div className="fr-total-box">
+                    <div className="fr-total-label">FINAL SCORE</div>
+                    <div className="fr-total-value">{total.toLocaleString()}</div>
+                    <div className="fr-rating">{rating}</div>
                 </div>
 
-                <button onClick={onPlayAgain} style={{ background: "linear-gradient(135deg,#667eea,#764ba2)", border: "none", borderRadius: "50px", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "1.1rem", fontWeight: 800, padding: "14px 40px", boxShadow: "0 4px 20px rgba(102,126,234,0.4)", transition: "all 0.2s" }}
-                    onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.04)")}
-                    onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                >🔄 Play Again</button>
+                {/* Only badges earned this game */}
+                {newBadges.length > 0 && (
+                    <div className="fr-badges-row">
+                        <div className="fr-badges-title">🏅 Badges Earned This Game</div>
+                        <div className="fr-badges-list">
+                            {newBadges.map((b, i) => (
+                                <div
+                                    key={b.id}
+                                    className="fr-badge-chip"
+                                    style={{ animationDelay: `${i * 150}ms` }}
+                                >
+                                    <span className="fr-badge-chip-emoji">{b.emoji}</span>
+                                    <span className="fr-badge-chip-name">{b.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="fr-actions">
+                    <button className="fr-btn fr-btn--play"  onClick={onPlayAgain}>🔄 Play Again</button>
+                    <button className="fr-btn fr-btn--share" onClick={handleShare}>
+                        {copied ? "✅ Copied!" : "📤 Share"}
+                    </button>
+                </div>
             </div>
         </div>
     );

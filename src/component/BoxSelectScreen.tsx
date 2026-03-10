@@ -45,7 +45,7 @@ export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
         });
         const cell = cellsRef.current[id];
         if (cell?.prizeItem) {
-            setTimeout(() => onPowerSelected(cell.prizeItem!), 7000);
+            setTimeout(() => onPowerSelected(cell.prizeItem!), 3000);
         }
     }, [onPowerSelected]);
 

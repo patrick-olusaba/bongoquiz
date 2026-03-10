@@ -2,7 +2,6 @@
 import { type FC, useEffect, useRef, useState } from "react";
 import type { WheelSegment } from "../types/gametypes.ts";
 import wheelImg from "../assets/bongo.png";
-import centerLogo from "../assets/logospin.png";
 import '../styles/Round3SpinScreen.css';
 
 interface Segment {
@@ -13,9 +12,9 @@ interface Segment {
 }
 
 const SEGMENTS: Segment[] = [
-    { label: "250",              points: 250   },  // 0 — 12 o'clock in raw image
-    { label: "★★★",              points: 0     },  // 1
-    { label: "3,000",            points: 3000  },  // 2
+    { label: "250",              points: 250   },
+    { label: "★★★",              points: 0     },
+    { label: "3,000",            points: 3000  },
     { label: "×3",               points: 0, multiplier: 3 },
     { label: "7,500",            points: 7500  },
     { label: "2,000",            points: 2000  },
@@ -35,42 +34,26 @@ const SEGMENTS: Segment[] = [
     { label: "1,000",            points: 1000  },
 ];
 
-const TOTAL      = SEGMENTS.length; // 20
-const SLICE      = 360 / TOTAL;     // 18° per segment
-const STAR_INDEX = 1;               // ★★★ is index 1 in the image
+const TOTAL      = SEGMENTS.length;
+const SLICE      = 360 / TOTAL;
+const STAR_INDEX = 1;
 
-// The rule is simple:
-//   When the wheel CSS rotation = R degrees, the segment sitting under the
-//   top pointer is the one whose index satisfies:
-//       index = round(-R / SLICE) mod TOTAL
-//
-// So to show segment[i] at the top we need R = -i * SLICE (mod 360).
-//
-// ★★★ is index 1 → START_DEG = -1 * 18 = -18°
-const START_DEG = -(STAR_INDEX * SLICE);  // -18°
+const START_DEG = -(STAR_INDEX * SLICE + SLICE / 2);
 
-// Given current accumulated rotation, build a new rotation that lands
-// targetIndex under the pointer, always spinning clockwise.
 function calcFinalRotation(currentRot: number, targetIndex: number): number {
     const fullSpins = (Math.floor(Math.random() * 5) + 7) * 360;
-
-    // Target rotation mod 360 that puts targetIndex at top
     const targetMod  = ((-targetIndex * SLICE) % 360 + 360) % 360;
     const currentMod = ((currentRot    % 360) + 360) % 360;
-
     let delta = targetMod - currentMod;
-    if (delta <= 0) delta += 360;   // always spin forward at least one segment
-    if (delta < 36) delta += 360;   // avoid tiny final nudge (looks bad)
-
+    if (delta <= 0) delta += 360;
+    if (delta < 36) delta += 360;
     return currentRot + fullSpins + delta;
 }
 
-// Derive which segment is under the pointer from a rotation value.
-// This is the SINGLE SOURCE OF TRUTH — used both for display and result.
 function segmentAtTop(rotDeg: number): number {
-    const norm = ((rotDeg % 360) + 360) % 360;           // 0–360
-    const idx  = Math.round(norm / SLICE) % TOTAL;        // nearest segment
-    return (TOTAL - idx) % TOTAL;                         // invert direction
+    const norm = ((rotDeg % 360) + 360) % 360;
+    const idx  = Math.round(norm / SLICE) % TOTAL;
+    return (TOTAL - idx) % TOTAL;
 }
 
 function toWheelSegment(seg: Segment, currentScore: number): WheelSegment {
@@ -136,7 +119,9 @@ const BulbRing: FC<{ spinning: boolean }> = ({ spinning }) => {
     }, [spinning]);
     const count = 24, radius = 260, cx = 260, cy = 260;
     return (
-        <svg width={520} height={520} className="spin-bulb-ring-svg">
+        // viewBox ensures the fixed coordinates (cx/cy/radius based on 520×520)
+        // scale correctly when the SVG is sized via CSS on any screen width
+        <svg viewBox="0 0 520 520" className="spin-bulb-ring-svg">
             {Array.from({ length: count }, (_, i) => {
                 const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
                 const x = cx + radius * Math.cos(angle);
@@ -198,7 +183,6 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
     const spin = () => {
         if (!canSpin || transitioning) return;
 
-        // Pick random target, avoid ★★★
         let target = Math.floor(Math.random() * TOTAL);
         while (target === STAR_INDEX) target = Math.floor(Math.random() * TOTAL);
 
@@ -225,12 +209,8 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
                 animFrameRef.current = requestAnimationFrame(animate);
             } else {
                 rotRef.current = finalRotDeg;
-
-                // Read the segment from the FINAL rotation — same math as
-                // calcFinalRotation used to place it, so they always agree.
                 const actualIdx = segmentAtTop(finalRotDeg);
                 const seg = SEGMENTS[actualIdx];
-
                 setTransitioning(false);
                 setLanded(seg);
                 setShowConfetti(true);
@@ -252,21 +232,12 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
                     <BulbRing spinning={transitioning} />
                     <div className="spin-inner">
                         <div className="spin-pointer" />
-
-                        <div className="spin-wheel-container">
-                            <canvas
-                                ref={canvasRef}
-                                width={800}
-                                height={800}
-                                className={`spin-wheel-canvas${transitioning ? " is-spinning" : ""}`}
-                            />
-
-                            <img
-                                src={centerLogo}
-                                alt="Bongo Quiz Spin"
-                                className="spin-center-logo"
-                            />
-                        </div>
+                        <canvas
+                            ref={canvasRef}
+                            width={800}
+                            height={800}
+                            className={`spin-wheel-canvas${transitioning ? " is-spinning" : ""}`}
+                        />
                     </div>
                 </div>
                 <div className="spin-action">

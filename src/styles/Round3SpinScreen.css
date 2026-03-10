@@ -1,509 +1,304 @@
-/* Round3SpinScreen.css — cinematic game-show spin screen styles */
+/* Round3SpinScreen.css */
 
-/* ── Keyframes ─────────────────────────────────────────────────────────────── */
-@keyframes pulseGlow {
-    from { opacity: 0.7; transform: translate(-50%, -50%) translateY(-26px) scale(0.97); }
-    to   { opacity: 1;   transform: translate(-50%, -50%) translateY(-26px) scale(1.03); }
+/* ── Keyframes ── */
+@keyframes spin-fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes popIn {
-    from { opacity: 0; transform: scale(0.6); }
-    to   { opacity: 1; transform: scale(1);   }
+@keyframes spin-popIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; transform: scale(1); }
 }
-
-@keyframes btnPulse {
-    0%, 100% { box-shadow: 0 8px 0 #8B0000, 0 12px 40px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25); }
-    50%       { box-shadow: 0 8px 0 #8B0000, 0 18px 60px rgba(232,25,44,0.9), inset 0 2px 0 rgba(255,255,255,0.25); }
+@keyframes spin-resultReveal {
+    from { opacity: 0; transform: scale(0.85) translateY(14px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
-
-@keyframes dotPulse {
-    0%, 100% { box-shadow: 0 0 6px #FFD700; }
-    50%       { box-shadow: 0 0 14px #FFD700, 0 0 28px rgba(255,215,0,0.5); }
+@keyframes spin-dotBlink {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 8px #FFD700; }
+    50%       { opacity: 0.4; box-shadow: none; }
 }
-
-@keyframes shineSweep {
-    0%   { transform: translateX(-200%); }
-    100% { transform: translateX(200%);  }
+@keyframes spin-btnGlow {
+    0%, 100% { box-shadow: 0 6px 0 #7a0010, 0 10px 32px rgba(232,25,44,0.55), inset 0 1px 0 rgba(255,255,255,0.2); }
+    50%       { box-shadow: 0 6px 0 #7a0010, 0 16px 52px rgba(232,25,44,0.85), inset 0 1px 0 rgba(255,255,255,0.2); }
 }
-
-@keyframes gradientShift {
+@keyframes spin-shine {
+    0%   { transform: translateX(-220%); }
+    100% { transform: translateX(220%); }
+}
+@keyframes spin-textFlow {
     to { background-position: -200% center; }
 }
-
-@keyframes bounceDot {
-    from { transform: translateY(0);     opacity: 0.4; }
-    to   { transform: translateY(-10px); opacity: 1;   }
+@keyframes spin-bounce {
+    from { transform: translateY(0);    opacity: 0.5; }
+    to   { transform: translateY(-8px); opacity: 1; }
+}
+@keyframes spin-wheelGlow {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,215,0,0.3),  0 0 40px rgba(255,215,0,0.15); }
+    50%       { box-shadow: 0 0 0 5px rgba(255,107,107,0.5), 0 0 70px rgba(255,215,0,0.3); }
+}
+@keyframes spin-ambientPulse {
+    0%, 100% { opacity: 0.6; transform: translate(-50%,-50%) scale(0.95); }
+    50%       { opacity: 1;   transform: translate(-50%,-50%) scale(1.05); }
 }
 
-@keyframes resultReveal {
-    from { opacity: 0; transform: scale(0.8) translateY(20px); }
-    to   { opacity: 1; transform: scale(1)   translateY(0);    }
-}
-
-@keyframes spotlightSweep {
-    0%, 100% { transform: translateX(-50%) rotate(-8deg); }
-    50%      { transform: translateX(-50%) rotate(8deg);  }
-}
-
-@keyframes floatHeader {
-    from { opacity: 0; transform: translateY(-20px); }
-    to   { opacity: 1; transform: translateY(0);     }
-}
-
-@keyframes wheelGlowSpin {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(255,215,0,0.5), 0 0 60px rgba(255,107,107,0.5), 0 0 120px rgba(255,215,0,0.25); }
-    50%       { box-shadow: 0 0 0 6px rgba(255,107,107,0.7), 0 0 80px rgba(255,215,0,0.6),  0 0 160px rgba(255,107,107,0.3); }
-}
-
-/* ── Page root ─────────────────────────────────────────────────────────────── */
+/* ── Base ── */
 .spin-root {
-    min-height: 100vh;
+    min-height: 100svh;
+    width: 100vw;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
     font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-    background: #000;
+    background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
     position: relative;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
-/* ── Spotlight beams ───────────────────────────────────────────────────────── */
-.spin-spotlights {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
+.spin-spotlights,
+.spin-stage-glow { display: none; }
 
-.spin-spotlight {
-    position: absolute;
-    top: -100px;
-    left: 50%;
-    width: 300px;
-    height: 130vh;
-    background: linear-gradient(180deg, rgba(255,215,0,0.04) 0%, transparent 80%);
-    transform-origin: top center;
-}
-
-.spin-spotlight-1 { animation: spotlightSweep 6s ease-in-out infinite; }
-.spin-spotlight-2 { animation: spotlightSweep 8s ease-in-out infinite 1.5s; }
-.spin-spotlight-3 { animation: spotlightSweep 10s ease-in-out infinite 3s; }
-
-/* ── Stage floor glow ──────────────────────────────────────────────────────── */
-.spin-stage-glow {
-    position: fixed;
-    bottom: -100px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80vw;
-    height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(ellipse, rgba(232,25,44,0.2) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-/* ── Content wrapper ───────────────────────────────────────────────────────── */
 .spin-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 620px;
-    gap: 20px;
+    max-width: 600px;
+    gap: 16px;
     position: relative;
     z-index: 1;
 }
 
-/* ── Header ────────────────────────────────────────────────────────────────── */
-.spin-header {
-    text-align: center;
-    animation: floatHeader 0.6s ease forwards;
-}
+.spin-header { text-align: center; animation: spin-fadeUp 0.55s ease forwards; }
 
 .spin-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,215,0,0.08);
-    border: 1px solid rgba(255,215,0,0.3);
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(255,215,0,0.07);
+    border: 1px solid rgba(255,215,0,0.25);
     border-radius: 100px;
-    padding: 6px 20px;
-    margin-bottom: 14px;
-    backdrop-filter: blur(10px);
+    padding: 5px 18px; margin-bottom: 12px;
 }
-
 .spin-badge-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #FFD700;
-    box-shadow: 0 0 8px #FFD700;
-    display: inline-block;
-    animation: dotPulse 1.5s ease-in-out infinite;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #FFD700; display: inline-block;
+    animation: spin-dotBlink 1.4s ease-in-out infinite;
 }
-
 .spin-badge-text {
-    color: #ffd200;
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 3px;
-    text-transform: uppercase;
+    color: #FFD700; font-size: 0.72rem; font-weight: 800;
+    letter-spacing: 3px; text-transform: uppercase;
 }
 
 .spin-title {
-    font-size: clamp(2rem, 5vw, 2.8rem);
-    font-weight: 900;
-    margin: 0;
-    letter-spacing: -1px;
-    line-height: 1.1;
-    background: linear-gradient(135deg, #fff 0%, #FFD700 50%, #FF6B6B 100%);
+    font-size: 2.4rem; font-weight: 900; margin: 0;
+    letter-spacing: -0.5px; line-height: 1.1;
+    background: linear-gradient(135deg, #fff 0%, #FFD700 55%, #FF6B6B 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
-
 .spin-subtitle {
-    color: rgba(255,255,255,0.3);
-    font-size: 0.85rem;
-    margin-top: 6px;
-    margin-bottom: 0;
-    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.28); font-size: 0.82rem;
+    margin: 6px 0 0; letter-spacing: 0.5px;
 }
 
-/* ── Score pill ────────────────────────────────────────────────────────────── */
 .spin-score-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 100px;
-    padding: 8px 22px;
-    backdrop-filter: blur(10px);
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 100px; padding: 8px 22px;
+    animation: spin-fadeUp 0.55s 0.1s ease both;
 }
+.spin-score-label { color: rgba(255,255,255,0.35); font-size: 0.75rem; letter-spacing: 1.5px; text-transform: uppercase; }
+.spin-score-value { color: #FFD700; font-weight: 900; font-size: 1.1rem; }
 
-.spin-score-label {
-    color: rgba(255,255,255,0.4);
-    font-size: 0.8rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.spin-score-value {
-    color: #FFD700;
-    font-weight: 900;
-    font-size: 1.1rem;
-}
-
-/* ── Wheel wrapper ─────────────────────────────────────────────────────────── */
+/* ── Wheel ── */
 .spin-wheel-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
+    display: flex; flex-direction: column;
+    align-items: center; position: relative;
+    animation: spin-fadeUp 0.55s 0.15s ease both;
 }
 
-/* Ambient glow behind wheel */
 .spin-glow-ring {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 480px;
-    height: 480px;
+    top: 50%; left: 50%;
+    /* Use vw so it never overflows on any screen */
+    width: min(440px, 90vw); height: min(440px, 90vw);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,215,0,0.12) 0%, transparent 60%);
-    transition: background 0.5s;
-    pointer-events: none;
-    z-index: 0;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,215,0,0.10) 0%, transparent 65%);
+    pointer-events: none; z-index: 0;
+    transition: background 0.6s ease;
 }
-
 .spin-glow-ring.is-spinning {
-    background: radial-gradient(circle, rgba(255,107,107,0.25) 0%, rgba(255,215,0,0.15) 50%, transparent 70%);
-    animation: pulseGlow 0.6s ease-in-out infinite alternate;
+    background: radial-gradient(circle, rgba(255,107,107,0.2) 0%, rgba(255,215,0,0.12) 45%, transparent 70%);
+    animation: spin-ambientPulse 0.9s ease-in-out infinite;
 }
 
-/* Bulb ring SVG container */
 .spin-bulb-ring-wrap {
     position: relative;
-    width: 520px;
-    height: 520px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: min(500px, 92vw);
+    height: min(500px, 92vw);
+    display: flex; align-items: center; justify-content: center;
 }
 
+/* SVG fills the wrap — viewBox in the TSX handles internal scaling */
 .spin-bulb-ring-svg {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    z-index: 5;
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 5; overflow: visible;
 }
 
-/* Inner wheel area */
 .spin-inner {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    width: min(380px, 76vw);
 }
 
-/* Pointer triangle */
 .spin-pointer {
-    width: 0;
-    height: 0;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-top: 48px solid #fff;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,1)) drop-shadow(0 0 12px rgba(255,215,0,0.9));
-    margin-bottom: -10px;
-    z-index: 10;
-    position: relative;
+    width: 0; height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 40px solid #fff;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.9)) drop-shadow(0 0 10px rgba(255,215,0,0.7));
+    margin-bottom: -8px; z-index: 10; position: relative; flex-shrink: 0;
 }
 
-
-
-
-/* Wheel image container */
-.spin-wheel-img-wrap {
-    border-radius: 50%;
-    overflow: hidden;
-    width: min(400px, 78vw);
-    height: min(400px, 78vw);
-    box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 60px rgba(0,0,0,0.8);
-    transition: box-shadow 0.4s ease;
-    flex-shrink: 0;
-    /* also works when the element is a <canvas> */
-    display: block;
-}
-
-.spin-wheel-img-wrap.is-spinning {
-    box-shadow: 0 0 0 6px rgba(255,215,0,0.6), 0 0 60px rgba(255,107,107,0.6), 0 0 120px rgba(255,215,0,0.3);
-    animation: wheelGlowSpin 0.8s ease-in-out infinite;
-}
-
-.spin-wheel-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    user-select: none;
-    pointer-events: none;
-}
-
-/* Container to stack wheel + logo */
-.spin-wheel-container {
-    position: relative;
-    width: min(400px, 78vw);
-    height: min(400px, 78vw);
-}
-
-/* Canvas fills container */
 .spin-wheel-canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    border-radius: 50%;
+    width: 100%; aspect-ratio: 1;
+    display: block; border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 0 50px rgba(0,0,0,0.7);
+    transition: box-shadow 0.4s ease;
 }
+.spin-wheel-canvas.is-spinning { animation: spin-wheelGlow 0.9s ease-in-out infinite; }
 
-/* 🔥 Center logo */
-.spin-center-logo {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background:transparent;
-    width: 38%;          /* adjust size here */
-    pointer-events: none;
-    user-select: none;
-    z-index: 6;
-
-    /* nice polish */
-    filter: drop-shadow(0 0 20px rgba(0,0,0,0.6));
-    transition: transform 0.3s ease;
-}
-
-.spin-wheel-wrap:hover .spin-center-logo {
-    transform: translate(-50%, -50%) scale(1.05);
-}
-
-/* ── Action area ───────────────────────────────────────────────────────────── */
+/* ── Action area ── */
 .spin-action {
-    margin-top: 8px;
-    text-align: center;
-    min-height: 130px;
-    width: 100%;
+    margin-top: 6px; text-align: center;
+    min-height: 110px; width: 100%;
+    display: flex; align-items: center; justify-content: center;
 }
 
-/* SPIN button */
-.spin-btn-wrap {
-    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
+.spin-btn-wrap { animation: spin-popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
 .spin-btn {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #FF4444 0%, #E8192C 40%, #C0000A 100%);
-    border: none;
-    border-radius: 100px;
-    color: #fff;
-    cursor: pointer;
-    font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 900;
-    letter-spacing: 3px;
-    padding: 20px 64px;
-    text-transform: uppercase;
-    box-shadow: 0 8px 0 #8B0000, 0 12px 40px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25);
+    position: relative; overflow: hidden;
+    background: linear-gradient(160deg, #FF5555 0%, #E8192C 45%, #C0000A 100%);
+    border: none; border-radius: 100px; color: #fff;
+    cursor: pointer; font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
+    font-size: 1.3rem; font-weight: 900; letter-spacing: 4px;
+    padding: 14px 52px; text-transform: uppercase;
+    box-shadow: 0 6px 0 #7a0010, 0 10px 32px rgba(232,25,44,0.55), inset 0 1px 0 rgba(255,255,255,0.2);
     transition: transform 0.15s, box-shadow 0.15s;
-    animation: btnPulse 2s ease-in-out infinite;
+    animation: spin-btnGlow 2s ease-in-out infinite;
 }
-
-.spin-btn:hover {
-    transform: scale(1.06) translateY(-3px);
-    box-shadow: 0 11px 0 #8B0000, 0 16px 50px rgba(232,25,44,0.8), inset 0 2px 0 rgba(255,255,255,0.25);
-}
-
+.spin-btn:hover  { transform: scale(1.05) translateY(-2px); }
 .spin-btn:active {
-    transform: scale(0.97) translateY(4px);
-    box-shadow: 0 4px 0 #8B0000, 0 6px 20px rgba(232,25,44,0.6), inset 0 2px 0 rgba(255,255,255,0.25);
+    transform: scale(0.97) translateY(3px);
+    box-shadow: 0 3px 0 #7a0010, 0 4px 16px rgba(232,25,44,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
 }
-
 .spin-btn-shine {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
-    animation: shineSweep 2.5s ease-in-out infinite;
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+    animation: spin-shine 2.8s ease-in-out infinite;
 }
 
-/* Spinning state */
-.spin-spinning-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-}
-
+.spin-spinning-state { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .spin-spinning-text {
-    font-size: 1.3rem;
-    font-weight: 800;
-    letter-spacing: 6px;
-    text-transform: uppercase;
+    font-size: 1.15rem; font-weight: 800; letter-spacing: 5px; text-transform: uppercase;
     background: linear-gradient(90deg, #FF6B6B, #FFD700, #6BCB77, #4D96FF, #FF6B6B);
     background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: gradientShift 1.2s linear infinite;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: spin-textFlow 1.4s linear infinite;
 }
+.spin-dots { display: flex; gap: 8px; }
+.spin-dot  { width: 9px; height: 9px; border-radius: 50%; background: #FFD700; }
+.spin-dot:nth-child(1) { animation: spin-bounce 0.55s ease-in-out 0s    infinite alternate; }
+.spin-dot:nth-child(2) { animation: spin-bounce 0.55s ease-in-out 0.14s infinite alternate; }
+.spin-dot:nth-child(3) { animation: spin-bounce 0.55s ease-in-out 0.28s infinite alternate; }
 
-.spin-dots {
-    display: flex;
-    gap: 8px;
-}
-
-.spin-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #FFD700;
-}
-
-.spin-dot:nth-child(1) { animation: bounceDot 0.6s ease-in-out 0s   infinite alternate; }
-.spin-dot:nth-child(2) { animation: bounceDot 0.6s ease-in-out 0.15s infinite alternate; }
-.spin-dot:nth-child(3) { animation: bounceDot 0.6s ease-in-out 0.3s  infinite alternate; }
-
-/* ── Result card ───────────────────────────────────────────────────────────── */
+/* ── Result card ── */
 .spin-result-card {
-    animation: resultReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    border-radius: 20px;
-    padding: 20px 28px;
-    backdrop-filter: blur(12px);
-    max-width: 420px;
-    margin: 0 auto;
+    animation: spin-resultReveal 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    border-radius: 20px; padding: 20px 26px;
+    backdrop-filter: blur(14px);
+    max-width: 400px; width: 100%; margin: 0 auto; text-align: center;
 }
-
-.spin-result-card.is-normal {
-    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05));
-    border: 2px solid rgba(255,215,0,0.35);
-}
-
-.spin-result-card.is-special {
-    background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,215,0,0.1));
-    border: 2px solid rgba(255,107,107,0.5);
-}
+.spin-result-card.is-normal  { background: linear-gradient(135deg, rgba(255,215,0,0.10), rgba(255,215,0,0.04)); border: 1px solid rgba(255,215,0,0.3); }
+.spin-result-card.is-special { background: linear-gradient(135deg, rgba(255,107,107,0.12), rgba(255,215,0,0.06)); border: 1px solid rgba(255,107,107,0.4); }
 
 .spin-result-label {
-    font-size: clamp(2.2rem, 7vw, 3.5rem);
-    font-weight: 900;
+    font-size: 2.8rem; font-weight: 900;
     font-family: 'Trebuchet MS', 'Arial Black', sans-serif;
-    letter-spacing: -1px;
-    line-height: 1;
-    margin-bottom: 10px;
+    letter-spacing: -1px; line-height: 1; margin-bottom: 10px;
+}
+.spin-result-card.is-normal  .spin-result-label { color: #FFD700; text-shadow: 0 0 24px rgba(255,215,0,0.7); }
+.spin-result-card.is-special .spin-result-label { color: #FF6B6B; text-shadow: 0 0 24px rgba(255,107,107,0.7); }
+
+.spin-result-divider { height: 1px; border-radius: 1px; width: 48px; margin: 0 auto 12px; }
+.spin-result-card.is-normal  .spin-result-divider { background: linear-gradient(90deg, transparent, #FFD700, transparent); }
+.spin-result-card.is-special .spin-result-divider { background: linear-gradient(90deg, transparent, #FF6B6B, transparent); }
+
+.spin-result-desc { color: rgba(255,255,255,0.75); font-size: 0.95rem; line-height: 1.6; font-weight: 600; margin-bottom: 8px; }
+.spin-result-hint { color: rgba(255,255,255,0.3); font-size: 0.76rem; letter-spacing: 0.5px; }
+
+.spin-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — Round3SpinScreen.css
+═══════════════════════════════════════════════════ */
+
+@media (min-width: 1080px) {
+    .spin-content { max-width: 640px; }
+    .spin-title   { font-size: 2.8rem; }
 }
 
-.spin-result-card.is-normal .spin-result-label {
-    color: #FFD700;
-    text-shadow: 0 0 30px rgba(255,215,0,0.9), 0 0 60px rgba(255,215,0,0.5);
+@media (max-width: 1279px) {
+    .spin-content { max-width: 560px; }
+    .spin-title   { font-size: 2.2rem; }
 }
 
-.spin-result-card.is-special .spin-result-label {
-    color: #FF6B6B;
-    text-shadow: 0 0 30px rgba(255,107,107,0.9), 0 0 60px rgba(255,107,107,0.5);
+@media (max-width: 899px) {
+    .spin-content { max-width: 500px; gap: 12px; }
+    .spin-title   { font-size: 2rem; }
+    .spin-btn     { font-size: 1.15rem; padding: 13px 44px; }
 }
 
-.spin-result-divider {
-    height: 2px;
-    border-radius: 2px;
-    width: 60px;
-    margin: 0 auto 12px;
-}
-
-.spin-result-card.is-normal .spin-result-divider {
-    background: linear-gradient(90deg, transparent, #FFD700, transparent);
-}
-
-.spin-result-card.is-special .spin-result-divider {
-    background: linear-gradient(90deg, transparent, #FF6B6B, transparent);
-}
-
-.spin-result-desc {
-    color: rgba(255,255,255,0.8);
-    font-size: 1rem;
-    line-height: 1.6;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.spin-result-hint {
-    color: rgba(255,255,255,0.35);
-    font-size: 0.8rem;
-    letter-spacing: 0.5px;
-}
-
-/* ── Confetti canvas ───────────────────────────────────────────────────────── */
-.spin-confetti {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 50;
-}
-
-/* ── Responsive ────────────────────────────────────────────────────────────── */
-@media (max-width: 560px) {
-    .spin-bulb-ring-wrap {
-        width: 100vw;
-        height: 100vw;
+@media (max-width: 600px) {
+    .spin-root {
+        align-items: flex-start;
+        overflow-y: auto;
+        padding: max(32px, env(safe-area-inset-top)) 10px max(16px, env(safe-area-inset-bottom));
+        box-sizing: border-box;
     }
-    .spin-bulb-ring-svg {
-        width: 100vw;
-        height: 100vw;
-    }
-    .spin-glow-ring {
-        width: 90vw;
-        height: 90vw;
-    }
+    .spin-content        { gap: 8px; width: 100%; }
+    .spin-badge          { padding: 4px 14px; margin-bottom: 6px; }
+    .spin-badge-text     { font-size: 0.65rem; letter-spacing: 2px; }
+    .spin-title          { font-size: 1.6rem; }
+    .spin-subtitle       { font-size: 0.75rem; }
+    .spin-score-pill     { padding: 6px 16px; }
+    .spin-score-label    { font-size: 0.68rem; }
+    .spin-score-value    { font-size: 0.98rem; }
+    /* Wheel sizing — these drive everything since inner/glow use min() */
+    .spin-bulb-ring-wrap { width: min(420px, 96vw); height: min(420px, 96vw); }
+    .spin-inner          { width: min(320px, 72vw); }
+    /* Pointer scales with inner */
+    .spin-pointer        { border-left-width: 12px; border-right-width: 12px; border-top-width: 30px; }
+    .spin-btn            { font-size: 1rem; padding: 12px 32px; letter-spacing: 3px; }
+    .spin-result-card    { padding: 14px 12px; }
+    .spin-result-label   { font-size: 2rem; }
+    .spin-result-desc    { font-size: 0.88rem; }
+    .spin-action         { min-height: 90px; }
+}
+
+@media (max-width: 375px) {
+    .spin-root           { padding: max(28px, env(safe-area-inset-top)) 8px max(12px, env(safe-area-inset-bottom)); }
+    .spin-content        { gap: 6px; }
+    .spin-title          { font-size: 1.35rem; }
+    .spin-bulb-ring-wrap { width: 96vw; height: 96vw; }
+    .spin-inner          { width: 68vw; }
+    .spin-pointer        { border-left-width: 10px; border-right-width: 10px; border-top-width: 26px; }
+    .spin-btn            { font-size: 0.88rem; padding: 11px 24px; letter-spacing: 2px; }
+    .spin-result-label   { font-size: 1.7rem; }
+    .spin-action         { min-height: 80px; }
 }
