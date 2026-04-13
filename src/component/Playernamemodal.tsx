@@ -1,6 +1,6 @@
 // PlayerNameModal.tsx — name entry modal shown on home screen
 import { type FC, useState } from "react";
-import '../styles/PlayerNameModal.css';
+import '../styles/Playernamemodal.css';
 
 interface Props {
     currentName: string;

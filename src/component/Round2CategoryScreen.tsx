@@ -5,7 +5,7 @@ import { CATEGORIES, CATEGORY_META, type Category } from "../types/gametypes.ts"
 import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import stageBg from "../assets/BACK.png";
 import categoryFrame from "../assets/category-frame.jpeg";
-import '../styles/Round2CategoryScreen.css';
+import '../styles/Round2categoryscreen.css';
 
 interface Props {
     power: PrizeItem;
