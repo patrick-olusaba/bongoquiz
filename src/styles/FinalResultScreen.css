@@ -25,6 +25,10 @@
     from { opacity: 0; transform: scale(0.7) translateY(10px); }
     to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes frBreakdownIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ── Base (>1080px) ── */
 .fr-root {
@@ -116,7 +120,11 @@
     border-radius: 12px;
     padding: 12px 6px;
     border: 1px solid;
+    animation: frBreakdownIn 0.4s ease both;
 }
+.fr-breakdown-cell:nth-child(1) { animation-delay: 0.1s; }
+.fr-breakdown-cell:nth-child(2) { animation-delay: 0.2s; }
+.fr-breakdown-cell:nth-child(3) { animation-delay: 0.3s; }
 .fr-breakdown-label { color: rgba(255,255,255,0.4); font-size: 0.68rem; margin-bottom: 4px; }
 .fr-breakdown-value { font-weight: 900; font-size: 1.3rem; }
 
@@ -139,6 +147,12 @@
     color: #ffd200;
     text-shadow: 0 0 30px rgba(255,210,0,0.4);
     line-height: 1;
+    animation: frScorePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+
+@keyframes frScorePop {
+    from { opacity: 0; transform: scale(0.5) translateY(12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .fr-rating { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin-top: 4px; }
 

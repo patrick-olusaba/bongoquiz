@@ -1,147 +1,163 @@
-// Round2QuestionScreen.tsx
+// Round2QuestionScreen.tsx — 40s total timer, random mixed categories, +500/−250
 import { type FC, useEffect, useRef, useState } from "react";
 import type { PrizeItem } from "../types/bongotypes.ts";
-import { R2_QUESTIONS, CATEGORY_META, shuffle, type Category } from "../types/gametypes.ts";
+import { R2_QUESTIONS, CATEGORIES, CATEGORY_META, shuffle, type Category } from "../types/gametypes.ts";
+import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import '../styles/game.css';
 
 interface Props {
-    power:    PrizeItem;
-    category: Category;
-    r1Score:  number;
-    onComplete: (correct: number, total: number) => void;
+    power:   PrizeItem;
+    r1Score: number;
+    onComplete: (rawScore: number, correct: number, total: number) => void;
 }
 
-const BASE_TIME_PER_Q = 15;
+const POINTS_CORRECT = 500;
+const POINTS_WRONG   = -250;
+const POINTS_PASS    = -250;
+const TOTAL_TIME     = 40;
 
-export const Round2QuestionScreen: FC<Props> = ({ power, category, r1Score, onComplete }) => {
-    // ── Power flags ──────────────────────────────────────────────────────────
-    const hasBonusTime    = power.name === "Bonus Time";
-    const hasTimeTax      = power.name === "Time Tax";
-    const hasFreezeFrame  = power.name === "Freeze Frame";
+// Mix ALL category questions into one pool and shuffle
+function buildQuestionPool() {
+    const all: { q: string; options: string[]; answer: number; category: Category }[] = [];
+    for (const cat of CATEGORIES) {
+        for (const q of (R2_QUESTIONS[cat] ?? [])) {
+            all.push({ ...q, category: cat });
+        }
+    }
+    return shuffle(all);
+}
+
+export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) => {
+    const { play } = useSoundFX();
+
     const hasNoPenalty    = power.name === "No Penalty";
     const hasSecondChance = power.name === "Second Chance";
-    const hasQuestionSwap = power.name === "Question Swap";
     const hasBorrowedBrain= power.name === "Borrowed Brain";
+    const hasQuestionSwap = power.name === "Question Swap";
+    const hasFreezeFrame  = power.name === "Freeze Frame";
     const hasDoublePoints = power.name === "Double Points";
+    const hasBonusTime    = power.name === "Bonus Time";
+    const hasTimeTax      = power.name === "Time Tax";
 
-    // Time per question adjusted by power
-    const TIME_PER_Q = hasBonusTime ? 25 : hasTimeTax ? 10 : BASE_TIME_PER_Q;
-    const POINTS_PER_Q = hasDoublePoints ? 2000 : 1000;
-    const swapLimit = 2; // R2 gets 2 swaps
+    const baseTime   = hasBonusTime ? 55 : hasTimeTax ? 28 : TOTAL_TIME;
+    const ptsCorrect = hasDoublePoints ? POINTS_CORRECT * 2 : POINTS_CORRECT;
+    const ptsWrong   = hasNoPenalty ? 0 : POINTS_WRONG;
+    const ptsPass    = hasNoPenalty ? 0 : POINTS_PASS;
+    const swapLimit  = 2;
 
-    // ── State ────────────────────────────────────────────────────────────────
-    const [questions]   = useState(() => shuffle(R2_QUESTIONS[category] ?? []).slice(0, 5));
-    const [index,       setIndex]       = useState(0);
-    const [answered,    setAnswered]    = useState<number | null>(null);
-    const [swapsLeft,   setSwapsLeft]   = useState(swapLimit);
-    const [freezeUsed,  setFreezeUsed]  = useState(false);
-    const [freezeActive,setFreezeActive]= useState(false);
-    const [scPending,   setScPending]   = useState(false);
-    const [scUsed,      setScUsed]      = useState(false);
-    const [eliminated,  setEliminated]  = useState<number[]>([]);
-    const [brainUsed,   setBrainUsed]   = useState(false);
-    const [timeLeft,    setTimeLeft]    = useState(TIME_PER_Q);
+    const [questions]    = useState(() => buildQuestionPool());
+    const [index,        setIndex]        = useState(0);
+    const [score,        setScore]        = useState(0);
+    const [correct,      setCorrect]      = useState(0);
+    const [total,        setTotal]        = useState(0);
+    const [answered,     setAnswered]     = useState<number | null>(null);
+    const [timer,        setTimer]        = useState(baseTime);
+    const [frozen,       setFrozen]       = useState(false);
+    const [freezeUsed,   setFreezeUsed]   = useState(false);
+    const [swapsLeft,    setSwapsLeft]    = useState(swapLimit);
+    const [scPending,    setScPending]    = useState(false);
+    const [scUsed,       setScUsed]       = useState(false);
+    const [eliminated,   setEliminated]   = useState<number[]>([]);
+    const [brainUsed,    setBrainUsed]    = useState(false);
 
+    const doneRef    = useRef(false);
+    const scoreRef   = useRef(0);
     const correctRef = useRef(0);
+    const totalRef   = useRef(0);
     const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-    const lockedRef  = useRef(false);
 
-    // ── Advance ──────────────────────────────────────────────────────────────
-    const advance = (c: number) => {
-        lockedRef.current = false;
+    const finishRound = () => {
+        if (doneRef.current) return;
+        doneRef.current = true;
         clearInterval(timerRef.current!);
-        const next = index + 1;
-        if (next >= questions.length) {
-            onComplete(c, questions.length);
-        } else {
-            setIndex(next);
-            setTimeLeft(TIME_PER_Q);
-            setAnswered(null);
-            setScUsed(false);
-            setEliminated([]);
-            setBrainUsed(false);
-        }
+        onComplete(scoreRef.current, correctRef.current, totalRef.current);
     };
 
-    // ── Per-question countdown ───────────────────────────────────────────────
+    // Single countdown for entire round (like R1)
     useEffect(() => {
-        if (freezeActive) return; // paused
-        lockedRef.current = false;
-        setTimeLeft(TIME_PER_Q);
-        clearInterval(timerRef.current!);
+        if (frozen) return;
         timerRef.current = setInterval(() => {
-            setTimeLeft(t => {
-                if (t <= 1) {
-                    clearInterval(timerRef.current!);
-                    if (!lockedRef.current) {
-                        lockedRef.current = true;
-                        setAnswered(-1);
-                        setTimeout(() => advance(correctRef.current), 900);
-                    }
-                    return 0;
+            setTimer(t => {
+                const next = t - 1;
+                if (next > 0) {
+                    if (next <= 5)       play("tick_urgent");
+                    else if (next <= 10) play("tick");
                 }
-                return t - 1;
+                if (next <= 0) { play("timeout"); finishRound(); return 0; }
+                return next;
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
-    }, [index, freezeActive]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [frozen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Answer ───────────────────────────────────────────────────────────────
+    const nextQuestion = () => {
+        const next = index + 1;
+        if (next >= questions.length) { finishRound(); return; }
+        setIndex(next);
+        setAnswered(null);
+        setEliminated([]);
+        setBrainUsed(false);
+        setScUsed(false);
+    };
+
     const handleAnswer = (idx: number) => {
-        if (answered !== null || lockedRef.current) return;
-        lockedRef.current = true;
-        clearInterval(timerRef.current!);
+        if (answered !== null || doneRef.current) return;
         const q = questions[index];
         const isCorrect = idx === q.answer;
 
-        // No Penalty: wrong answer still advances but doesn't count as wrong
-        if (!isCorrect && hasNoPenalty) {
-            setAnswered(idx);
-            // Show "no penalty" feedback — treated as neutral, not correct
-            setTimeout(() => advance(correctRef.current), 900);
-            return;
-        }
-
-        // Second Chance: first wrong → retry once
         if (!isCorrect && hasSecondChance && !scUsed && !scPending) {
-            lockedRef.current = false;
+            play("wrong");
             setAnswered(idx);
             setScPending(true);
-            setTimeout(() => {
-                setAnswered(null);
-                setScPending(false);
-                setScUsed(true);
-                // restart timer with remaining time or half
-                setTimeLeft(t => Math.max(5, Math.floor(t / 2)));
-                lockedRef.current = false;
-            }, 800);
+            setTimeout(() => { setAnswered(null); setScPending(false); setScUsed(true); }, 800);
             return;
         }
 
         setAnswered(idx);
-        if (isCorrect) correctRef.current += 1;
-        setTimeout(() => advance(correctRef.current), 900);
+        totalRef.current += 1;
+        setTotal(totalRef.current);
+
+        if (isCorrect) {
+            play("correct");
+            scoreRef.current   += ptsCorrect;
+            correctRef.current += 1;
+            setScore(scoreRef.current);
+            setCorrect(correctRef.current);
+        } else {
+            play("wrong");
+            scoreRef.current += ptsWrong;
+            setScore(scoreRef.current);
+        }
+
+        setTimeout(() => nextQuestion(), 700);
     };
 
-    // ── Freeze Frame: pause timer once ───────────────────────────────────────
+    const handlePass = () => {
+        if (answered !== null || doneRef.current) return;
+        scoreRef.current += ptsPass;
+        totalRef.current += 1;
+        setScore(scoreRef.current);
+        setTotal(totalRef.current);
+        nextQuestion();
+    };
+
     const handleFreeze = () => {
-        if (freezeUsed || answered !== null) return;
+        if (freezeUsed) return;
         setFreezeUsed(true);
-        setFreezeActive(true);
+        setFrozen(true);
         clearInterval(timerRef.current!);
-        setTimeout(() => setFreezeActive(false), 8000);
+        setTimeout(() => setFrozen(false), 10000);
     };
 
-    // ── Question Swap ────────────────────────────────────────────────────────
     const handleSwap = () => {
-        if (swapsLeft <= 0 || answered !== null || lockedRef.current) return;
-        lockedRef.current = true;
+        if (swapsLeft <= 0 || answered !== null || doneRef.current) return;
         setSwapsLeft(s => s - 1);
-        clearInterval(timerRef.current!);
-        advance(correctRef.current);
+        scoreRef.current += ptsPass;
+        totalRef.current += 1;
+        setScore(scoreRef.current);
+        nextQuestion();
     };
 
-    // ── Borrowed Brain ───────────────────────────────────────────────────────
     const handleBrain = () => {
         if (brainUsed || answered !== null) return;
         const q = questions[index];
@@ -153,57 +169,45 @@ export const Round2QuestionScreen: FC<Props> = ({ power, category, r1Score, onCo
         setBrainUsed(true);
     };
 
-    // ── Render ───────────────────────────────────────────────────────────────
     const q = questions[index];
     if (!q) return null;
-    const cm = CATEGORY_META[category];
-    const currentR2Score = correctRef.current * POINTS_PER_Q;
-    const timePct = (timeLeft / TIME_PER_Q) * 100;
-    const timeColor = timePct > 50 ? "#38ef7d" : timePct > 25 ? "#ff9800" : "#e52d27";
+
+    const pct = (timer / baseTime) * 100;
+    const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";
+    const cm = CATEGORY_META[q.category];
 
     return (
         <div className="game-root">
             <div className="game-card">
                 <div className="game-header-row">
                     <span className="game-badge" style={{ color: cm.color, borderColor: `${cm.color}55`, background: `${cm.color}18` }}>
-                        {cm.icon} {category}
+                        {cm.icon} {q.category}
                     </span>
-                    <span className="game-score-badge">🏆 {r1Score + currentR2Score}</span>
+                    <span className="game-score-badge">🏆 {r1Score + score}</span>
                 </div>
 
                 <div className="game-timer-row">
-                    <span>Question {index + 1} / {questions.length} · {POINTS_PER_Q.toLocaleString()} pts each</span>
-                    <span style={{ color: freezeActive ? "#4dd0e1" : timeColor, fontWeight: 700, fontSize: "0.95rem" }}>
-                        {freezeActive ? "❄️ Frozen!" : `⏱ ${timeLeft}s`}
+                    <span>Q {index + 1} · {correct} ✓ · {total - correct} ✗</span>
+                    <span style={{ color: frozen ? "#4dd0e1" : timerColor, fontWeight: 700, fontSize: "0.95rem" }}>
+                        {frozen ? "❄️ Frozen!" : `⏱ ${timer}s`}
                     </span>
                 </div>
                 <div className="game-timer-track">
-                    <div className="game-timer-bar" style={{ width: `${timePct}%`, background: freezeActive ? "#4dd0e1" : timeColor, transition: "width 1s linear, background 0.3s" }} />
+                    <div className="game-timer-bar" style={{ width: `${pct}%`, background: timerColor }} />
                 </div>
 
-                {/* Active power banners */}
                 {scPending && (
                     <div className="game-banner game-banner--success">
                         🔄 Wrong — <strong>Second Chance</strong>! Try once more.
                     </div>
                 )}
-                {freezeActive && (
+                {freezeUsed && frozen && (
                     <div className="game-banner game-banner--success">
-                        ❄️ <strong>Freeze Frame</strong> — timer paused for 8s!
+                        ❄️ <strong>Freeze Frame</strong> — timer paused for 10s!
                     </div>
-                )}
-                {hasNoPenalty && (
-                    <div className="game-banner game-banner--success">
-                        🛡️ <strong>No Penalty</strong> active — wrong answers won't cost points.
-                    </div>
-                )}
-                {answered === -1 && (
-                    <div className="game-banner game-banner--danger">⏰ Time's up!</div>
                 )}
 
-                <div className="game-question">
-                    <p>{q.q}</p>
-                </div>
+                <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}><p>{q.q}</p></div>
 
                 {q.options.map((opt, i) => {
                     const isElim = eliminated.includes(i);
@@ -216,47 +220,41 @@ export const Round2QuestionScreen: FC<Props> = ({ power, category, r1Score, onCo
                     return (
                         <button key={i} className={cls}
                                 disabled={answered !== null || isElim}
-                                onClick={() => handleAnswer(i)}
-                                style={isElim ? { opacity: 0.3, textDecoration: "line-through" } : undefined}>
-                            {["A","B","C","D"][i]}. {opt}
+                                data-label={["A","B","C","D"][i]}
+                                style={{ animation: `optionIn 0.25s ease ${i * 0.06}s both`, ...(isElim ? { opacity: 0.3, textDecoration: "line-through" } : {}) }}
+                                onClick={() => handleAnswer(i)}>
+                            {opt}
                         </button>
                     );
                 })}
 
-                {answered !== null && answered !== q.answer && answered !== -1 && !scPending && (
+                {answered !== null && answered !== q.answer && !scPending && (
                     <div className="r1-correct-hint">
                         ✅ Correct: <strong>{["A","B","C","D"][q.answer]}. {q.options[q.answer]}</strong>
                     </div>
                 )}
 
                 <div className="game-power-row">
-                    {hasQuestionSwap && swapsLeft > 0 && (
-                        <button className="game-power-btn game-power-btn--swap"
-                                disabled={answered !== null}
-                                onClick={handleSwap}>
-                            🔀 Skip ({swapsLeft})
-                        </button>
-                    )}
+                    <button className="game-power-btn game-power-btn--pass"
+                            disabled={answered !== null} onClick={handlePass}>
+                        ⏭ Pass {!hasNoPenalty && <span style={{ opacity: 0.7, fontSize: "0.8em" }}>({POINTS_PASS})</span>}
+                    </button>
                     {hasFreezeFrame && !freezeUsed && (
                         <button className="game-power-btn game-power-btn--freeze"
-                                disabled={answered !== null}
-                                onClick={handleFreeze}>
-                            ❄️ Freeze (8s)
-                        </button>
+                                disabled={answered !== null} onClick={handleFreeze}>❄️ Freeze (10s)</button>
+                    )}
+                    {hasQuestionSwap && swapsLeft > 0 && (
+                        <button className="game-power-btn game-power-btn--swap"
+                                disabled={answered !== null} onClick={handleSwap}>🔀 Skip ({swapsLeft})</button>
                     )}
                     {hasBorrowedBrain && !brainUsed && (
                         <button className="game-power-btn game-power-btn--hint"
-                                disabled={answered !== null}
-                                onClick={handleBrain}>
-                            🧠 Hint
-                        </button>
+                                disabled={answered !== null} onClick={handleBrain}>🧠 Hint</button>
                     )}
                 </div>
 
                 <p className="game-power-note">
-                    Power: <strong>{power.name}</strong>
-                    {hasBonusTime  && <> · +10s per question</>}
-                    {hasTimeTax    && <> · −5s per question</>}
+                    ✓ +{ptsCorrect} · ✗ {ptsWrong} · Pass {ptsPass} · 40s round
                 </p>
             </div>
         </div>

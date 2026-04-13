@@ -1,6 +1,7 @@
-// Round3SpinScreen.tsx
+// Round3SpinScreen.tsx — 3 spins, question per spin, accumulate or lose
 import { type FC, useEffect, useRef, useState } from "react";
-import type { WheelSegment } from "../types/gametypes.ts";
+import { R1_QUESTIONS, shuffle, type Question } from "../types/gametypes.ts";
+import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import wheelImg from "../assets/bongo.png";
 import '../styles/Round3SpinScreen.css';
 
@@ -8,67 +9,57 @@ interface Segment {
     label: string;
     points: number;
     multiplier?: number;
-    special?: string;
 }
 
 const SEGMENTS: Segment[] = [
-    { label: "250",              points: 250   },
-    { label: "★★★",              points: 0     },
-    { label: "3,000",            points: 3000  },
-    { label: "×3",               points: 0, multiplier: 3 },
-    { label: "7,500",            points: 7500  },
-    { label: "2,000",            points: 2000  },
-    { label: "250",              points: 250   },
-    { label: "25,000",           points: 25000 },
-    { label: "1,000",            points: 1000  },
-    { label: "500",              points: 500   },
-    { label: "+Bonus Free Spin", points: 0, special: "bonus_spin" },
-    { label: "15,000",           points: 15000 },
-    { label: "2,500",            points: 2500  },
-    { label: "250",              points: 250   },
-    { label: "Double Up",        points: 0, multiplier: 2 },
-    { label: "500",              points: 500   },
-    { label: "5,000",            points: 5000  },
-    { label: "500",              points: 500   },
-    { label: "10,000",           points: 10000 },
-    { label: "1,000",            points: 1000  },
+    { label: "250",     points: 250   },
+    { label: "★★★",     points: 0     },
+    { label: "3,000",   points: 3000  },
+    { label: "×3",      points: 0, multiplier: 3 },
+    { label: "7,500",   points: 7500  },
+    { label: "2,000",   points: 2000  },
+    { label: "250",     points: 250   },
+    { label: "25,000",  points: 25000 },
+    { label: "1,000",   points: 1000  },
+    { label: "500",     points: 500   },
+    { label: "5,000",   points: 5000  },
+    { label: "15,000",  points: 15000 },
+    { label: "2,500",   points: 2500  },
+    { label: "250",     points: 250   },
+    { label: "Double",  points: 0, multiplier: 2 },
+    { label: "500",     points: 500   },
+    { label: "5,000",   points: 5000  },
+    { label: "500",     points: 500   },
+    { label: "10,000",  points: 10000 },
+    { label: "1,000",   points: 1000  },
 ];
 
 const TOTAL      = SEGMENTS.length;
 const SLICE      = 360 / TOTAL;
 const STAR_INDEX = 1;
+const START_DEG  = -(STAR_INDEX * SLICE + SLICE / 2);
+const MAX_SPINS  = 3;
 
-const START_DEG = -(STAR_INDEX * SLICE + SLICE / 2);
+function snapToCenter(rotDeg: number): number {
+    return Math.round(rotDeg / SLICE) * SLICE;
+}
 
 function calcFinalRotation(currentRot: number, targetIndex: number): number {
-    const fullSpins = (Math.floor(Math.random() * 5) + 7) * 360;
-    const targetMod  = ((-targetIndex * SLICE) % 360 + 360) % 360;
-    const currentMod = ((currentRot    % 360) + 360) % 360;
+    const fullSpins  = (Math.floor(Math.random() * 5) + 7) * 360;
+    const targetCenter = -(targetIndex * SLICE);
+    const targetMod  = ((targetCenter % 360) + 360) % 360;
+    const currentMod = ((currentRot   % 360) + 360) % 360;
     let delta = targetMod - currentMod;
     if (delta <= 0) delta += 360;
-    if (delta < 36) delta += 360;
+    if (delta < SLICE * 2) delta += 360;
     return currentRot + fullSpins + delta;
 }
 
 function segmentAtTop(rotDeg: number): number {
-    const norm = ((rotDeg % 360) + 360) % 360;
-    const idx  = Math.round(norm / SLICE) % TOTAL;
+    const snapped = snapToCenter(rotDeg);
+    const norm    = ((snapped % 360) + 360) % 360;
+    const idx     = Math.round(norm / SLICE) % TOTAL;
     return (TOTAL - idx) % TOTAL;
-}
-
-function toWheelSegment(seg: Segment, currentScore: number): WheelSegment {
-    let pts = seg.points;
-    if (seg.multiplier)               pts = currentScore * seg.multiplier;
-    if (seg.special === "bonus_spin") pts = 0;
-    return { label: seg.label, points: pts, color: "#ffd200" };
-}
-
-function getResultDesc(seg: Segment, currentScore: number): string {
-    if (seg.multiplier === 3)         return `Your score × 3 = ${(currentScore * 3).toLocaleString()} pts!`;
-    if (seg.multiplier === 2)         return `Your score × 2 = ${(currentScore * 2).toLocaleString()} pts!`;
-    if (seg.special === "bonus_spin") return "Bonus Free Spin — answer correctly for a free spin!";
-    if (seg.label === "★★★")          return "No points this time — better luck!";
-    return `+${seg.label} points added to your score!`;
 }
 
 // ─── Confetti ─────────────────────────────────────────────────────────────────
@@ -76,36 +67,60 @@ const Confetti: FC = () => {
     const ref = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
         const canvas = ref.current; if (!canvas) return;
-        const ctx = canvas.getContext("2d")!;
-        canvas.width  = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const pieces = Array.from({ length: 140 }, () => ({
-            x:  Math.random() * canvas.width,
-            y: -20 - Math.random() * 200,
-            w:  6 + Math.random() * 10,
-            h: 10 + Math.random() * 16,
+        const ctx    = canvas.getContext("2d")!;
+
+        const resize = () => {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resize();
+        window.addEventListener("resize", resize);
+
+        const colors = ["#FFD700","#FF6B6B","#6BCB77","#4D96FF","#FF9F1C","#fff","#c77dff"];
+        const pieces = Array.from({ length: 160 }, () => ({
+            x:  Math.random() * window.innerWidth,
+            y: -20 - Math.random() * 300,
+            w:  5 + Math.random() * 9,
+            h:  9 + Math.random() * 14,
             r:  Math.random() * Math.PI * 2,
-            dr: (Math.random() - 0.5) * 0.15,
-            dx: (Math.random() - 0.5) * 3,
-            dy:  3 + Math.random() * 5,
-            color: ["#FFD700","#FF6B6B","#6BCB77","#4D96FF","#FF9F1C","#fff"][Math.floor(Math.random() * 6)],
+            dr: (Math.random() - 0.5) * 0.12,
+            dx: (Math.random() - 0.5) * 2.5,
+            dy: 2.5 + Math.random() * 4.5,
+            color: colors[Math.floor(Math.random() * colors.length)],
         }));
+
         let id: number;
+        let active = true;
+
         const draw = () => {
+            if (!active) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             pieces.forEach(p => {
-                p.x += p.dx; p.y += p.dy; p.r += p.dr;
+                p.x += p.dx;
+                p.y += p.dy;
+                p.r += p.dr;
+                // Recycle pieces that fall off the bottom
+                if (p.y > canvas.height + 20) {
+                    p.y = -20 - Math.random() * 100;
+                    p.x = Math.random() * canvas.width;
+                }
                 ctx.save();
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.r);
                 ctx.fillStyle = p.color;
+                ctx.globalAlpha = 0.9;
                 ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
                 ctx.restore();
             });
-            if (pieces.some(p => p.y < canvas.height)) id = requestAnimationFrame(draw);
+            id = requestAnimationFrame(draw);
         };
         id = requestAnimationFrame(draw);
-        return () => cancelAnimationFrame(id);
+
+        return () => {
+            active = false;
+            cancelAnimationFrame(id);
+            window.removeEventListener("resize", resize);
+        };
     }, []);
     return <canvas ref={ref} className="spin-confetti" />;
 };
@@ -119,8 +134,6 @@ const BulbRing: FC<{ spinning: boolean }> = ({ spinning }) => {
     }, [spinning]);
     const count = 24, radius = 260, cx = 260, cy = 260;
     return (
-        // viewBox ensures the fixed coordinates (cx/cy/radius based on 520×520)
-        // scale correctly when the SVG is sized via CSS on any screen width
         <svg viewBox="0 0 520 520" className="spin-bulb-ring-svg">
             {Array.from({ length: count }, (_, i) => {
                 const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
@@ -140,20 +153,157 @@ const BulbRing: FC<{ spinning: boolean }> = ({ spinning }) => {
     );
 };
 
-// ─── SpinWheel ────────────────────────────────────────────────────────────────
-interface SpinProps { currentScore: number; onResult: (seg: WheelSegment) => void; }
+// ─── Question panel shown after each spin ─────────────────────────────────────
+interface QuestionPanelProps {
+    question:   Question;
+    spinPts:    number;
+    onCorrect:  () => void;
+    onWrong:    () => void;
+}
 
-const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
-    const rotRef       = useRef(START_DEG);
-    const angleRef     = useRef(START_DEG * Math.PI / 180);
-    const animFrameRef = useRef(0);
-    const canvasRef    = useRef<HTMLCanvasElement>(null);
-    const imgRef       = useRef<HTMLImageElement | null>(null);
+const QuestionPanel: FC<QuestionPanelProps> = ({ question, spinPts, onCorrect, onWrong }) => {
+    const { play } = useSoundFX();
+    const [answered, setAnswered] = useState<number | null>(null);
+    const [timer,    setTimer]    = useState(15);
+    const doneRef = useRef(false);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const [transitioning, setTransitioning] = useState(false);
-    const [canSpin,       setCanSpin]       = useState(true);
-    const [landed,        setLanded]        = useState<Segment | null>(null);
-    const [showConfetti,  setShowConfetti]  = useState(false);
+    const resolve = (correct: boolean) => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        clearInterval(timerRef.current!);
+        setTimeout(() => correct ? onCorrect() : onWrong(), 900);
+    };
+
+    useEffect(() => {
+        timerRef.current = setInterval(() => {
+            setTimer(t => {
+                const next = t - 1;
+                if (next <= 5 && next > 0) play("tick_urgent");
+                if (next <= 0) { play("timeout"); resolve(false); return 0; }
+                return next;
+            });
+        }, 1000);
+        return () => clearInterval(timerRef.current!);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleAnswer = (idx: number) => {
+        if (answered !== null || doneRef.current) return;
+        setAnswered(idx);
+        const correct = idx === question.answer;
+        correct ? play("correct") : play("wrong");
+        resolve(correct);
+    };
+
+    const pct = (timer / 15) * 100;
+    const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";
+
+    return (
+        <div className="spin-question-panel">
+            <div className="spin-question-pts-badge">
+                Answer correctly to bank <strong style={{ color: "#ffd200" }}>{spinPts.toLocaleString()} pts</strong>
+            </div>
+
+            <div className="game-timer-row" style={{ margin: "8px 0 4px" }}>
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem" }}>Answer fast!</span>
+                <span style={{ color: timerColor, fontWeight: 700 }}>⏱ {timer}s</span>
+            </div>
+            <div className="game-timer-track">
+                <div className="game-timer-bar" style={{ width: `${pct}%`, background: timerColor }} />
+            </div>
+
+            <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}><p>{question.q}</p></div>
+
+            {question.options.map((opt, i) => {
+                let cls = "game-option";
+                if (answered !== null) {
+                    if (i === question.answer)   cls = "game-option game-option--correct";
+                    else if (i === answered)     cls = "game-option game-option--wrong";
+                    else                         cls = "game-option game-option--disabled";
+                }
+                return (
+                    <button key={i} className={cls}
+                            disabled={answered !== null}
+                            data-label={["A","B","C","D"][i]}
+                            onClick={() => handleAnswer(i)}>
+                        {opt}
+                    </button>
+                );
+            })}
+
+            {answered !== null && answered !== question.answer && (
+                <div className="r1-correct-hint">
+                    ✅ Correct: <strong>{["A","B","C","D"][question.answer]}. {question.options[question.answer]}</strong>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─── Decision panel: stop or risk next spin ───────────────────────────────────
+interface DecisionProps {
+    spinNum:    number;    // which spin just completed (1 or 2)
+    banked:     number;   // total pts banked so far
+    onStop:     () => void;
+    onContinue: () => void;
+}
+
+const DecisionPanel: FC<DecisionProps> = ({ spinNum, banked, onStop, onContinue }) => (
+    <div className="spin-decision-panel">
+        <div className="spin-decision-title">🎯 Spin {spinNum} Complete!</div>
+        <div className="spin-decision-banked">
+            You have <span style={{ color: "#ffd200", fontWeight: 800 }}>{banked.toLocaleString()} pts</span> banked
+        </div>
+        <p className="spin-decision-sub">Do you want to risk it for Spin {spinNum + 1}?</p>
+        <div className="spin-decision-btns">
+            <button className="spin-decision-btn spin-decision-btn--stop" onClick={onStop}>
+                🛑 Stop &amp; Keep {banked.toLocaleString()} pts
+            </button>
+            <button className="spin-decision-btn spin-decision-btn--risk" onClick={onContinue}>
+                🎰 Risk It — Spin {spinNum + 1}
+            </button>
+        </div>
+        <p className="spin-decision-warn">⚠️ Wrong answer = lose ALL Round 3 points</p>
+    </div>
+);
+
+// ─── Lost panel ───────────────────────────────────────────────────────────────
+const LostPanel: FC<{ onDone: () => void }> = ({ onDone }) => {
+    useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, [onDone]);
+    return (
+        <div className="spin-decision-panel" style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: 12 }}>💥</div>
+            <div className="spin-decision-title" style={{ color: "#e52d27" }}>Wrong Answer!</div>
+            <p className="spin-decision-sub">All Round 3 points lost. Better luck next time!</p>
+        </div>
+    );
+};
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+type Phase = "spin" | "question" | "decide" | "lost" | "done";
+
+interface Props { currentScore: number; onComplete: (r3Score: number) => void; }
+
+export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
+    const { play, stop } = useSoundFX();
+
+    // One shuffled question pool — draw one per spin
+    const [questions]    = useState<Question[]>(() => shuffle(R1_QUESTIONS));
+    const questionRef    = useRef(0); // index into questions
+
+    const rotRef         = useRef(START_DEG);
+    const angleRef       = useRef(START_DEG * Math.PI / 180);
+    const animFrameRef   = useRef(0);
+    const canvasRef      = useRef<HTMLCanvasElement>(null);
+    const imgRef         = useRef<HTMLImageElement | null>(null);
+
+    const [phase,        setPhase]        = useState<Phase>("spin");
+    const [spinning,     setSpinning]     = useState(false);
+    const [spinNum,      setSpinNum]      = useState(1);          // 1, 2, 3
+    const [spinPts,      setSpinPts]      = useState(0);          // pts from current spin
+    const [banked,       setBanked]       = useState(0);          // accumulated correct pts
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [currentSeg,   setCurrentSeg]  = useState<Segment | null>(null);
 
     const drawFrame = (angleRad: number) => {
         const canvas = canvasRef.current;
@@ -178,29 +328,37 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
         img.onload = () => { imgRef.current = img; drawFrame(angleRef.current); };
     }, []);
 
-    useEffect(() => () => cancelAnimationFrame(animFrameRef.current), []);
+    useEffect(() => {
+        if (phase === "spin") {
+            drawFrame(angleRef.current);
+        }
+    }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const spin = () => {
-        if (!canSpin || transitioning) return;
+    useEffect(() => () => {
+        cancelAnimationFrame(animFrameRef.current);
+        stop("spin");
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const doSpin = () => {
+        if (spinning) return;
 
         let target = Math.floor(Math.random() * TOTAL);
         while (target === STAR_INDEX) target = Math.floor(Math.random() * TOTAL);
 
-        const finalRotDeg = calcFinalRotation(rotRef.current, target);
-        const startDeg    = rotRef.current;
-        const deltaDeg    = finalRotDeg - startDeg;
+        const finalRotDeg  = calcFinalRotation(rotRef.current, target);
+        const snappedFinal = snapToCenter(finalRotDeg);
+        const startDeg     = rotRef.current;
+        const deltaDeg     = snappedFinal - startDeg;
 
-        setCanSpin(false);
-        setTransitioning(true);
-        setLanded(null);
-        setShowConfetti(false);
+        setSpinning(true);
+        play("spin", 1, true);
 
         const duration  = 5000;
         const startTime = performance.now();
 
         const animate = (now: number) => {
-            const p      = Math.min((now - startTime) / duration, 1);
-            const eased  = 1 - Math.pow(1 - p, 4);
+            const p     = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - p, 4);
             const curDeg = startDeg + deltaDeg * eased;
             angleRef.current = curDeg * Math.PI / 180;
             drawFrame(angleRef.current);
@@ -208,48 +366,124 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
             if (p < 1) {
                 animFrameRef.current = requestAnimationFrame(animate);
             } else {
-                rotRef.current = finalRotDeg;
-                const actualIdx = segmentAtTop(finalRotDeg);
-                const seg = SEGMENTS[actualIdx];
-                setTransitioning(false);
-                setLanded(seg);
-                setShowConfetti(true);
-                onResult(toWheelSegment(seg, currentScore));
-                setTimeout(() => setShowConfetti(false), 4000);
+                rotRef.current   = snappedFinal;
+                angleRef.current = snappedFinal * Math.PI / 180;
+                drawFrame(angleRef.current);
+                stop("spin");
+
+                const idx = segmentAtTop(snappedFinal);
+                const seg = SEGMENTS[idx];
+                // Resolve multiplier against current total score + banked so far
+                const pts = seg.multiplier
+                    ? (currentScore + banked) * seg.multiplier
+                    : seg.points;
+
+                setCurrentSeg(seg);
+                setSpinPts(pts);
+                setSpinning(false);
+                setPhase("question");
             }
         };
         animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    const isSpecial = !!(landed && (landed.multiplier || landed.special === "bonus_spin"));
+    const handleCorrect = () => {
+        const newBanked = banked + spinPts;
+        setBanked(newBanked);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+
+        if (spinNum >= MAX_SPINS) {
+            // All 3 spins done — keep everything
+            setPhase("done");
+            setTimeout(() => onComplete(newBanked), 1500);
+        } else {
+            setPhase("decide");
+        }
+    };
+
+    const handleWrong = () => {
+        setPhase("lost");
+    };
+
+    const handleStop = () => {
+        onComplete(banked);
+    };
+
+    const handleContinue = () => {
+        questionRef.current += 1;
+        setSpinNum(n => n + 1);
+        setPhase("spin");
+    };
+
+    const handleLostDone = () => {
+        onComplete(0);
+    };
+
+    const currentQuestion = questions[questionRef.current] ?? questions[0];
 
     return (
-        <>
+        <div className="spin-root">
             {showConfetti && <Confetti />}
-            <div className="spin-wheel-wrap">
-                <div className={`spin-glow-ring${transitioning ? " is-spinning" : ""}`} />
-                <div className="spin-bulb-ring-wrap">
-                    <BulbRing spinning={transitioning} />
-                    <div className="spin-inner">
-                        <div className="spin-pointer" />
-                        <canvas
-                            ref={canvasRef}
-                            width={800}
-                            height={800}
-                            className={`spin-wheel-canvas${transitioning ? " is-spinning" : ""}`}
-                        />
+
+            <div className="spin-spotlights">
+                <div className="spin-spotlight spin-spotlight-1" />
+                <div className="spin-spotlight spin-spotlight-2" />
+                <div className="spin-spotlight spin-spotlight-3" />
+            </div>
+            <div className="spin-stage-glow" />
+
+            <div className="spin-content">
+                <div className="spin-header">
+                    <div className="spin-badge">
+                        <span className="spin-badge-dot" />
+                        <span className="spin-badge-text">Round 3 · Risk Spins · Spin {spinNum}/{MAX_SPINS}</span>
+                    </div>
+                    <h2 className="spin-title">Spin the Wheel!</h2>
+                    <p className="spin-subtitle">
+                        {phase === "spin"     && `Spin ${spinNum} — answer correctly to bank points`}
+                        {phase === "question" && `🎯 ${(currentSeg?.label ?? "")} up for grabs — answer now!`}
+                        {phase === "decide"   && "Stop safely or risk another spin?"}
+                        {phase === "lost"     && "Round 3 points lost!"}
+                        {phase === "done"     && "All 3 spins complete — well done!"}
+                    </p>
+                </div>
+
+                <div className="spin-score-pill">
+                    <span className="spin-score-label">Score so far</span>
+                    <span className="spin-score-value">{currentScore.toLocaleString()}</span>
+                    {banked > 0 && (
+                        <span className="spin-score-label" style={{ marginLeft: 12 }}>
+                            + <span style={{ color: "#38ef7d", fontWeight: 700 }}>{banked.toLocaleString()}</span> banked
+                        </span>
+                    )}
+                </div>
+
+                {/* Wheel — always mounted, hidden during question/decide/lost/done */}
+                <div className="spin-wheel-wrap" style={{ display: phase === "spin" ? undefined : "none" }}>
+                    <div className={`spin-glow-ring${spinning ? " is-spinning" : ""}`} />
+                    <div className="spin-bulb-ring-wrap">
+                        <BulbRing spinning={spinning} />
+                        <div className="spin-inner">
+                            <div className="spin-pointer" />
+                            <canvas ref={canvasRef} width={800} height={800}
+                                    className={`spin-wheel-canvas${spinning ? " is-spinning" : ""}`} />
+                        </div>
                     </div>
                 </div>
+
+                {/* Phase panels below the wheel */}
                 <div className="spin-action">
-                    {canSpin && !transitioning && !landed && (
+                    {phase === "spin" && !spinning && (
                         <div className="spin-btn-wrap">
-                            <button className="spin-btn" onClick={spin}>
+                            <button className="spin-btn" onClick={doSpin}>
                                 <span className="spin-btn-shine" />
-                                🎡 SPIN
+                                🎡 SPIN {spinNum}
                             </button>
                         </div>
                     )}
-                    {transitioning && (
+
+                    {phase === "spin" && spinning && (
                         <div className="spin-spinning-state">
                             <div className="spin-spinning-text">Spinning…</div>
                             <div className="spin-dots">
@@ -259,47 +493,40 @@ const SpinWheel: FC<SpinProps> = ({ currentScore, onResult }) => {
                             </div>
                         </div>
                     )}
-                    {landed && !transitioning && (
-                        <div className={`spin-result-card ${isSpecial ? "is-special" : "is-normal"}`}>
-                            <div className="spin-result-label">
-                                {isSpecial ? "🔥" : "🎉"} {landed.label}
+
+                    {phase === "question" && currentQuestion && (
+                        <QuestionPanel
+                            question={currentQuestion}
+                            spinPts={spinPts}
+                            onCorrect={handleCorrect}
+                            onWrong={handleWrong}
+                        />
+                    )}
+
+                    {phase === "decide" && (
+                        <DecisionPanel
+                            spinNum={spinNum}
+                            banked={banked}
+                            onStop={handleStop}
+                            onContinue={handleContinue}
+                        />
+                    )}
+
+                    {phase === "lost" && (
+                        <LostPanel onDone={handleLostDone} />
+                    )}
+
+                    {phase === "done" && (
+                        <div className="spin-decision-panel" style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>🏆</div>
+                            <div className="spin-decision-title" style={{ color: "#38ef7d" }}>All Spins Complete!</div>
+                            <div className="spin-decision-banked">
+                                You earned <span style={{ color: "#ffd200", fontWeight: 800 }}>{banked.toLocaleString()} pts</span> in Round 3!
                             </div>
-                            <div className="spin-result-divider" />
-                            <div className="spin-result-desc">{getResultDesc(landed, currentScore)}</div>
-                            <div className="spin-result-hint">Answer the next question correctly to claim it</div>
                         </div>
                     )}
                 </div>
             </div>
-        </>
+        </div>
     );
 };
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
-interface Props { currentScore: number; onResult: (seg: WheelSegment) => void; }
-
-export const Round3SpinScreen: FC<Props> = ({ currentScore, onResult }) => (
-    <div className="spin-root">
-        <div className="spin-spotlights">
-            <div className="spin-spotlight spin-spotlight-1" />
-            <div className="spin-spotlight spin-spotlight-2" />
-            <div className="spin-spotlight spin-spotlight-3" />
-        </div>
-        <div className="spin-stage-glow" />
-        <div className="spin-content">
-            <div className="spin-header">
-                <div className="spin-badge">
-                    <span className="spin-badge-dot" />
-                    <span className="spin-badge-text">Round 3 · Final Bonus</span>
-                </div>
-                <h2 className="spin-title">Spin the Wheel!</h2>
-                <p className="spin-subtitle">Starts at ★★★ · win points or a multiplier</p>
-            </div>
-            <div className="spin-score-pill">
-                <span className="spin-score-label">Score so far</span>
-                <span className="spin-score-value">{currentScore.toLocaleString()}</span>
-            </div>
-            <SpinWheel currentScore={currentScore} onResult={onResult} />
-        </div>
-    </div>
-);

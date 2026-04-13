@@ -1,14 +1,15 @@
 // RoundTransitionScreen.tsx — cinematic full-screen round reveal
 import { type FC, useEffect, useRef, useState } from "react";
+import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import '../styles/RoundTransitionScreen.css';
 
 interface Props {
-    roundNum:  number;
-    title:     string;
-    subtitle?: string;
-    icon:      string;
-    color:     string;   // hex — passed as data-color, used by JS canvas only
-    onDone:    () => void;
+    roundNum:   number;
+    title:      string;
+    subtitle?:  string;
+    icon:       string;
+    color:      string;
+    onDone:     () => void;
 }
 
 interface Particle {
@@ -18,23 +19,26 @@ interface Particle {
 }
 
 const CONFETTI_COLORS = ["#FFD700","#FF6B6B","#6BCB77","#4D96FF","#FF6BFF","#ffffff"];
-
-// Each round gets a named theme class instead of a CSS custom property
 const ROUND_THEME: Record<number, string> = { 1: "rt-theme--r1", 2: "rt-theme--r2", 3: "rt-theme--r3" };
 
 export const RoundTransitionScreen: FC<Props> = ({ roundNum, title, subtitle, icon, onDone }) => {
+    const { play } = useSoundFX();
+
     const [phase,      setPhase]      = useState<"slam"|"shockwave"|"hold"|"exit">("slam");
     const [showNumber, setShowNumber] = useState(false);
     const [showTitle,  setShowTitle]  = useState(false);
     const [showSub,    setShowSub]    = useState(false);
     const [showShock,  setShowShock]  = useState(false);
-    const rafRef  = useRef<ReturnType<typeof requestAnimationFrame>>(0);
-    const partRef = useRef<Particle[]>([]);
+    const rafRef    = useRef<ReturnType<typeof requestAnimationFrame>>(0);
+    const partRef   = useRef<Particle[]>([]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const themeClass = ROUND_THEME[roundNum] ?? "rt-theme--r1";
 
-    // Spawn + animate particles on canvas
+    // Play transition sound on mount
+    useEffect(() => { play("transition"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Particles
     useEffect(() => {
         partRef.current = Array.from({ length: 80 }, (_, i) => {
             const angle = (i / 80) * Math.PI * 2;
@@ -100,7 +104,6 @@ export const RoundTransitionScreen: FC<Props> = ({ roundNum, title, subtitle, ic
         return () => timers.forEach(clearTimeout);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Stable streak widths — computed once, not on every render
     const streakWidths = useRef(
         Array.from({ length: 16 }, () => `${30 + Math.floor(Math.random() * 50)}%`)
     ).current;
@@ -151,7 +154,6 @@ export const RoundTransitionScreen: FC<Props> = ({ roundNum, title, subtitle, ic
             <div className="rt-hud rt-hud--bl" />
             <div className="rt-hud rt-hud--br" />
 
-            {/* Glitch bars */}
             <div className="rt-glitch-wrap">
                 {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="rt-glitch-bar"
@@ -159,20 +161,16 @@ export const RoundTransitionScreen: FC<Props> = ({ roundNum, title, subtitle, ic
                 ))}
             </div>
 
-            {/* Pulse rings from center */}
             {showShock && Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rt-pulse-ring"
                      style={{ animationDelay: `${i * 180}ms` }} />
             ))}
 
-            {/* Lens flare */}
             {showTitle && <div className="rt-flare rt-flare--main" />}
             {showTitle && <div className="rt-flare rt-flare--small" />}
             {showTitle && <div className="rt-flare rt-flare--streak" />}
 
-            {/* Grid overlay */}
             <div className="rt-grid" />
-
             <div className="rt-vignette" />
         </div>
     );

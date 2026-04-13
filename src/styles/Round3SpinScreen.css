@@ -52,7 +52,7 @@
     font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
     background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
     box-sizing: border-box;
 }
 
@@ -175,7 +175,7 @@
 /* ── Action area ── */
 .spin-action {
     margin-top: 6px; text-align: center;
-    min-height: 110px; width: 100%;
+    width: 100%;
     display: flex; align-items: center; justify-content: center;
 }
 
@@ -242,7 +242,130 @@
 .spin-result-desc { color: rgba(255,255,255,0.75); font-size: 0.95rem; line-height: 1.6; font-weight: 600; margin-bottom: 8px; }
 .spin-result-hint { color: rgba(255,255,255,0.3); font-size: 0.76rem; letter-spacing: 0.5px; }
 
-.spin-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.spin-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+
+/* ── Question panel ── */
+@keyframes spin-panelIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.spin-question-panel {
+    width: 100%;
+    background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 18px 16px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+    animation: spin-panelIn 0.4s cubic-bezier(0.34,1.2,0.64,1) both;
+    text-align: left;
+}
+
+/* Force question box inside spin panel to match other rounds */
+.spin-question-panel .game-question {
+    height: 100px !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+    overflow: hidden !important;
+}
+
+.spin-question-pts-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,215,0,0.08);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 100px;
+    padding: 5px 16px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+/* ── Decision panel ── */
+.spin-decision-panel {
+    width: 100%;
+    background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 20px 18px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+    text-align: center;
+    animation: spin-panelIn 0.45s cubic-bezier(0.34,1.2,0.64,1) both;
+}
+
+.spin-decision-title {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+}
+
+.spin-decision-banked {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.spin-decision-sub {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.85rem;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+}
+
+.spin-decision-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.spin-decision-btn {
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 11px 22px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.3px;
+}
+.spin-decision-btn:hover  { transform: scale(1.04) translateY(-2px); }
+.spin-decision-btn:active { transform: scale(0.97); }
+
+.spin-decision-btn--stop {
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+}
+.spin-decision-btn--stop:hover {
+    background: rgba(255,255,255,0.13);
+    border-color: rgba(255,255,255,0.35);
+}
+
+.spin-decision-btn--risk {
+    background: linear-gradient(135deg, #FF5555, #E8192C);
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(232,25,44,0.45);
+}
+.spin-decision-btn--risk:hover {
+    box-shadow: 0 6px 24px rgba(232,25,44,0.65);
+}
+
+.spin-decision-warn {
+    font-size: 0.76rem;
+    color: rgba(255,180,0,0.7);
+    letter-spacing: 0.3px;
+    margin: 0;
+}
 
 /* ═══════════════════════════════════════════════════
    RESPONSIVE — Round3SpinScreen.css
@@ -288,7 +411,6 @@
     .spin-result-card    { padding: 14px 12px; }
     .spin-result-label   { font-size: 2rem; }
     .spin-result-desc    { font-size: 0.88rem; }
-    .spin-action         { min-height: 90px; }
 }
 
 @media (max-width: 375px) {
@@ -300,5 +422,4 @@
     .spin-pointer        { border-left-width: 10px; border-right-width: 10px; border-top-width: 26px; }
     .spin-btn            { font-size: 0.88rem; padding: 11px 24px; letter-spacing: 2px; }
     .spin-result-label   { font-size: 1.7rem; }
-    .spin-action         { min-height: 80px; }
 }

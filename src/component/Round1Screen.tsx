@@ -2,6 +2,7 @@
 import { type FC, useEffect, useRef, useState } from "react";
 import type { PrizeItem } from "../types/bongotypes.ts";
 import { R1_QUESTIONS, shuffle, type Question } from "../types/gametypes.ts";
+import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import '../styles/game.css';
 
 interface Props {
@@ -9,10 +10,13 @@ interface Props {
     onComplete: (rawScore: number, correct: number, total: number, timeLeft: number, maxStreak: number) => void;
 }
 
-const POINTS_PER_Q = 100;
+const POINTS_CORRECT = 100;
+const POINTS_WRONG   = -50;   // penalty for wrong answer
+const POINTS_PASS    = -50;   // penalty for passing
 
 export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
-    // ── Power flags ──────────────────────────────────────────────────────────
+    const { play } = useSoundFX();
+
     const hasBonusTime    = power.name === "Bonus Time";
     const hasTimeTax      = power.name === "Time Tax";
     const hasFreezeFrame  = power.name === "Freeze Frame";
@@ -21,14 +25,14 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     const hasQuestionSwap = power.name === "Question Swap";
     const hasBorrowedBrain= power.name === "Borrowed Brain";
 
-    const baseTime = hasBonusTime ? 120 : hasTimeTax ? 70 : 90;
-    const swapLimit = 3; // R1 gets 3 swaps
+    const baseTime = hasBonusTime ? 105 : hasTimeTax ? 55 : 75;
+    const swapLimit = 3;
 
-    // ── State ────────────────────────────────────────────────────────────────
     const [questions]   = useState<Question[]>(() => shuffle(R1_QUESTIONS));
     const [index,       setIndex]       = useState(0);
     const [score,       setScore]       = useState(0);
     const [correct,     setCorrect]     = useState(0);
+    const [wrong,       setWrong]       = useState(0);
     const [passed,      setPassed]      = useState(0);
     const [answered,    setAnswered]    = useState<number | null>(null);
     const [timer,       setTimer]       = useState(baseTime);
@@ -38,77 +42,71 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     const [streak,      setStreak]      = useState(0);
     const [streakFlash, setStreakFlash] = useState(false);
     const [comboFlash,  setComboFlash]  = useState(false);
-    // Second chance: show "wrong — try again" state
     const [scPending,   setScPending]   = useState(false);
     const [scUsed,      setScUsed]      = useState(false);
-    // Borrowed Brain: which wrong options are eliminated
     const [eliminated,  setEliminated]  = useState<number[]>([]);
     const [brainUsed,   setBrainUsed]   = useState(false);
 
-    // ── Refs (avoid stale closures in timer callback) ────────────────────────
     const doneRef      = useRef(false);
     const maxStreakRef  = useRef(0);
     const timeLeftRef  = useRef(baseTime);
     const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
     const scoreRef     = useRef(0);
     const correctRef   = useRef(0);
-    const indexRef     = useRef(0);
+    const totalRef     = useRef(0);  // questions attempted
     const streakRef    = useRef(0);
 
-    // ── Finish ───────────────────────────────────────────────────────────────
     const finishRound = () => {
         if (doneRef.current) return;
         doneRef.current = true;
         clearInterval(timerRef.current!);
-        onComplete(scoreRef.current, correctRef.current, indexRef.current, timeLeftRef.current, maxStreakRef.current);
+        onComplete(scoreRef.current, correctRef.current, totalRef.current, timeLeftRef.current, maxStreakRef.current);
     };
 
-    // ── Timer ────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (frozen) return;
         timerRef.current = setInterval(() => {
             setTimer(t => {
                 const next = t - 1;
                 timeLeftRef.current = next;
-                if (next <= 0) { finishRound(); return 0; }
+                if (next > 0) {
+                    if (next <= 5)       play("tick_urgent");
+                    else if (next <= 10) play("tick");
+                }
+                if (next <= 0) { play("timeout"); finishRound(); return 0; }
                 return next;
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
     }, [frozen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Navigation ───────────────────────────────────────────────────────────
     const nextQuestion = () => {
         const next = index + 1;
         if (next >= questions.length) { finishRound(); return; }
-        indexRef.current = next;
         setIndex(next);
-        setEliminated([]);   // reset brain elimination per question
+        setEliminated([]);
         setBrainUsed(false);
     };
 
-    // ── Answer ───────────────────────────────────────────────────────────────
     const handleAnswer = (idx: number) => {
         if (answered !== null || doneRef.current) return;
         const q = questions[index];
         const isCorrect = idx === q.answer;
 
-        // Second Chance: first wrong answer → show feedback, allow retry once
         if (!isCorrect && hasSecondChance && !scUsed && !scPending) {
+            play("wrong");
             setAnswered(idx);
             setScPending(true);
-            setTimeout(() => {
-                setAnswered(null);
-                setScPending(false);
-                setScUsed(true);
-            }, 800);
+            setTimeout(() => { setAnswered(null); setScPending(false); setScUsed(true); }, 800);
             return;
         }
 
         setAnswered(idx);
+        totalRef.current += 1;
 
         if (isCorrect) {
-            scoreRef.current   += POINTS_PER_Q;
+            play("correct");
+            scoreRef.current   += POINTS_CORRECT;
             correctRef.current += 1;
             streakRef.current  += 1;
             if (streakRef.current > maxStreakRef.current) maxStreakRef.current = streakRef.current;
@@ -116,16 +114,21 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
             setCorrect(correctRef.current);
             setStreak(streakRef.current);
             if (streakRef.current >= 3) {
+                play("streak");
                 setStreakFlash(true);
                 setTimeout(() => setStreakFlash(false), 600);
             }
             if (streakRef.current > 0 && streakRef.current % 5 === 0) {
+                play("combo");
                 setComboFlash(true);
                 setTimeout(() => setComboFlash(false), 900);
             }
         } else {
-            // No Penalty: wrong answer doesn't break streak
+            play("wrong");
             if (!hasNoPenalty) {
+                scoreRef.current += POINTS_WRONG;
+                setScore(scoreRef.current);
+                setWrong(w => w + 1);
                 streakRef.current = 0;
                 setStreak(0);
             }
@@ -135,16 +138,19 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
         setTimeout(() => { setAnswered(null); nextQuestion(); }, 700);
     };
 
-    // ── Pass ─────────────────────────────────────────────────────────────────
     const handlePass = () => {
         if (answered !== null || doneRef.current) return;
+        if (!hasNoPenalty) {
+            scoreRef.current += POINTS_PASS;
+            setScore(scoreRef.current);
+        }
+        totalRef.current += 1;
         streakRef.current = 0;
         setStreak(0);
         setPassed(p => p + 1);
         nextQuestion();
     };
 
-    // ── Freeze Frame ─────────────────────────────────────────────────────────
     const handleFreeze = () => {
         if (freezeUsed) return;
         setFreezeUsed(true);
@@ -153,33 +159,27 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
         setTimeout(() => setFrozen(false), 15000);
     };
 
-    // ── Question Swap ────────────────────────────────────────────────────────
     const handleSwap = () => {
         if (swapsLeft <= 0 || answered !== null || doneRef.current) return;
         setSwapsLeft(s => s - 1);
+        if (!hasNoPenalty) { scoreRef.current += POINTS_PASS; setScore(scoreRef.current); }
+        totalRef.current += 1;
         streakRef.current = 0;
         setStreak(0);
         nextQuestion();
     };
 
-    // ── Borrowed Brain: eliminate 2 wrong options ────────────────────────────
     const handleBrain = () => {
         if (brainUsed || answered !== null) return;
         const q = questions[index];
-        const wrongs = q.options
-            .map((_, i) => i)
-            .filter(i => i !== q.answer);
-        // pick 2 random wrong options to eliminate
+        const wrongs = q.options.map((_, i) => i).filter(i => i !== q.answer);
         const toElim: number[] = [];
-        while (toElim.length < 2 && wrongs.length > 0) {
-            const pick = wrongs.splice(Math.floor(Math.random() * wrongs.length), 1)[0];
-            toElim.push(pick);
-        }
+        while (toElim.length < 2 && wrongs.length > 0)
+            toElim.push(wrongs.splice(Math.floor(Math.random() * wrongs.length), 1)[0]);
         setEliminated(toElim);
         setBrainUsed(true);
     };
 
-    // ── Render ───────────────────────────────────────────────────────────────
     const pct = (timer / baseTime) * 100;
     const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";
     const q = questions[index];
@@ -187,9 +187,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
 
     return (
         <div className="game-root">
-            {comboFlash && (
-                <div className="r1-combo-flash">🔥 {streakRef.current} IN A ROW!</div>
-            )}
+            {comboFlash && <div className="r1-combo-flash">🔥 {streakRef.current} IN A ROW!</div>}
             <div className="game-card">
                 <div className="game-header-row">
                     <span className="game-badge">⚡ Round 1 — Quickfire</span>
@@ -197,7 +195,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                 </div>
 
                 <div className="game-timer-row">
-                    <span>Q {index + 1} · {correct} correct · {passed} passed</span>
+                    <span>Q {index + 1} · {correct} ✓ · {wrong} ✗ · {passed} passed</span>
                     <span style={{ color: frozen ? "#4dd0e1" : timerColor, fontWeight: 700, fontSize: "0.95rem" }}>
                         {frozen ? "❄️ Frozen!" : `⏱ ${timer}s`}
                     </span>
@@ -211,8 +209,6 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                         🔥 {streak} answer streak!
                     </div>
                 )}
-
-                {/* Active power banners */}
                 {scPending && (
                     <div className="game-banner game-banner--success">
                         🔄 Wrong — <strong>Second Chance</strong>! Try once more.
@@ -220,13 +216,11 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                 )}
                 {hasNoPenalty && (
                     <div className="game-banner game-banner--success">
-                        🛡️ <strong>No Penalty</strong> — wrong answers won't break your streak!
+                        🛡️ <strong>No Penalty</strong> — no deductions for wrong answers or passes!
                     </div>
                 )}
 
-                <div className="game-question">
-                    <p>{q.q}</p>
-                </div>
+                <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}><p>{q.q}</p></div>
 
                 {q.options.map((opt, i) => {
                     const isElim = eliminated.includes(i);
@@ -237,59 +231,44 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                         else                     cls = "game-option game-option--disabled";
                     }
                     return (
-                        <button
-                            key={i} className={cls}
-                            disabled={answered !== null || isElim}
-                            onClick={() => handleAnswer(i)}
-                            style={isElim ? { opacity: 0.3, textDecoration: "line-through" } : undefined}
-                        >
-                            {["A","B","C","D"][i]}. {opt}
+                        <button key={i} className={cls}
+                                disabled={answered !== null || isElim}
+                                data-label={["A","B","C","D"][i]}
+                                style={{ animation: `optionIn 0.25s ease ${i * 0.06}s both`, ...(isElim ? { opacity: 0.3, textDecoration: "line-through" } : {}) }}
+                                onClick={() => handleAnswer(i)}>
+                            {opt}
                         </button>
                     );
                 })}
 
                 {answered !== null && answered !== q.answer && !scPending && (
                     <div className="r1-correct-hint">
-                        ✅ Correct answer: <strong>{["A","B","C","D"][q.answer]}. {q.options[q.answer]}</strong>
+                        ✅ Correct: <strong>{["A","B","C","D"][q.answer]}. {q.options[q.answer]}</strong>
                     </div>
                 )}
 
                 <div className="game-power-row">
-                    <button
-                        className="game-power-btn game-power-btn--pass"
-                        disabled={answered !== null}
-                        onClick={handlePass}
-                    >
-                        ⏭ Pass
+                    <button className="game-power-btn game-power-btn--pass"
+                            disabled={answered !== null} onClick={handlePass}>
+                        ⏭ Pass {!hasNoPenalty && <span style={{ opacity: 0.7, fontSize: "0.8em" }}>({POINTS_PASS})</span>}
                     </button>
-
                     {hasFreezeFrame && !freezeUsed && (
-                        <button className="game-power-btn game-power-btn--freeze" onClick={handleFreeze}>
-                            ❄️ Freeze (15s)
-                        </button>
+                        <button className="game-power-btn game-power-btn--freeze" onClick={handleFreeze}>❄️ Freeze (15s)</button>
                     )}
-
                     {hasQuestionSwap && swapsLeft > 0 && (
                         <button className="game-power-btn game-power-btn--swap"
-                                disabled={answered !== null}
-                                onClick={handleSwap}>
-                            🔀 Swap ({swapsLeft})
-                        </button>
+                                disabled={answered !== null} onClick={handleSwap}>🔀 Swap ({swapsLeft})</button>
                     )}
-
                     {hasBorrowedBrain && !brainUsed && (
                         <button className="game-power-btn game-power-btn--hint"
-                                disabled={answered !== null}
-                                onClick={handleBrain}>
-                            🧠 Hint
-                        </button>
+                                disabled={answered !== null} onClick={handleBrain}>🧠 Hint</button>
                     )}
                 </div>
 
                 <p className="game-power-note">
-                    Each correct answer = {POINTS_PER_Q} pts · Round ends when time runs out
-                    {hasBonusTime  && <> · <strong>+30s Bonus Time active</strong></>}
-                    {hasTimeTax    && <> · <strong>Time Tax: −20s</strong></>}
+                    ✓ +{POINTS_CORRECT} · ✗ {POINTS_WRONG} · Pass {POINTS_PASS} · 75s round
+                    {hasBonusTime && <> · <strong>+30s Bonus Time</strong></>}
+                    {hasTimeTax   && <> · <strong>Time Tax: −20s</strong></>}
                 </p>
             </div>
         </div>

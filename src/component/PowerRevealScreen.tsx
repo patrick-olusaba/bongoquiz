@@ -1,7 +1,8 @@
 // PowerRevealScreen.tsx
-import type { FC } from "react";
+import { type FC, useEffect } from "react";
 import type { PrizeItem } from "../types/bongotypes.ts";
 import { POWER_DESC } from "../types/gametypes.ts";
+import { useSoundFX } from "../hooks/Usesoundfx.ts";
 import '../styles/PowerRevealScreen.css';
 
 interface Props {
@@ -10,6 +11,10 @@ interface Props {
 }
 
 export const PowerRevealScreen: FC<Props> = ({ power, onContinue }) => {
+    const { play } = useSoundFX();
+
+    useEffect(() => { play("power_reveal"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     return (
         <div className="power-root">
             <div className="power-card">

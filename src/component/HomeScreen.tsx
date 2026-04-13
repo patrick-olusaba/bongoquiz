@@ -112,8 +112,8 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
                 </div>
 
                 <div className="home-rounds">
-                    {rounds.map(r => (
-                        <div key={r.num} className="home-round-card">
+                    {rounds.map((r, i) => (
+                        <div key={r.num} className="home-round-card" style={{ animationDelay: `${0.4 + i * 0.08}s` }}>
                             <div className="home-round-num">ROUND {r.num}</div>
                             <div className="home-round-icon" style={{ filter: r.glow }}>{r.icon}</div>
                             <div className="home-round-label" style={{ color: r.color }}>{r.label}</div>
@@ -134,7 +134,7 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
                     </div>
                 </div>
 
-                <p className="home-hint">Test Your Self</p>
+                <p className="home-hint">Test Yourself</p>
             </div>
 
             {showNameModal && (

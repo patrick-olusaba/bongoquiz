@@ -319,8 +319,44 @@
 .rt-theme--r2 .rt-hud { border-color: #ff6b6b; }
 .rt-theme--r3 .rt-hud { border-color: #ffd700; }
 
-/* ── Vignette ── */
-.rt-vignette {
+/* ── Deduction toast ── */
+@keyframes rtToastIn {
+    0%   { opacity: 0; transform: translateY(20px) scale(0.9); }
+    60%  { opacity: 1; transform: translateY(-4px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rtToastOut {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-16px); }
+}
+
+.rt-deduction-toast {
+    position: absolute;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(229,45,39,0.18), rgba(229,45,39,0.08));
+    border: 1px solid rgba(229,45,39,0.5);
+    border-radius: 16px;
+    padding: 12px 20px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(229,45,39,0.2);
+    white-space: nowrap;
+    animation: rtToastIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.6s both,
+               rtToastOut 0.4s ease 2.2s both;
+}
+.rt-deduction-icon  { font-size: 1.6rem; flex-shrink: 0; }
+.rt-deduction-label { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.45); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
+.rt-deduction-amount { font-size: 1.2rem; font-weight: 900; color: #ff6b6b; letter-spacing: -0.5px; }
+
+@media (max-width: 600px) {
+    .rt-deduction-toast { bottom: 32px; padding: 10px 16px; }
+    .rt-deduction-amount { font-size: 1rem; }
+}
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);

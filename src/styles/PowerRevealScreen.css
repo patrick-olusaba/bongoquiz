@@ -1,48 +1,127 @@
 /* PowerRevealScreen.css */
 
+/* ── Entrance animations ── */
+@keyframes powerCardIn {
+    from { opacity: 0; transform: translateY(32px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes powerBadgeIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes powerNameIn {
+    from { opacity: 0; transform: translateY(12px); letter-spacing: 6px; }
+    to   { opacity: 1; transform: translateY(0); letter-spacing: -0.5px; }
+}
+@keyframes powerDescIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes powerGlow {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,215,0,0.2), inset 0 0 20px rgba(255,215,0,0.05); }
+    50%       { box-shadow: 0 0 70px rgba(255,215,0,0.45), inset 0 0 30px rgba(255,215,0,0.1); }
+}
+
 .power-root {
     min-height: 100svh;
+    width: 100vw;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
     font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(ellipse at 30% 40%, #0f0035 0%, #000 45%, #0a001a 100%);
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Ambient orbs behind the card */
+.power-root::before,
+.power-root::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+.power-root::before {
+    width: 500px; height: 500px;
+    top: -100px; left: -100px;
+    background: radial-gradient(circle, rgba(123,97,255,0.18) 0%, transparent 70%);
+    animation: orbDrift1 14s ease-in-out infinite;
+}
+.power-root::after {
+    width: 400px; height: 400px;
+    bottom: -80px; right: -80px;
+    background: radial-gradient(circle, rgba(255,107,107,0.15) 0%, transparent 70%);
+    animation: orbDrift2 11s ease-in-out infinite;
+}
+@keyframes orbDrift1 {
+    0%, 100% { transform: translate(0,0); }
+    50%       { transform: translate(60px, 40px); }
+}
+@keyframes orbDrift2 {
+    0%, 100% { transform: translate(0,0); }
+    50%       { transform: translate(-40px, -30px); }
 }
 
 .power-card {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(16px);
-    border-radius: 24px;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 28px;
     border: 1px solid rgba(255,255,255,0.12);
     padding: 40px;
     max-width: 500px;
     width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
     text-align: center;
+    animation: powerCardIn 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
 .power-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     background: rgba(255,215,0,0.1);
-    border: 1px solid rgba(255,215,0,0.35);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 0.82rem;
+    border: 1px solid rgba(255,215,0,0.4);
+    border-radius: 100px;
+    padding: 5px 16px;
+    font-size: 0.78rem;
+    font-weight: 800;
     color: #ffd200;
-    margin-bottom: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    animation: powerBadgeIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.15s both;
+}
+.power-badge::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #ffd200;
+    box-shadow: 0 0 8px #ffd200;
+    display: inline-block;
+    animation: badgePulse 1.5s ease-in-out infinite;
+}
+@keyframes badgePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px #ffd200; }
+    50%       { opacity: 0.5; box-shadow: 0 0 14px #ffd200; }
 }
 
 .power-img-wrap {
     width: 160px;
     height: 160px;
-    margin: 0 auto 20px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.06);
+    margin: 0 auto 24px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.12);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 40px rgba(255,215,0,0.2);
+    animation: powerGlow 3s ease-in-out infinite;
 }
 
 .power-img {
@@ -55,15 +134,21 @@
 .power-name {
     font-size: 2rem;
     font-weight: 900;
-    color: #fff;
-    margin-bottom: 10px;
+    background: linear-gradient(135deg, #fff 0%, #FFD700 50%, #FF9F1C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+    animation: powerNameIn 0.45s ease 0.25s both;
 }
 
 .power-desc {
-    color: rgba(255,255,255,0.65);
-    font-size: 1.05rem;
-    line-height: 1.6;
+    color: rgba(255,255,255,0.6);
+    font-size: 1rem;
+    line-height: 1.65;
     margin-bottom: 28px;
+    animation: powerDescIn 0.4s ease 0.35s both;
 }
 
 .power-btn {
@@ -75,11 +160,14 @@
     font-family: inherit;
     font-size: 1rem;
     font-weight: 800;
-    padding: 13px 36px;
-    box-shadow: 0 4px 20px rgba(56,239,125,0.4);
-    transition: transform 0.2s;
+    padding: 14px 40px;
+    box-shadow: 0 4px 24px rgba(56,239,125,0.45);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: powerDescIn 0.4s ease 0.45s both;
+    letter-spacing: 0.5px;
 }
-.power-btn:hover { transform: scale(1.04); }
+.power-btn:hover  { transform: scale(1.05) translateY(-2px); box-shadow: 0 8px 32px rgba(56,239,125,0.55); }
+.power-btn:active { transform: scale(0.98); }
 
 @keyframes float {
     0%, 100% { transform: translateY(0); }
