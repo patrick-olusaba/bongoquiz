@@ -357,6 +357,9 @@
     .rt-deduction-toast { bottom: 32px; padding: 10px 16px; }
     .rt-deduction-amount { font-size: 1rem; }
 }
+
+/* ── Vignette ── */
+.rt-vignette {
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
