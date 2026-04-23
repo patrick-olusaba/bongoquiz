@@ -1,12 +1,10 @@
-
-import './App.css'
-import {BongoMain} from "./component/BongoMain.tsx";
+import './App.css';
+import { BongoMain }    from "./component/BongoMain.tsx";
+import { GameInfoDocs } from "./component/GameInfoDocs.tsx";
 
 function App() {
-
-    return (
-            <BongoMain/>
-    )
+    const isDocs = window.location.hash === "#/docs";
+    return isDocs ? <GameInfoDocs /> : <BongoMain />;
 }
 
-export default App
+export default App;

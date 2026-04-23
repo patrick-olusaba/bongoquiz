@@ -4,6 +4,8 @@ export type GameScreen =
     | "home"
     | "box_select"
     | "power_reveal"
+    | "deduct_r1r2"
+    | "deduct_r3"
     | "round1"
     | "round1_result"
     | "round2_category"

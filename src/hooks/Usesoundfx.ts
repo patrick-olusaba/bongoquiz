@@ -37,6 +37,13 @@ const SOUND_MAP: Record<SoundName, string> = {
     spin:         spinSfx,
 };
 
+const VOLUME_MAP: Partial<Record<SoundName, number>> = {
+    wrong:       0.5,
+    tick:        0.3,
+    tick_urgent: 0.2,
+    transition:0.8
+};
+
 export function useSoundFX(enabled = true) {
     const cache = useRef<Partial<Record<SoundName, HTMLAudioElement>>>({});
 
@@ -49,7 +56,7 @@ export function useSoundFX(enabled = true) {
                 cache.current[name] = audio;
             }
             audio.loop = loop;
-            audio.volume = Math.min(1, Math.max(0, volume));
+        audio.volume = Math.min(1, Math.max(0, VOLUME_MAP[name] ?? volume));
             audio.currentTime = 0;
             audio.play().catch(() => {});
         } catch {}

@@ -72,7 +72,7 @@ export const BongoCanvas: React.FC<{
 
     // Refs
     const hoveredCellRef = useRef<number | null>(null);
-    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout>>(3);
+    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cellDimensionsRef = useRef({
         cellWidth: 500,
         cellHeight: 500,
