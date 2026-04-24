@@ -1,9 +1,9 @@
 // BoxSelectScreen.tsx
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import { type CellState, getRandomPrizeItems, type PrizeItem } from "../types/bongotypes.ts";
+import { type CellState, getRandomPrizeItems, type PrizeItem } from "../../types/bongotypes.ts";
 import { BongoCanvas } from "./BongoCanvas.tsx";
-import '../styles/style.css';
-import '../styles/BoxSelectScreen.css'
+import '../../styles/style.css';
+import '../../styles/BoxSelectScreen.css'
 
 interface Props {
     onPowerSelected: (power: PrizeItem) => void;

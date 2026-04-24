@@ -1,7 +1,7 @@
 // Round3QuestionScreen.tsx
 import { type FC, useState } from "react";
-import { R3_QUESTIONS, shuffle, type WheelSegment } from "../types/gametypes.ts";
-import '../styles/game.css';
+import { R3_QUESTIONS, shuffle, type WheelSegment } from "../../types/gametypes.ts";
+import '../../styles/game.css';
 
 interface Props {
     segment:      WheelSegment;

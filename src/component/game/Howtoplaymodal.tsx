@@ -1,6 +1,6 @@
 // HowToPlayModal.tsx
 import { type FC } from "react";
-import '../styles/Howtoplaymodal.css';
+import '../../styles/Howtoplaymodal.css';
 
 interface Props { onClose: () => void; }
 

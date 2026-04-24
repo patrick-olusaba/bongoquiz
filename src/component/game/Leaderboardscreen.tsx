@@ -1,6 +1,6 @@
 // LeaderboardScreen.tsx
 import { type FC, useEffect, useState } from "react";
-import '../styles/Leaderboardscreen.css';
+import '../../styles/Leaderboardscreen.css';
 
 interface LeaderboardEntry {
     rank: number;

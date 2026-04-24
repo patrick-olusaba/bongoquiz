@@ -1,9 +1,9 @@
 // Round2QuestionScreen.tsx — 40s total timer, random mixed categories, +500/−250
 import { type FC, useEffect, useRef, useState } from "react";
-import type { PrizeItem } from "../types/bongotypes.ts";
-import { R2_QUESTIONS, CATEGORIES, CATEGORY_META, shuffle, type Category } from "../types/gametypes.ts";
-import { useSoundFX } from "../hooks/Usesoundfx.ts";
-import '../styles/game.css';
+import type { PrizeItem } from "../../types/bongotypes.ts";
+import { R2_QUESTIONS, CATEGORIES, CATEGORY_META, shuffle, type Category } from "../../types/gametypes.ts";
+import { useSoundFX } from "../../hooks/Usesoundfx.ts";
+import '../../styles/game.css';
 
 interface Props {
     power:   PrizeItem;

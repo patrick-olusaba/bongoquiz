@@ -1,7 +1,7 @@
 // Round1ResultScreen.tsx
 import type { FC } from "react";
-import type { PrizeItem } from "../types/bongotypes.ts";
-import '../styles/game.css';
+import type { PrizeItem } from "../../types/bongotypes.ts";
+import '../../styles/game.css';
 
 interface Props {
     power: PrizeItem;

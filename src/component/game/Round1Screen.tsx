@@ -1,9 +1,9 @@
 // Round1Screen.tsx
 import { type FC, useEffect, useRef, useState } from "react";
-import type { PrizeItem } from "../types/bongotypes.ts";
-import { R1_QUESTIONS, shuffle, type Question } from "../types/gametypes.ts";
-import { useSoundFX } from "../hooks/Usesoundfx.ts";
-import '../styles/game.css';
+import type { PrizeItem } from "../../types/bongotypes.ts";
+import { R1_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
+import { useSoundFX } from "../../hooks/Usesoundfx.ts";
+import '../../styles/game.css';
 
 interface Props {
     power: PrizeItem;

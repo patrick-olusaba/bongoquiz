@@ -1,15 +1,16 @@
 // DeductionModal.tsx — shown before round starts, requires player to accept deduction
 import { type FC } from "react";
-import '../styles/DeductionModal.css';
+import '../../styles/DeductionModal.css';
 
 interface Props {
-    amount:      number;       // KSh amount to deduct
-    roundLabel:  string;       // e.g. "Rounds 1 & 2" or "Round 3"
+    amount:      number;
+    roundLabel:  string;
+    phone:       string;       // player phone from localStorage — used for STK push
     onAccept:    () => void;
     onDecline:   () => void;
 }
 
-export const DeductionModal: FC<Props> = ({ amount, roundLabel, onAccept, onDecline }) => (
+export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, onAccept, onDecline }) => (
     <div className="ded-overlay">
         <div className="ded-modal">
             <div className="ded-icon">💸</div>
@@ -20,8 +21,13 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, onAccept, onDecl
             <p className="ded-desc">
                 Playing <strong>{roundLabel}</strong> requires an entry fee of{" "}
                 <strong className="ded-amount">KSh {amount}</strong>.
-                This will be deducted from your account.
             </p>
+
+            {phone && (
+                <p style={{ fontSize: "0.85rem", color: "#888", margin: "0 0 12px", textAlign: "center" }}>
+                    📱 M-Pesa prompt will be sent to <strong style={{ color: "#1a1a2e" }}>{phone}</strong>
+                </p>
+            )}
 
             <div className="ded-divider" />
 

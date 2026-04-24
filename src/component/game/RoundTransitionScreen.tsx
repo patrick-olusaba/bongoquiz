@@ -1,7 +1,7 @@
 // RoundTransitionScreen.tsx — cinematic full-screen round reveal
 import { type FC, useEffect, useRef, useState } from "react";
-import { useSoundFX } from "../hooks/Usesoundfx.ts";
-import '../styles/RoundTransitionScreen.css';
+import { useSoundFX } from "../../hooks/Usesoundfx.ts";
+import '../../styles/RoundTransitionScreen.css';
 
 interface Props {
     roundNum:   number;

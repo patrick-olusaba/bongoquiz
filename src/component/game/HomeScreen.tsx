@@ -1,11 +1,11 @@
 // HomeScreen.tsx
 import { type FC, useEffect, useRef, useState } from "react";
-import logoBg from "../assets/logo.png";
-import mainLogo from "../assets/background.png";
+import logoBg from "../../assets/logo.png";
+import mainLogo from "../../assets/background.png";
 import { PlayerNameModal } from "./Playernamemodal.tsx";
 import { HowToPlayModal }  from "./Howtoplaymodal.tsx";
-import { getStreakInfo }    from "../utils/streakDays.ts";
-import '../styles/HomeScreen.css';
+import { getStreakInfo }    from "../../utils/streakDays.ts";
+import '../../styles/HomeScreen.css';
 
 interface Props {
     onStart:       (playerName: string) => void;
@@ -19,12 +19,25 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
     const [playerName,    setPlayerName]    = useState(() =>
         localStorage.getItem("bongo_player_name") ?? "Player"
     );
+    const [playerPhone,   setPlayerPhone]   = useState(() =>
+        localStorage.getItem("bongo_player_phone") ?? ""
+    );
     const personalBest = parseInt(localStorage.getItem("bongo_best_score") ?? "0");
     const streakInfo   = getStreakInfo();
 
-    const saveName = (name: string) => {
+    const saveProfile = (name: string, phone: string) => {
         setPlayerName(name);
+        setPlayerPhone(phone);
         localStorage.setItem("bongo_player_name", name);
+        localStorage.setItem("bongo_player_phone", phone);
+    };
+
+    const handlePlay = () => {
+        if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) {
+            setShowNameModal(true);
+        } else {
+            onStart(playerName);
+        }
     };
 
     useEffect(() => {
@@ -93,7 +106,7 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
                 {/* Player name + personal best bar */}
                 <div className="home-player-bar">
                     <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}>
-                        👤 {playerName} <span className="home-player-edit">✏️</span>
+                        👤 {playerName} {playerPhone && <span style={{ fontSize: "0.75rem", color: "#aaa" }}>· {playerPhone}</span>} <span className="home-player-edit">✏️</span>
                     </button>
                     {(personalBest > 0 || streakInfo.current > 0) && (
                         <div className="home-player-bar-row">
@@ -124,7 +137,7 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
                 </div>
 
                 <div className="home-cta-wrap">
-                    <button className="home-btn" onClick={() => onStart(playerName)}>
+                    <button className="home-btn" onClick={handlePlay}>
                         <span className="home-btn-shine" />
                         🎯 &nbsp;PLAY NOW
                     </button>
@@ -140,7 +153,8 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
             {showNameModal && (
                 <PlayerNameModal
                     currentName={playerName}
-                    onSave={saveName}
+                    currentPhone={playerPhone}
+                    onSave={(name, phone) => { saveProfile(name, phone); onStart(name); }}
                     onClose={() => setShowNameModal(false)}
                 />
             )}

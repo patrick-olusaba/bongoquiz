@@ -1,14 +1,14 @@
 // BongoCanvas.tsx - Fully responsive with accurate click handling and 1200x1200 canvas for 8 boxes
 import React, { useState, useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import '../styles/style.css';
-import '../styles/modalOverlaybtn.css';
+import '../../styles/style.css';
+import '../../styles/modalOverlaybtn.css';
 import {
     type CellState,
     CELL_GRADIENT_COLORS,
     // type PrizeSelectionMode,
     // getPrizeItemsByMode,
     // assignPrizesToCells
-} from "../types/bongotypes.ts";
+} from "../../types/bongotypes.ts";
 
 // Modal Component (unchanged)
 const PrizeModal: React.FC<{

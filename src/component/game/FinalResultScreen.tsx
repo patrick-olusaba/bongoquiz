@@ -1,11 +1,11 @@
 // FinalResultScreen.tsx
 import { type FC, useEffect, useState } from "react";
-import type { PrizeItem } from "../types/bongotypes.ts";
-import type { WheelSegment } from "../types/gametypes.ts";
-import { checkAchievements, unlockAchievements, type Achievement } from "../utils/achievements.ts";
-import { recordPlayToday } from "../utils/streakDays.ts";
-import '../styles/style.css';
-import '../styles/FinalResultScreen.css';
+import type { PrizeItem } from "../../types/bongotypes.ts";
+import type { WheelSegment } from "../../types/gametypes.ts";
+import { checkAchievements, unlockAchievements, type Achievement } from "../../utils/achievements.ts";
+import { recordPlayToday } from "../../utils/streakDays.ts";
+import '../../styles/style.css';
+import '../../styles/FinalResultScreen.css';
 
 interface Props {
     power:       PrizeItem;

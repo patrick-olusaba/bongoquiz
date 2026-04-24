@@ -1,7 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
 import { type FC, useState } from "react";
-import type { PrizeItem }    from "../types/bongotypes.ts";
-import { type GameScreen, type Category } from "../types/gametypes.ts";
+import type { PrizeItem }    from "../../types/bongotypes.ts";
+import { type GameScreen, type Category } from "../../types/gametypes.ts";
 
 import { HomeScreen }              from "./HomeScreen.tsx";
 import { BoxSelectScreen }         from "./BoxSelectScreen.tsx";
@@ -59,6 +59,7 @@ function applyR2Power(rawScore: number, correct: number, total: number, power: P
 export const BongoMain: FC = () => {
     const [screen,      setScreen]      = useState<GameScreen>("home");
     const [playerName,  setPlayerName]  = useState(() => localStorage.getItem("bongo_player_name") ?? "Player");
+    const [playerPhone, setPlayerPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
     const [power,       setPower]       = useState<PrizeItem | null>(null);
 
     // R1
@@ -78,6 +79,7 @@ export const BongoMain: FC = () => {
     const [r3Bonus,     setR3Bonus]     = useState(0);
 
     const resetGame = () => {
+        localStorage.removeItem("bongo_session_score");
         const savedName = localStorage.getItem("bongo_player_name") ?? "Player";
         setPlayerName(savedName);
         setPower(null);
@@ -89,7 +91,7 @@ export const BongoMain: FC = () => {
 
     if (screen === "home")
         return <HomeScreen
-            onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
+            onStart={(name: string) => { setPlayerName(name); setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? ""); setScreen("box_select"); }}
             onLeaderboard={() => setScreen("leaderboard")}
         />;
 
@@ -104,6 +106,7 @@ export const BongoMain: FC = () => {
         return <DeductionModal
             amount={20}
             roundLabel="Rounds 1 & 2"
+            phone={playerPhone}
             onAccept={() => setScreen("transition_r1")}
             onDecline={resetGame}
         />;
@@ -112,6 +115,7 @@ export const BongoMain: FC = () => {
         return <DeductionModal
             amount={10}
             roundLabel="Round 3"
+            phone={playerPhone}
             onAccept={() => setScreen("transition_r3")}
             onDecline={() => setScreen("round2_result")}
         />;

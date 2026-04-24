@@ -1,9 +1,9 @@
 // Round3SpinScreen.tsx — 3 spins, question per spin, accumulate or lose
 import { type FC, useEffect, useRef, useState } from "react";
-import { R1_QUESTIONS, shuffle, type Question } from "../types/gametypes.ts";
-import { useSoundFX } from "../hooks/Usesoundfx.ts";
-import wheelImg from "../assets/bongo.png";
-import '../styles/Round3SpinScreen.css';
+import { R1_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
+import { useSoundFX } from "../../hooks/Usesoundfx.ts";
+import wheelImg from "../../assets/bongo.png";
+import '../../styles/Round3SpinScreen.css';
 
 interface Segment {
     label: string;
