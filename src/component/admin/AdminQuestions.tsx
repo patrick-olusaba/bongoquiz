@@ -118,11 +118,114 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
     );
 }
 
+// ── CSV Upload Modal ──────────────────────────────────────────────────────────
+function CsvUploadModal({ onImport, onClose, nextId }: { onImport: (qs: Question[]) => void; onClose: () => void; nextId: number }) {
+    const [preview, setPreview] = useState<Question[]>([]);
+    const [error,   setError]   = useState("");
+
+    const parseCSV = (text: string) => {
+        setError(""); setPreview([]);
+        const lines = text.trim().split("\n").filter(l => l.trim());
+        // skip header row if present
+        const dataLines = lines[0].toLowerCase().startsWith("round") ? lines.slice(1) : lines;
+        const parsed: Question[] = [];
+        const errs: string[] = [];
+
+        dataLines.forEach((line, i) => {
+            // handle quoted fields
+            const cols = line.match(/(".*?"|[^,]+)(?=,|$)/g)?.map(c => c.replace(/^"|"$/g, "").trim()) ?? line.split(",").map(c => c.trim());
+            if (cols.length < 8) { errs.push(`Row ${i + 1}: needs 8 columns`); return; }
+            const [roundRaw, category, question, a, b, c, d, correctRaw] = cols;
+            const round = roundRaw.toLowerCase().replace(/\s/g, "") as Question["round"];
+            if (!["r1","r2","r3"].includes(round)) { errs.push(`Row ${i + 1}: round must be r1/r2/r3, got "${roundRaw}"`); return; }
+            const correctMap: Record<string, 0|1|2|3> = { a: 0, b: 1, c: 2, d: 3 };
+            const correct = correctMap[correctRaw.toLowerCase()];
+            if (correct === undefined) { errs.push(`Row ${i + 1}: correct must be A/B/C/D, got "${correctRaw}"`); return; }
+            parsed.push({ id: nextId + parsed.length, round, category, question, options: [a, b, c, d], correct, active: true });
+        });
+
+        if (errs.length) { setError(errs.join("\n")); return; }
+        setPreview(parsed);
+    };
+
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => parseCSV(ev.target?.result as string);
+        reader.readAsText(file);
+    };
+
+    const roundLabel = (r: string) => r === "r1" ? "Round 1" : r === "r2" ? "Round 2" : "Round 3";
+
+    return (
+        <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+            <div style={{ ...s.modal, maxWidth: 640 }}>
+                <div style={s.mh2}>📂 Import Questions via CSV</div>
+
+                <div style={{ background: "#f5f5ff", borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: "0.82rem", color: "#444", lineHeight: 1.7 }}>
+                    <strong>Expected columns (no header required):</strong><br />
+                    <code>round, category, question, optionA, optionB, optionC, optionD, correct</code><br />
+                    <span style={{ color: "#888" }}>round = r1 / r2 / r3 &nbsp;·&nbsp; correct = A / B / C / D</span>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                    <input type="file" accept=".csv,text/csv" onChange={onFile}
+                        style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
+                </div>
+
+                {error && (
+                    <pre style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", color: "#991b1b", fontSize: "0.78rem", marginBottom: 14, whiteSpace: "pre-wrap", maxHeight: 120, overflowY: "auto" }}>
+                        {error}
+                    </pre>
+                )}
+
+                {preview.length > 0 && (
+                    <>
+                        <div style={{ marginBottom: 10, fontSize: "0.85rem", color: "#166534", fontWeight: 600 }}>
+                            ✅ {preview.length} question{preview.length !== 1 ? "s" : ""} ready to import
+                            &nbsp;·&nbsp; R1: {preview.filter(q => q.round === "r1").length}
+                            &nbsp;·&nbsp; R2: {preview.filter(q => q.round === "r2").length}
+                            &nbsp;·&nbsp; R3: {preview.filter(q => q.round === "r3").length}
+                        </div>
+                        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0", maxHeight: 260, overflowY: "auto", marginBottom: 16 }}>
+                            <table style={s.table}>
+                                <thead><tr>{["Round","Category","Question","Correct"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                                <tbody>
+                                    {preview.map((q, i) => (
+                                        <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                            <td style={s.td}>{roundLabel(q.round)}</td>
+                                            <td style={s.td}>{q.category}</td>
+                                            <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
+                                            <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>
+                                                {["A","B","C","D"][q.correct]}. {q.options[q.correct]}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                    <button onClick={onClose} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
+                    <button disabled={preview.length === 0} onClick={() => { onImport(preview); onClose(); }}
+                        style={{ ...s.btn, background: preview.length > 0 ? "#4361ee" : "#ccc", color: "#fff", padding: "8px 20px", cursor: preview.length > 0 ? "pointer" : "not-allowed" }}>
+                        Import {preview.length > 0 ? `${preview.length} Questions` : ""}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function AdminQuestions() {
-    const [round,   setRound]   = useState<"r1"|"r2"|"r3">("r1");
-    const [qs,      setQs]      = useState<Question[]>(SEED);
-    const [editing, setEditing] = useState<Question | null>(null);
-    const [adding,  setAdding]  = useState(false);
+    const [round,      setRound]      = useState<"r1"|"r2"|"r3">("r1");
+    const [qs,         setQs]         = useState<Question[]>(SEED);
+    const [editing,    setEditing]    = useState<Question | null>(null);
+    const [adding,     setAdding]     = useState(false);
+    const [csvOpen,    setCsvOpen]    = useState(false);
 
     const filtered = qs.filter(q => q.round === round);
     const nextId   = Math.max(0, ...qs.map(q => q.id)) + 1;
@@ -131,6 +234,13 @@ export function AdminQuestions() {
         setQs(prev => prev.some(x => x.id === q.id) ? prev.map(x => x.id === q.id ? q : x) : [...prev, q]);
         setEditing(null);
         setAdding(false);
+    };
+
+    const importCSV = (imported: Question[]) => {
+        setQs(prev => {
+            let id = Math.max(0, ...prev.map(q => q.id)) + 1;
+            return [...prev, ...imported.map(q => ({ ...q, id: id++ }))];
+        });
     };
 
     const del = (id: number) => { if (confirm("Delete this question?")) setQs(prev => prev.filter(q => q.id !== id)); };
@@ -145,6 +255,7 @@ export function AdminQuestions() {
                 nextId={nextId}
             />
         )}
+        {csvOpen && <CsvUploadModal onImport={importCSV} onClose={() => setCsvOpen(false)} nextId={nextId} />}
 
         <div style={s.card}>
             <h2 style={s.h2}>Questions</h2>
@@ -155,7 +266,10 @@ export function AdminQuestions() {
                         {r === "r1" ? "Round 1" : r === "r2" ? "Round 2" : "Round 3"}
                     </button>
                 ))}
-                <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff", marginLeft: "auto" }}>+ Add Question</button>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <button onClick={() => setCsvOpen(true)} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
+                    <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
+                </div>
             </div>
 
             {filtered.length === 0
