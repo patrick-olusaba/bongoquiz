@@ -2,7 +2,8 @@
 import { type FC, useEffect, useRef, useState } from "react";
 import { R1_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
-import wheelImg from "../../assets/bongo.png";
+import wheelImg from "../../assets/wheel.png";
+import pointerImg from "../../assets/pointer.png";
 import '../../styles/Round3SpinScreen.css';
 
 interface Segment {
@@ -12,32 +13,32 @@ interface Segment {
 }
 
 const SEGMENTS: Segment[] = [
-    { label: "250",     points: 250   },
-    { label: "★★★",     points: 0     },
-    { label: "3,000",   points: 3000  },
-    { label: "×3",      points: 0, multiplier: 3 },
-    { label: "7,500",   points: 7500  },
-    { label: "2,000",   points: 2000  },
-    { label: "250",     points: 250   },
-    { label: "25,000",  points: 25000 },
-    { label: "1,000",   points: 1000  },
-    { label: "500",     points: 500   },
-    { label: "5,000",   points: 5000  },
-    { label: "15,000",  points: 15000 },
-    { label: "2,500",   points: 2500  },
-    { label: "250",     points: 250   },
-    { label: "Double",  points: 0, multiplier: 2 },
-    { label: "500",     points: 500   },
-    { label: "5,000",   points: 5000  },
-    { label: "500",     points: 500   },
-    { label: "10,000",  points: 10000 },
-    { label: "1,000",   points: 1000  },
+    { label: "★★★",   points: 0    },
+    { label: "750",   points: 750  },
+    { label: "1,500", points: 1500 },
+    { label: "500",   points: 500  },
+    { label: "1,000", points: 1000 },
+    { label: "750",   points: 750  },
+    { label: "2,500", points: 2500 },
+    { label: "250",   points: 250  },
+    { label: "500",   points: 500  },
+    { label: "1,000", points: 1000 },
+    { label: "1,500", points: 1500 },
+    { label: "2,000", points: 2000 },
+    { label: "1,000", points: 250 },
+    { label: "250",   points: 1000  },
+    { label: "1,000", points: 750 },
+    { label: "750",   points: 1000  },
+    { label: "1,000", points: 2000 },
+    { label: "2,000", points: 500 },
+    { label: "500",   points: 1000  },
+    { label: "1,000", points: 500 },
 ];
 
 const TOTAL      = SEGMENTS.length;
 const SLICE      = 360 / TOTAL;
-const STAR_INDEX = 1;
-const START_DEG  = -(STAR_INDEX * SLICE + SLICE / 2);
+const STAR_INDEX = 0;
+const START_DEG  = 0;
 const MAX_SPINS  = 3;
 
 function snapToCenter(rotDeg: number): number {
@@ -56,10 +57,8 @@ function calcFinalRotation(currentRot: number, targetIndex: number): number {
 }
 
 function segmentAtTop(rotDeg: number): number {
-    const snapped = snapToCenter(rotDeg);
-    const norm    = ((snapped % 360) + 360) % 360;
-    const idx     = Math.round(norm / SLICE) % TOTAL;
-    return (TOTAL - idx) % TOTAL;
+    const norm = ((rotDeg % 360) + 360) % 360;
+    return (TOTAL - Math.round(norm / SLICE) % TOTAL) % TOTAL;
 }
 
 // ─── Confetti ─────────────────────────────────────────────────────────────────
@@ -465,7 +464,7 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
                     <div className="spin-bulb-ring-wrap">
                         <BulbRing spinning={spinning} />
                         <div className="spin-inner">
-                            <div className="spin-pointer" />
+                            <img src={pointerImg} alt="pointer" className="spin-pointer" />
                             <canvas ref={canvasRef} width={800} height={800}
                                     className={`spin-wheel-canvas${spinning ? " is-spinning" : ""}`} />
                         </div>
