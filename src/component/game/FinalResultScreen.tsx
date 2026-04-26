@@ -78,11 +78,12 @@ export const FinalResultScreen: FC<Props> = ({
     }, [total, r2Correct, r2Total, r1TimeLeft, r1Score, maxStreak, playerName, power.name, r1Score, r2Score, r3Bonus]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const rating =
-        total >= 20000 ? "🌟 Legendary! You're a Bongo champion!"
-            : total >= 8000  ? "🔥 Amazing score — absolutely crushing it!"
-                : total >= 3000  ? "🎉 Great score — well done!"
-                    : total >= 1000  ? "👍 Decent effort — try again!"
-                        : "📚 Keep practising, you'll do better!";
+        total < 0        ? "😅 Negative score! Better luck next time!"
+            : total >= 20000 ? "🌟 Legendary! You're a Bongo champion!"
+                : total >= 8000  ? "🔥 Amazing score — absolutely crushing it!"
+                    : total >= 3000  ? "🎉 Great score — well done!"
+                        : total >= 1000  ? "👍 Decent effort — try again!"
+                            : "📚 Keep practising, you'll do better!";
 
     const isMultiplier = segment?.label === "×3" || segment?.label === "Double Up";
     const r3Label = (() => {
@@ -142,7 +143,7 @@ export const FinalResultScreen: FC<Props> = ({
                     ].map(s => (
                         <div key={s.l} className="fr-breakdown-cell" style={{ borderColor: `${s.c}44` }}>
                             <div className="fr-breakdown-label">{s.l}</div>
-                            <div className="fr-breakdown-value" style={{ color: s.c }}>
+                            <div className="fr-breakdown-value" style={{ color: s.v < 0 ? "#ff6b6b" : s.c }}>
                                 {isMultiplier && s.l === r3Label
                                     ? (segment?.label === "×3" ? "×3" : "×2")
                                     : s.v.toLocaleString()}
@@ -153,7 +154,7 @@ export const FinalResultScreen: FC<Props> = ({
 
                 <div className="fr-total-box">
                     <div className="fr-total-label">FINAL SCORE</div>
-                    <div className="fr-total-value">{total.toLocaleString()}</div>
+                    <div className="fr-total-value" style={{ color: total < 0 ? "#ff6b6b" : undefined }}>{total.toLocaleString()}</div>
                     <div className="fr-rating">{rating}</div>
                 </div>
 

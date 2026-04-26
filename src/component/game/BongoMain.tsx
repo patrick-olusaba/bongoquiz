@@ -124,6 +124,7 @@ export const BongoMain: FC = () => {
             amount={20}
             roundLabel="Rounds 1 & 2"
             phone={playerPhone}
+            playerName={playerName}
             onAccept={async () => {
                 try {
                     const push = httpsCallable(getFunctions(), "initiateStkPush");
@@ -139,6 +140,7 @@ export const BongoMain: FC = () => {
             amount={10}
             roundLabel="Round 3"
             phone={playerPhone}
+            playerName={playerName}
             onAccept={async () => {
                 try {
                     const push = httpsCallable(getFunctions(), "initiateStkPush");

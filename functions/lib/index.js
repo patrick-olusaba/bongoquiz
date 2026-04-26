@@ -33,10 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initiateStkPush = exports.saveGameSession = void 0;
+exports.stkCallback = exports.deposit = exports.saveGameSession = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
-const https = __importStar(require("https"));
+const http = __importStar(require("http"));
 admin.initializeApp();
 const db = admin.firestore();
 /**
@@ -88,43 +88,169 @@ exports.saveGameSession = functions.https.onCall(async (request) => {
     return { sessionId: sessionRef.id, total };
 });
 /**
- * initiateStkPush — callable Cloud Function.
- * Forwards name + phone + amount to the payment backend to trigger an M-Pesa STK push.
+ * deposit — HTTP endpoint to initiate M-Pesa STK push AND receive callback.
  */
-exports.initiateStkPush = functions.https.onCall(async (request) => {
-    const { name, phone, amount, ref } = request.data;
-    if (typeof name !== "string" || name.trim().length === 0)
-        throw new functions.https.HttpsError("invalid-argument", "Invalid name");
-    if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
-        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
-    if (typeof amount !== "number" || amount <= 0)
-        throw new functions.https.HttpsError("invalid-argument", "Invalid amount");
-    if (typeof ref !== "string" || ref.trim().length === 0)
-        throw new functions.https.HttpsError("invalid-argument", "Invalid ref");
-    const backendUrl = process.env.PAYMENT_BACKEND_URL;
-    if (!backendUrl)
-        throw new functions.https.HttpsError("internal", "Payment backend not configured");
-    const payload = JSON.stringify({ name: name.trim(), phone, amount, ref: ref.trim() });
-    const url = new URL("/api/pay/initiate", backendUrl);
-    const result = await new Promise((resolve, reject) => {
-        const req = https.request({ hostname: url.hostname, port: url.port || 443, path: url.pathname, method: "POST",
-            headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } }, (res) => {
-            let body = "";
-            res.on("data", (chunk) => { body += chunk; });
-            res.on("end", () => {
-                if (res.statusCode !== 200)
-                    return reject(new Error(`Backend error ${res.statusCode}: ${body}`));
-                try {
-                    resolve(JSON.parse(body));
-                }
-                catch {
-                    reject(new Error("Invalid backend response"));
-                }
+exports.deposit = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+    if (req.method !== "POST") {
+        res.status(405).json({ error: "Method not allowed" });
+        return;
+    }
+    try {
+        const body = req.body;
+        // Check if this is a callback (has trans_id) or initiation request
+        if (body.trans_id) {
+            // This is a callback from the backend with payment result
+            const { name, phone, amount, trigger, trans_id, trans_time, business_shortcode } = body;
+            // Find the most recent pending payment with matching phone and trigger
+            const existing = await db.collection("payments")
+                .where("phone", "==", phone)
+                .where("trigger", "==", trigger)
+                .orderBy("createdAt", "desc")
+                .limit(1).get();
+            if (!existing.empty) {
+                console.log("Updating payment doc:", existing.docs[0].id);
+                await existing.docs[0].ref.update({
+                    status: "paid",
+                    trans_id,
+                    trans_time,
+                    business_shortcode,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
+            else {
+                console.log("No pending payment found, creating new doc");
+                await db.collection("payments").add({
+                    name, phone, amount, trigger,
+                    status: "paid",
+                    trans_id,
+                    trans_time,
+                    business_shortcode,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
+            console.log("Payment callback received:", body);
+            res.status(200).json({ success: true, message: "Payment recorded" });
+            return;
+        }
+        // Otherwise, this is an initiation request
+        const { name, phone, amount, trigger } = body;
+        if (typeof name !== "string" || name.trim().length === 0) {
+            res.status(400).json({ error: "Invalid name" });
+            return;
+        }
+        if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) {
+            res.status(400).json({ error: "Invalid phone" });
+            return;
+        }
+        if (typeof amount !== "number" || amount <= 0) {
+            res.status(400).json({ error: "Invalid amount" });
+            return;
+        }
+        if (typeof trigger !== "string" || trigger.trim().length === 0) {
+            res.status(400).json({ error: "Invalid trigger" });
+            return;
+        }
+        const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
+        const result = await new Promise((resolve, reject) => {
+            const options = {
+                hostname: "142.93.47.187",
+                port: 2610,
+                path: "/ngomma/bongo/stkrequest",
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) },
+            };
+            const request = http.request(options, (response) => {
+                let body = "";
+                response.on("data", (chunk) => { body += chunk; });
+                response.on("end", () => {
+                    try {
+                        resolve(JSON.parse(body));
+                    }
+                    catch {
+                        resolve({ raw: body });
+                    }
+                });
             });
+            request.on("error", reject);
+            request.write(payload);
+            request.end();
         });
-        req.on("error", reject);
-        req.write(payload);
-        req.end();
-    });
-    return { checkoutRequestId: result.checkoutRequestId };
+        // Save pending payment to Firestore
+        const docRef = await db.collection("payments").add({
+            name: name.trim(), phone, amount, trigger,
+            status: "pending",
+            checkoutRequestId: result?.CheckoutRequestID ?? result?.checkoutRequestId ?? null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        res.status(200).json({ success: true, paymentId: docRef.id, result });
+    }
+    catch (error) {
+        console.error("Deposit error:", error);
+        res.status(500).json({ error: "Internal error" });
+    }
+});
+/**
+ * stkCallback — HTTP endpoint for M-Pesa STK push callback.
+ * Receives payment confirmation from Safaricom and stores in Firestore.
+ */
+exports.stkCallback = functions.https.onRequest(async (req, res) => {
+    if (req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+    }
+    try {
+        const data = req.body;
+        const callback = data.Body?.stkCallback;
+        if (!callback) {
+            res.status(400).send("Invalid callback data");
+            return;
+        }
+        const { MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = callback;
+        let amount = 0;
+        let receipt = "";
+        let phone = "";
+        let transactionDate = "";
+        if (ResultCode === 0 && CallbackMetadata?.Item) {
+            for (const item of CallbackMetadata.Item) {
+                if (item.Name === "Amount")
+                    amount = Number(item.Value);
+                if (item.Name === "MpesaReceiptNumber")
+                    receipt = String(item.Value);
+                if (item.Name === "PhoneNumber")
+                    phone = String(item.Value);
+                if (item.Name === "TransactionDate")
+                    transactionDate = String(item.Value);
+            }
+        }
+        const status = ResultCode === 0 ? "paid" : "failed";
+        // Try to update existing pending payment by checkoutRequestId
+        const existing = await db.collection("payments")
+            .where("checkoutRequestId", "==", CheckoutRequestID)
+            .limit(1).get();
+        if (!existing.empty) {
+            await existing.docs[0].ref.update({ status, receipt, resultCode: ResultCode, resultDesc: ResultDesc, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        else {
+            // No matching pending record — create new
+            await db.collection("payments").add({
+                checkoutRequestId: CheckoutRequestID,
+                merchantRequestId: MerchantRequestID,
+                phone, amount, receipt, transactionDate,
+                status, resultCode: ResultCode, resultDesc: ResultDesc,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+        res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
+    }
+    catch (error) {
+        console.error("STK callback error:", error);
+        res.status(500).send("Internal error");
+    }
 });
