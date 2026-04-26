@@ -22,7 +22,7 @@ const CSS = `
 
 // Admin Firebase Auth email — PIN maps to password via convention:
 // password = "bongo_admin_" + PIN  (set this in Firebase Auth console)
-const ADMIN_EMAIL = "admin@bongoquiz.app";
+const ADMIN_EMAIL = "waruchojanen@gmail.com";
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
 
