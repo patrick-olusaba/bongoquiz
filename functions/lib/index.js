@@ -92,17 +92,19 @@ exports.saveGameSession = functions.https.onCall(async (request) => {
  * Forwards name + phone + amount to the payment backend to trigger an M-Pesa STK push.
  */
 exports.initiateStkPush = functions.https.onCall(async (request) => {
-    const { name, phone, amount } = request.data;
+    const { name, phone, amount, ref } = request.data;
     if (typeof name !== "string" || name.trim().length === 0)
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
         throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
     if (typeof amount !== "number" || amount <= 0)
         throw new functions.https.HttpsError("invalid-argument", "Invalid amount");
+    if (typeof ref !== "string" || ref.trim().length === 0)
+        throw new functions.https.HttpsError("invalid-argument", "Invalid ref");
     const backendUrl = process.env.PAYMENT_BACKEND_URL;
     if (!backendUrl)
         throw new functions.https.HttpsError("internal", "Payment backend not configured");
-    const payload = JSON.stringify({ name: name.trim(), phone, amount });
+    const payload = JSON.stringify({ name: name.trim(), phone, amount, ref: ref.trim() });
     const url = new URL("/api/pay/initiate", backendUrl);
     const result = await new Promise((resolve, reject) => {
         const req = https.request({ hostname: url.hostname, port: url.port || 443, path: url.pathname, method: "POST",
