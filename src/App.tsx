@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import mainLogo from './assets/logo.png';
+import logoBg from './assets/bongo-logo.png';
 import { BongoMain }    from "./component/game/BongoMain.tsx";
 import { GameInfoDocs } from "./component/docs/GameInfoDocs.tsx";
 import { AdminView }    from "./component/admin/AdminView.tsx";
@@ -16,11 +18,7 @@ function App() {
 
     useEffect(() => {
         // Preload critical images
-        const images = [
-            '/logo-bg.png',
-            '/main-logo.png',
-            // Add other critical images here
-        ];
+        const images = [mainLogo, logoBg];
 
         let loadedCount = 0;
         const totalImages = images.length;

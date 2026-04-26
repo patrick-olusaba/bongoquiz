@@ -81,13 +81,35 @@ export const CUSTOM_PRIZE_LIST_3: PrizeItem[] = [
     PRIZE_ITEMS.find(item => item.name === "Freeze Frame")!,
 ];
 
+// Map power names to locally-imported images so Firestore img paths are never used directly
+const LOCAL_IMG_MAP: Record<string, string> = {
+    "Bonus Time": BonusTime,
+    "Disqualified": Disqualified,
+    "Double Or Nothing": DoubleOrNothing,
+    "Double Points": DoublePoints,
+    "Freeze Frame": FreezeFrame,
+    "Insurance": Insurance,
+    "No Penalty": NoPenalty,
+    "Point Gamble": PointGamble,
+    "Question Swap": QuestionSwap,
+    "Second Chance": SecondChance,
+    "Time Tax": TimeTax,
+};
+
 export const getRandomPrizeItems = async (count: number = 8): Promise<PrizeItem[]> => {
     try {
         const { collection, getDocs } = await import("firebase/firestore");
         const { db } = await import("../firebase.ts");
         const snap = await getDocs(collection(db, "powers"));
         const activePowers = snap.docs
-            .map(d => ({ id: parseInt(d.id) || 0, ...d.data() } as PrizeItem))
+            .map(d => {
+                const data = d.data() as PrizeItem;
+                return {
+                    ...data,
+                    id: parseInt(d.id) || 0,
+                    img: LOCAL_IMG_MAP[data.name] ?? data.img,
+                };
+            })
             .filter(p => p.active !== false);
         
         if (activePowers.length === 0) {
