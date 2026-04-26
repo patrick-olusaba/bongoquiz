@@ -61,6 +61,7 @@ export const saveGameSession = functions.https.onCall(
             });
         }
 
+
         return { sessionId: sessionRef.id, total };
     }
 );
