@@ -96,7 +96,7 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
 
     const rounds = [
         { num: "01", label: "Quickfire",  icon: "⚡",  desc: "90s · 100 pts per answer · race the clock",  color: "#7B61FF", glow: "drop-shadow(0 0 12px rgba(123,97,255,0.6))"  },
-        { num: "02", label: "Categories", icon: "🗂️", desc: "Pick your topic · 5 questions · powers apply", color: "#FF6B6B", glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))" },
+        { num: "02", label: "Categories", icon: "🗂️", desc: "40s · 10 questions · powers apply", color: "#FF6B6B", glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))" },
         { num: "03", label: "Spin & Win", icon: "🎡",  desc: "Spin the wheel · answer to claim your bonus", color: "#FFD93D", glow: "drop-shadow(0 0 12px rgba(255,217,61,0.6))"  },
     ];
 
