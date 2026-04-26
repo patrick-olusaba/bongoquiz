@@ -15,7 +15,6 @@ const POINTS_CORRECT = 500;
 const POINTS_WRONG   = -250;
 const POINTS_PASS    = -250;
 const TOTAL_TIME     = 40;
-const MAX_QUESTIONS  = 10;
 
 
 export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) => {
@@ -83,7 +82,7 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
 
     const nextQuestion = () => {
         const next = index + 1;
-        if (next >= MAX_QUESTIONS || next >= questions.length) { finishRound(); return; }
+        if (next >= questions.length) { finishRound(); return; }
         setIndex(next);
         setAnswered(null);
         setEliminated([]);
@@ -167,7 +166,7 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
     }
     
     const q = questions[index];
-    if (!q) { if (!doneRef.current) finishRound(); return <div className="game-root"><div className="game-card" /></div>; }
+    if (!q) return null;
 
     const pct = (timer / baseTime) * 100;
     const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";

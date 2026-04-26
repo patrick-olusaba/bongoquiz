@@ -295,6 +295,8 @@ export function AdminQuestions() {
     const [adding,  setAdding]  = useState(false);
     const [csvOpen,   setCsvOpen]   = useState(false);
     const [pasteOpen, setPasteOpen] = useState(false);
+    const [page,    setPage]    = useState(1);
+    const PAGE_SIZE = 20;
 
     const load = async () => {
         setLoading(true);
@@ -304,8 +306,13 @@ export function AdminQuestions() {
     };
 
     useEffect(() => { load(); }, []);
+    useEffect(() => { setPage(1); }, [round]);
+
+    const isDuplicate = (q: Question, existing: Question[]) =>
+        existing.some(e => e.id !== q.id && e.question.trim().toLowerCase() === q.question.trim().toLowerCase());
 
     const save = async (q: Question) => {
+        if (isDuplicate(q, qs)) { alert("A question with this text already exists."); return; }
         const { id, ...data } = q;
         if (id) {
             await updateDoc(doc(db, "questions", id), data);
@@ -323,13 +330,20 @@ export function AdminQuestions() {
     };
 
     const importCSV = async (rows: Omit<Question,"id">[]) => {
+        const existingTexts = new Set(qs.map(q => q.question.trim().toLowerCase()));
+        const unique = rows.filter(q => !existingTexts.has(q.question.trim().toLowerCase()));
+        const dupes  = rows.length - unique.length;
+        if (dupes > 0) alert(`Skipped ${dupes} duplicate question${dupes > 1 ? "s" : ""}.`);
+        if (unique.length === 0) return;
         const batch = writeBatch(db);
-        rows.forEach(q => batch.set(doc(collection(db, "questions")), q));
+        unique.forEach(q => batch.set(doc(collection(db, "questions")), q));
         await batch.commit();
         await load();
     };
 
-    const filtered = qs.filter(q => q.round === round);
+    const filtered  = qs.filter(q => q.round === round);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return (
         <>
@@ -349,7 +363,7 @@ export function AdminQuestions() {
                 {(["r1","r2","r3"] as const).map(r => (
                     <button key={r} onClick={() => setRound(r)}
                         style={{ ...s.btn, background: round === r ? "#4361ee" : "#f0f0f8", color: round === r ? "#fff" : "#444" }}>
-                        {r === "r1" ? "Round 1" : r === "r2" ? "Round 2" : "Round 3"}
+                        {r === "r1" ? `Round 1 (${qs.filter(q=>q.round==="r1").length})` : r === "r2" ? `Round 2 (${qs.filter(q=>q.round==="r2").length})` : `Round 3 (${qs.filter(q=>q.round==="r3").length})`}
                     </button>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
@@ -366,14 +380,16 @@ export function AdminQuestions() {
             ) : filtered.length === 0 ? (
                 <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>No questions for this round yet.</p>
             ) : (
+                <>
                 <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                     <table style={s.table}>
                         <thead>
-                            <tr>{["Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                            <tr>{["#","Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
                         </thead>
                         <tbody>
-                            {filtered.map((q, i) => (
+                            {paginated.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                    <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem", width: 40 }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
                                     <td style={{ ...s.td, maxWidth: 220 }}>{q.question}</td>
                                     <td style={{ ...s.td, fontSize: "0.78rem", color: "#555" }}>
                                         {q.options.map((o, j) => (
@@ -396,6 +412,16 @@ export function AdminQuestions() {
                         </tbody>
                     </table>
                 </div>
+                {totalPages > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 14 }}>
+                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                            style={{ ...s.btn, background: page === 1 ? "#f0f0f8" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}>← Prev</button>
+                        <span style={{ fontSize: "0.85rem", color: "#555" }}>Page {page} of {totalPages}</span>
+                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                            style={{ ...s.btn, background: page === totalPages ? "#f0f0f8" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}>Next →</button>
+                    </div>
+                )}
+                </>
             )}
         </div>
         </>

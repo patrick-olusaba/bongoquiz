@@ -127,7 +127,7 @@ export const BongoMain: FC = () => {
             onAccept={async () => {
                 try {
                     const push = httpsCallable(getFunctions(), "initiateStkPush");
-                    await push({ name: playerName, phone: playerPhone, amount: 20 });
+                    await push({ name: playerName, phone: playerPhone, amount: 20, ref: `${playerPhone}_R1R2` });
                 } catch { /* non-fatal — proceed anyway */ }
                 setScreen("transition_r1");
             }}
@@ -142,7 +142,7 @@ export const BongoMain: FC = () => {
             onAccept={async () => {
                 try {
                     const push = httpsCallable(getFunctions(), "initiateStkPush");
-                    await push({ name: playerName, phone: playerPhone, amount: 10 });
+                    await push({ name: playerName, phone: playerPhone, amount: 10, ref: `${playerPhone}_R3` });
                 } catch { /* non-fatal — proceed anyway */ }
                 setScreen("transition_r3");
             }}
@@ -161,7 +161,7 @@ export const BongoMain: FC = () => {
     if (screen === "transition_r2")
         return <RoundTransitionScreen
             roundNum={2} title="Category Rush" icon="🗂️"
-            subtitle="40s · 10 questions · +500 correct · −250 wrong/pass"
+            subtitle="40s · +500 correct · −250 wrong/pass"
             color="#FF6B6B"
             onDone={() => setScreen("round2_question")}
         />;
