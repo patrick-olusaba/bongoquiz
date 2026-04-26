@@ -18,7 +18,7 @@ export const Round1ResultScreen: FC<Props> = ({ power, rawScore, finalScore, cor
             <div className="game-result-icon">⚡</div>
             <h2 className="game-result-title">Round 1 Complete!</h2>
             <p className="game-result-sub">{correct} / {totalQuestions} correct answers</p>
-            <div className="game-big-score">{finalScore} pts</div>
+            <div className="game-big-score" style={{ color: finalScore < 0 ? "#ff6b6b" : undefined }}>{finalScore} pts</div>
 
             {power.name === "Double Points" && (
                 <p className="game-modifier-note game-modifier-note--red">✨ Double Points applied: {rawScore} × 2</p>

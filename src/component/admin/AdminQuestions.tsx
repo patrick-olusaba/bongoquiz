@@ -1,8 +1,13 @@
-// AdminQuestions.tsx — fully functional Questions manager with add/edit modal
-import { useState } from "react";
+// AdminQuestions.tsx — Firestore-backed questions manager
+import { useState, useEffect } from "react";
+import {
+    collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch
+} from "firebase/firestore";
+import { db } from "../../firebase.ts";
+import { clearQuestionsCache } from "../../hooks/useQuestions.ts";
 
 export type Question = {
-    id: number;
+    id?: string;          // Firestore doc id
     round: "r1" | "r2" | "r3";
     category: string;
     question: string;
@@ -11,34 +16,27 @@ export type Question = {
     active: boolean;
 };
 
-const SEED: Question[] = [
-    { id: 1, round: "r1", category: "Geography",  question: "What is the capital of Kenya?",           options: ["Nairobi", "Mombasa", "Kisumu", "Nakuru"],          correct: 0, active: true },
-    { id: 2, round: "r2", category: "Literature", question: "Who wrote 'Things Fall Apart'?",          options: ["Wole Soyinka", "Chinua Achebe", "Ngugi wa Thiong'o", "Ben Okri"], correct: 1, active: true },
-    { id: 3, round: "r1", category: "History",    question: "What year did Kenya gain independence?",  options: ["1960", "1961", "1962", "1963"],                    correct: 3, active: true },
-    { id: 4, round: "r3", category: "Science",    question: "What planet is closest to the Sun?",     options: ["Venus", "Earth", "Mercury", "Mars"],               correct: 2, active: true },
-];
-
 const BLANK: Omit<Question, "id"> = {
     round: "r1", category: "", question: "",
     options: ["", "", "", ""], correct: 0, active: true,
 };
 
 const s: Record<string, React.CSSProperties> = {
-    card:   { background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #e8eaf0", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
-    h2:     { color: "#1a1a2e", fontSize: "1.05rem", fontWeight: 700, marginTop: 0, marginBottom: 14, paddingBottom: 8, borderBottom: "2px solid #f0f0f8" },
-    p:      { lineHeight: 1.75, color: "#444", fontSize: "0.9rem", margin: "0 0 10px" },
-    table:  { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem" },
-    th:     { background: "#f5f5ff", color: "#4361ee", padding: "10px 14px", textAlign: "left" as const, borderBottom: "2px solid #e0e0f0", fontWeight: 600, whiteSpace: "nowrap" as const },
-    td:     { padding: "10px 14px", borderBottom: "1px solid #f0f0f8", color: "#333", verticalAlign: "top" as const },
-    btn:    { padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit" },
-    input:  { padding: "8px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" as const },
-    label:  { display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#555", marginBottom: 5 },
-    row:    { marginBottom: 14 },
-    overlay:{ position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 },
-    modal:  { background: "#fff", borderRadius: 12, padding: "28px 28px 24px", width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.25)" },
-    mh2:    { color: "#1a1a2e", fontSize: "1rem", fontWeight: 700, marginBottom: 20 },
-    optRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 },
-    radio:  { accentColor: "#4361ee", width: 16, height: 16, cursor: "pointer", flexShrink: 0 },
+    card:    { background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #e8eaf0", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
+    h2:      { color: "#1a1a2e", fontSize: "1.05rem", fontWeight: 700, marginTop: 0, marginBottom: 14, paddingBottom: 8, borderBottom: "2px solid #f0f0f8" },
+    p:       { lineHeight: 1.75, color: "#444", fontSize: "0.9rem", margin: "0 0 10px" },
+    table:   { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem" },
+    th:      { background: "#f5f5ff", color: "#4361ee", padding: "10px 14px", textAlign: "left" as const, borderBottom: "2px solid #e0e0f0", fontWeight: 600, whiteSpace: "nowrap" as const },
+    td:      { padding: "10px 14px", borderBottom: "1px solid #f0f0f8", color: "#333", verticalAlign: "top" as const },
+    btn:     { padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit" },
+    input:   { padding: "8px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" as const },
+    label:   { display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#555", marginBottom: 5 },
+    row:     { marginBottom: 14 },
+    overlay: { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 },
+    modal:   { background: "#fff", borderRadius: 12, padding: "28px 28px 24px", width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.25)" },
+    mh2:     { color: "#1a1a2e", fontSize: "1rem", fontWeight: 700, marginBottom: 20 },
+    optRow:  { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 },
+    radio:   { accentColor: "#4361ee", width: 16, height: 16, cursor: "pointer", flexShrink: 0 },
 };
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -47,10 +45,10 @@ function StatusBadge({ active }: { active: boolean }) {
     </span>;
 }
 
-type ModalProps = { q: Omit<Question, "id"> & { id?: number }; onSave: (q: Question) => void; onClose: () => void; nextId: number; };
-
-function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
-    const [form, setForm] = useState<Omit<Question, "id"> & { id?: number }>({ ...q, options: [...q.options] as [string,string,string,string] });
+// ── Add/Edit Modal ─────────────────────────────────────────────────────────────
+function QuestionModal({ q, onSave, onClose }: { q: Question; onSave: (q: Question) => Promise<void>; onClose: () => void }) {
+    const [form, setForm] = useState<Question>({ ...q, options: [...q.options] as [string,string,string,string] });
+    const [saving, setSaving] = useState(false);
 
     const setOpt = (i: number, v: string) => {
         const opts = [...form.options] as [string,string,string,string];
@@ -58,9 +56,11 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
         setForm(f => ({ ...f, options: opts }));
     };
 
-    const save = (e: React.FormEvent) => {
+    const save = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...form, id: form.id ?? nextId } as Question);
+        setSaving(true);
+        await onSave(form);
+        setSaving(false);
     };
 
     return (
@@ -71,7 +71,7 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                         <div>
                             <label style={s.label}>Round</label>
-                            <select style={{ ...s.input }} value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value as Question["round"] }))}>
+                            <select style={s.input} value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value as Question["round"] }))}>
                                 <option value="r1">Round 1</option>
                                 <option value="r2">Round 2</option>
                                 <option value="r3">Round 3</option>
@@ -85,20 +85,18 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
 
                     <div style={s.row}>
                         <label style={s.label}>Question</label>
-                        <textarea style={{ ...s.input, minHeight: 72, resize: "vertical" as const }} value={form.question} onChange={e => setForm(f => ({ ...f, question: e.target.value }))} placeholder="Enter question text…" required />
+                        <textarea style={{ ...s.input, minHeight: 72, resize: "vertical" as const }} value={form.question} onChange={e => setForm(f => ({ ...f, question: e.target.value }))} required />
                     </div>
 
                     <div style={s.row}>
-                        <label style={{ ...s.label, marginBottom: 10 }}>Answer Options <span style={{ color: "#888", fontWeight: 400 }}>(select the correct one)</span></label>
+                        <label style={{ ...s.label, marginBottom: 10 }}>Options <span style={{ color: "#888", fontWeight: 400 }}>(select correct)</span></label>
                         {(["A","B","C","D"] as const).map((letter, i) => (
                             <div key={i} style={s.optRow}>
                                 <input type="radio" style={s.radio} name="correct" checked={form.correct === i} onChange={() => setForm(f => ({ ...f, correct: i as 0|1|2|3 }))} />
                                 <span style={{ fontSize: "0.82rem", fontWeight: 700, color: form.correct === i ? "#4361ee" : "#aaa", width: 20, flexShrink: 0 }}>{letter}</span>
                                 <input style={{ ...s.input, borderColor: form.correct === i ? "#4361ee" : "#ddd" }}
-                                    value={form.options[i]}
-                                    onChange={e => setOpt(i, e.target.value)}
-                                    placeholder={`Option ${letter}`}
-                                    required />
+                                    value={form.options[i]} onChange={e => setOpt(i, e.target.value)}
+                                    placeholder={`Option ${letter}`} required />
                             </div>
                         ))}
                     </div>
@@ -110,7 +108,9 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
 
                     <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                         <button type="button" onClick={onClose} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
-                        <button type="submit" style={{ ...s.btn, background: "#4361ee", color: "#fff", padding: "8px 20px" }}>Save Question</button>
+                        <button type="submit" disabled={saving} style={{ ...s.btn, background: "#4361ee", color: "#fff", padding: "8px 20px" }}>
+                            {saving ? "Saving…" : "Save Question"}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -118,30 +118,123 @@ function QuestionModal({ q, onSave, onClose, nextId }: ModalProps) {
     );
 }
 
-// ── CSV Upload Modal ──────────────────────────────────────────────────────────
-function CsvUploadModal({ onImport, onClose, nextId }: { onImport: (qs: Question[]) => void; onClose: () => void; nextId: number }) {
-    const [preview, setPreview] = useState<Question[]>([]);
+// ── Paste Import Modal ─────────────────────────────────────────────────────────
+function PasteModal({ defaultRound, onImport, onClose }: { defaultRound: "r1"|"r2"|"r3"; onImport: (qs: Omit<Question,"id">[]) => Promise<void>; onClose: () => void }) {
+    const [text,    setText]    = useState("");
+    const [round,   setRound]   = useState<"r1"|"r2"|"r3">(defaultRound);
+    const [preview, setPreview] = useState<Omit<Question,"id">[]>([]);
     const [error,   setError]   = useState("");
+    const [saving,  setSaving]  = useState(false);
+
+    const parse = (raw: string, r: "r1"|"r2"|"r3") => {
+        setError(""); setPreview([]);
+        // Split into blocks by numbered question (1. / 2. etc)
+        const blocks = raw.trim().split(/\n(?=\d+\.\s)/).filter(b => b.trim());
+        const parsed: Omit<Question,"id">[] = [];
+        const errs: string[] = [];
+
+        blocks.forEach((block, i) => {
+            const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+            // Extract category from first line: "1. (Geography)" or "1."
+            const headerMatch = lines[0].match(/^\d+\.\s*(?:\(([^)]+)\))?/);
+            const category = headerMatch?.[1] ?? "";
+            // Question text: line after header (skip header line itself if it has no question text)
+            let qLine = lines[0].replace(/^\d+\.\s*(\([^)]+\))?/, "").trim();
+            let lineIdx = 1;
+            if (!qLine) { qLine = lines[lineIdx] ?? ""; lineIdx++; }
+
+            // Options: lines starting with A. B. C. D.
+            const opts: string[] = [];
+            let correct = -1;
+            for (; lineIdx < lines.length; lineIdx++) {
+                const l = lines[lineIdx];
+                const optMatch = l.match(/^([A-D])[.)]\s*(.+)/);
+                if (optMatch) { opts.push(optMatch[2].trim()); continue; }
+                // Answer line: "✅ Answer: C. Noah" or "Answer: C"
+                const ansMatch = l.match(/answer[:\s]+([A-D])/i);
+                if (ansMatch) { correct = "ABCD".indexOf(ansMatch[1].toUpperCase()); }
+            }
+
+            if (!qLine)        { errs.push(`Block ${i+1}: missing question text`); return; }
+            if (opts.length !== 4) { errs.push(`Block ${i+1}: need exactly 4 options (A-D), found ${opts.length}`); return; }
+            if (correct === -1)    { errs.push(`Block ${i+1}: missing answer line`); return; }
+
+            parsed.push({ round: r, category, question: qLine, options: opts as [string,string,string,string], correct: correct as 0|1|2|3, active: true });
+        });
+
+        if (errs.length) { setError(errs.join("\n")); return; }
+        setPreview(parsed);
+    };
+
+    const doImport = async () => {
+        setSaving(true);
+        await onImport(preview);
+        setSaving(false);
+        onClose();
+    };
+
+    return (
+        <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+            <div style={{ ...s.modal, maxWidth: 660 }}>
+                <div style={s.mh2}>📋 Paste Questions</div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {(["r1","r2","r3"] as const).map(r => (
+                        <button key={r} onClick={() => { setRound(r); if (text) parse(text, r); }}
+                            style={{ ...s.btn, background: round === r ? "#4361ee" : "#f0f0f8", color: round === r ? "#fff" : "#444" }}>
+                            {r === "r1" ? "Round 1" : r === "r2" ? "Round 2" : "Round 3"}
+                        </button>
+                    ))}
+                </div>
+
+                <textarea
+                    style={{ ...s.input, minHeight: 260, resize: "vertical", fontFamily: "monospace", fontSize: "0.82rem", marginBottom: 12 }}
+                    placeholder={`1. (Geography)\n\nWhat is the capital of Kenya?\nA. Mombasa\nB. Kisumu\nC. Nairobi\nD. Nakuru\n\n✅ Answer: C. Nairobi\n\n2. (CRE)\n\nWho built the ark?\nA. Abraham\nB. Moses\nC. Noah\nD. David\n\n✅ Answer: C. Noah`}
+                    value={text}
+                    onChange={e => { setText(e.target.value); parse(e.target.value, round); }}
+                />
+
+                {error && <pre style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", color: "#991b1b", fontSize: "0.78rem", marginBottom: 12, whiteSpace: "pre-wrap", maxHeight: 100, overflowY: "auto" }}>{error}</pre>}
+
+                {preview.length > 0 && (
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: "0.85rem", color: "#166534", fontWeight: 600 }}>
+                        ✅ {preview.length} question{preview.length > 1 ? "s" : ""} parsed successfully
+                        {preview.some(q => !q.category) && <span style={{ color: "#854d0e", fontWeight: 400 }}> · some missing category — will be saved as empty</span>}
+                    </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                    <button onClick={onClose} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
+                    <button disabled={preview.length === 0 || saving} onClick={doImport}
+                        style={{ ...s.btn, background: preview.length > 0 ? "#4361ee" : "#ccc", color: "#fff", padding: "8px 20px" }}>
+                        {saving ? "Saving…" : `Save ${preview.length > 0 ? preview.length + " Question" + (preview.length > 1 ? "s" : "") : ""}`}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+function CsvUploadModal({ onImport, onClose }: { onImport: (qs: Omit<Question,"id">[]) => Promise<void>; onClose: () => void }) {
+    const [preview, setPreview] = useState<Omit<Question,"id">[]>([]);
+    const [error,   setError]   = useState("");
+    const [saving,  setSaving]  = useState(false);
 
     const parseCSV = (text: string) => {
         setError(""); setPreview([]);
         const lines = text.trim().split("\n").filter(l => l.trim());
-        // skip header row if present
         const dataLines = lines[0].toLowerCase().startsWith("round") ? lines.slice(1) : lines;
-        const parsed: Question[] = [];
+        const parsed: Omit<Question,"id">[] = [];
         const errs: string[] = [];
 
         dataLines.forEach((line, i) => {
-            // handle quoted fields
-            const cols = line.match(/(".*?"|[^,]+)(?=,|$)/g)?.map(c => c.replace(/^"|"$/g, "").trim()) ?? line.split(",").map(c => c.trim());
-            if (cols.length < 8) { errs.push(`Row ${i + 1}: needs 8 columns`); return; }
+            const cols = line.match(/(".*?"|[^,]+)(?=,|$)/g)?.map(c => c.replace(/^"|"$/g,"").trim()) ?? line.split(",").map(c => c.trim());
+            if (cols.length < 8) { errs.push(`Row ${i+1}: needs 8 columns`); return; }
             const [roundRaw, category, question, a, b, c, d, correctRaw] = cols;
-            const round = roundRaw.toLowerCase().replace(/\s/g, "") as Question["round"];
-            if (!["r1","r2","r3"].includes(round)) { errs.push(`Row ${i + 1}: round must be r1/r2/r3, got "${roundRaw}"`); return; }
-            const correctMap: Record<string, 0|1|2|3> = { a: 0, b: 1, c: 2, d: 3 };
-            const correct = correctMap[correctRaw.toLowerCase()];
-            if (correct === undefined) { errs.push(`Row ${i + 1}: correct must be A/B/C/D, got "${correctRaw}"`); return; }
-            parsed.push({ id: nextId + parsed.length, round, category, question, options: [a, b, c, d], correct, active: true });
+            const round = roundRaw.toLowerCase().replace(/\s/g,"") as Question["round"];
+            if (!["r1","r2","r3"].includes(round)) { errs.push(`Row ${i+1}: round must be r1/r2/r3`); return; }
+            const correct = ({ a:0, b:1, c:2, d:3 } as Record<string,number>)[correctRaw.toLowerCase()];
+            if (correct === undefined) { errs.push(`Row ${i+1}: correct must be A/B/C/D`); return; }
+            parsed.push({ round, category, question, options: [a,b,c,d], correct: correct as 0|1|2|3, active: true });
         });
 
         if (errs.length) { setError(errs.join("\n")); return; }
@@ -156,63 +249,36 @@ function CsvUploadModal({ onImport, onClose, nextId }: { onImport: (qs: Question
         reader.readAsText(file);
     };
 
-    const roundLabel = (r: string) => r === "r1" ? "Round 1" : r === "r2" ? "Round 2" : "Round 3";
+    const doImport = async () => {
+        setSaving(true);
+        await onImport(preview);
+        setSaving(false);
+        onClose();
+    };
 
     return (
         <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
             <div style={{ ...s.modal, maxWidth: 640 }}>
                 <div style={s.mh2}>📂 Import Questions via CSV</div>
-
                 <div style={{ background: "#f5f5ff", borderRadius: 8, padding: "12px 16px", marginBottom: 16, fontSize: "0.82rem", color: "#444", lineHeight: 1.7 }}>
-                    <strong>Expected columns (no header required):</strong><br />
-                    <code>round, category, question, optionA, optionB, optionC, optionD, correct</code><br />
-                    <span style={{ color: "#888" }}>round = r1 / r2 / r3 &nbsp;·&nbsp; correct = A / B / C / D</span>
+                    <strong>Columns:</strong> <code>round, category, question, optionA, optionB, optionC, optionD, correct</code><br />
+                    <span style={{ color: "#888" }}>round = r1/r2/r3 · correct = A/B/C/D</span>
                 </div>
+                <input type="file" accept=".csv,text/csv" onChange={onFile} style={{ fontSize: "0.85rem", fontFamily: "inherit", marginBottom: 16 }} />
 
-                <div style={{ marginBottom: 16 }}>
-                    <input type="file" accept=".csv,text/csv" onChange={onFile}
-                        style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
-                </div>
-
-                {error && (
-                    <pre style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", color: "#991b1b", fontSize: "0.78rem", marginBottom: 14, whiteSpace: "pre-wrap", maxHeight: 120, overflowY: "auto" }}>
-                        {error}
-                    </pre>
-                )}
+                {error && <pre style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", color: "#991b1b", fontSize: "0.78rem", marginBottom: 14, whiteSpace: "pre-wrap", maxHeight: 120, overflowY: "auto" }}>{error}</pre>}
 
                 {preview.length > 0 && (
-                    <>
-                        <div style={{ marginBottom: 10, fontSize: "0.85rem", color: "#166534", fontWeight: 600 }}>
-                            ✅ {preview.length} question{preview.length !== 1 ? "s" : ""} ready to import
-                            &nbsp;·&nbsp; R1: {preview.filter(q => q.round === "r1").length}
-                            &nbsp;·&nbsp; R2: {preview.filter(q => q.round === "r2").length}
-                            &nbsp;·&nbsp; R3: {preview.filter(q => q.round === "r3").length}
-                        </div>
-                        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0", maxHeight: 260, overflowY: "auto", marginBottom: 16 }}>
-                            <table style={s.table}>
-                                <thead><tr>{["Round","Category","Question","Correct"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-                                <tbody>
-                                    {preview.map((q, i) => (
-                                        <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                            <td style={s.td}>{roundLabel(q.round)}</td>
-                                            <td style={s.td}>{q.category}</td>
-                                            <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
-                                            <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>
-                                                {["A","B","C","D"][q.correct]}. {q.options[q.correct]}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </>
+                    <div style={{ marginBottom: 12, fontSize: "0.85rem", color: "#166534", fontWeight: 600 }}>
+                        ✅ {preview.length} questions ready — R1: {preview.filter(q=>q.round==="r1").length} · R2: {preview.filter(q=>q.round==="r2").length} · R3: {preview.filter(q=>q.round==="r3").length}
+                    </div>
                 )}
 
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                     <button onClick={onClose} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
-                    <button disabled={preview.length === 0} onClick={() => { onImport(preview); onClose(); }}
-                        style={{ ...s.btn, background: preview.length > 0 ? "#4361ee" : "#ccc", color: "#fff", padding: "8px 20px", cursor: preview.length > 0 ? "pointer" : "not-allowed" }}>
-                        Import {preview.length > 0 ? `${preview.length} Questions` : ""}
+                    <button disabled={preview.length === 0 || saving} onClick={doImport}
+                        style={{ ...s.btn, background: preview.length > 0 ? "#4361ee" : "#ccc", color: "#fff", padding: "8px 20px" }}>
+                        {saving ? "Importing…" : `Import ${preview.length > 0 ? preview.length + " Questions" : ""}`}
                     </button>
                 </div>
             </div>
@@ -220,30 +286,50 @@ function CsvUploadModal({ onImport, onClose, nextId }: { onImport: (qs: Question
     );
 }
 
+// ── Main Component ─────────────────────────────────────────────────────────────
 export function AdminQuestions() {
-    const [round,      setRound]      = useState<"r1"|"r2"|"r3">("r1");
-    const [qs,         setQs]         = useState<Question[]>(SEED);
-    const [editing,    setEditing]    = useState<Question | null>(null);
-    const [adding,     setAdding]     = useState(false);
-    const [csvOpen,    setCsvOpen]    = useState(false);
+    const [round,   setRound]   = useState<"r1"|"r2"|"r3">("r1");
+    const [qs,      setQs]      = useState<Question[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState<Question | null>(null);
+    const [adding,  setAdding]  = useState(false);
+    const [csvOpen,   setCsvOpen]   = useState(false);
+    const [pasteOpen, setPasteOpen] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        const snap = await getDocs(collection(db, "questions"));
+        setQs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Question)));
+        setLoading(false);
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const save = async (q: Question) => {
+        const { id, ...data } = q;
+        if (id) {
+            await updateDoc(doc(db, "questions", id), data);
+        } else {
+            await addDoc(collection(db, "questions"), data);
+        }
+        setEditing(null); setAdding(false);
+        await load();
+    };
+
+    const del = async (id: string) => {
+        if (!confirm("Delete this question?")) return;
+        await deleteDoc(doc(db, "questions", id));
+        setQs(prev => prev.filter(q => q.id !== id));
+    };
+
+    const importCSV = async (rows: Omit<Question,"id">[]) => {
+        const batch = writeBatch(db);
+        rows.forEach(q => batch.set(doc(collection(db, "questions")), q));
+        await batch.commit();
+        await load();
+    };
 
     const filtered = qs.filter(q => q.round === round);
-    const nextId   = Math.max(0, ...qs.map(q => q.id)) + 1;
-
-    const save = (q: Question) => {
-        setQs(prev => prev.some(x => x.id === q.id) ? prev.map(x => x.id === q.id ? q : x) : [...prev, q]);
-        setEditing(null);
-        setAdding(false);
-    };
-
-    const importCSV = (imported: Question[]) => {
-        setQs(prev => {
-            let id = Math.max(0, ...prev.map(q => q.id)) + 1;
-            return [...prev, ...imported.map(q => ({ ...q, id: id++ }))];
-        });
-    };
-
-    const del = (id: number) => { if (confirm("Delete this question?")) setQs(prev => prev.filter(q => q.id !== id)); };
 
     return (
         <>
@@ -252,13 +338,13 @@ export function AdminQuestions() {
                 q={editing ?? { ...BLANK, round }}
                 onSave={save}
                 onClose={() => { setEditing(null); setAdding(false); }}
-                nextId={nextId}
             />
         )}
-        {csvOpen && <CsvUploadModal onImport={importCSV} onClose={() => setCsvOpen(false)} nextId={nextId} />}
+        {csvOpen   && <CsvUploadModal onImport={importCSV} onClose={() => setCsvOpen(false)} />}
+        {pasteOpen && <PasteModal defaultRound={round} onImport={importCSV} onClose={() => setPasteOpen(false)} />}
 
         <div style={s.card}>
-            <h2 style={s.h2}>Questions</h2>
+            <h2 style={s.h2}>Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({qs.length} total)</span></h2>
             <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                 {(["r1","r2","r3"] as const).map(r => (
                     <button key={r} onClick={() => setRound(r)}
@@ -267,27 +353,27 @@ export function AdminQuestions() {
                     </button>
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                    <button onClick={() => setCsvOpen(true)} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
-                    <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
+                    <button onClick={() => { clearQuestionsCache(); alert("Question cache cleared. Players will get fresh questions on next game."); }}
+                        style={{ ...s.btn, background: "#f0f0f8", color: "#666", border: "1px solid #ddd" }}>🔄 Clear Cache</button>
+                    <button onClick={() => setPasteOpen(true)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a" }}>📋 Paste</button>
+                    <button onClick={() => setCsvOpen(true)}   style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
+                    <button onClick={() => setAdding(true)}  style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                 </div>
             </div>
 
-            {filtered.length === 0
-                ? <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>No questions for this round yet. Click "+ Add Question" to start.</p>
-                : (
+            {loading ? (
+                <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>Loading…</p>
+            ) : filtered.length === 0 ? (
+                <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>No questions for this round yet.</p>
+            ) : (
                 <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                     <table style={s.table}>
                         <thead>
-                            <tr>
-                                {["#", "Question", "Options (A/B/C/D)", "Correct", "Category", "Status", "Actions"].map(h => (
-                                    <th key={h} style={s.th}>{h}</th>
-                                ))}
-                            </tr>
+                            <tr>{["Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
                         </thead>
                         <tbody>
                             {filtered.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={s.td}>{q.id}</td>
                                     <td style={{ ...s.td, maxWidth: 220 }}>{q.question}</td>
                                     <td style={{ ...s.td, fontSize: "0.78rem", color: "#555" }}>
                                         {q.options.map((o, j) => (
@@ -302,7 +388,7 @@ export function AdminQuestions() {
                                     <td style={s.td}>
                                         <div style={{ display: "flex", gap: 6 }}>
                                             <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
-                                            <button onClick={() => del(q.id)}     style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
+                                            <button onClick={() => del(q.id!)}    style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -311,11 +397,6 @@ export function AdminQuestions() {
                     </table>
                 </div>
             )}
-        </div>
-
-        <div style={s.card}>
-            <h2 style={s.h2}>API Endpoints</h2>
-            <p style={s.p}><code>GET /api/questions/:round</code> · <code>POST /api/admin/questions</code> · <code>PUT /api/admin/questions/:id</code> · <code>DELETE /api/admin/questions/:id</code></p>
         </div>
         </>
     );

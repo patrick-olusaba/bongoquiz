@@ -81,15 +81,43 @@ export const CUSTOM_PRIZE_LIST_3: PrizeItem[] = [
     PRIZE_ITEMS.find(item => item.name === "Freeze Frame")!,
 ];
 
-export const getRandomPrizeItems = (count: number = 8): PrizeItem[] => {
-    const allItems = [...CUSTOM_PRIZE_LIST_1];
-
-    for (let i = allItems.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+export const getRandomPrizeItems = async (count: number = 8): Promise<PrizeItem[]> => {
+    try {
+        const { collection, getDocs } = await import("firebase/firestore");
+        const { db } = await import("../firebase.ts");
+        
+        const snap = await getDocs(collection(db, "powers"));
+        const activePowers = snap.docs
+            .map(d => ({ id: parseInt(d.id) || 0, ...d.data() } as PrizeItem))
+            .filter(p => p.active !== false);
+        
+        if (activePowers.length === 0) {
+            // Fallback to hardcoded list if no powers in DB
+            const allItems = [...CUSTOM_PRIZE_LIST_1];
+            for (let i = allItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+            }
+            return allItems.slice(0, count);
+        }
+        
+        // Shuffle active powers
+        const shuffled = [...activePowers];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        return shuffled.slice(0, count);
+    } catch (error) {
+        // Fallback to hardcoded list on error
+        const allItems = [...CUSTOM_PRIZE_LIST_1];
+        for (let i = allItems.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+        }
+        return allItems.slice(0, count);
     }
-
-    return allItems.slice(0, count);
 };
 
 

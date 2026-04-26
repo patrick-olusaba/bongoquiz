@@ -1,5 +1,7 @@
-// PlayerNameModal.tsx — name + phone entry, saved to localStorage
+// PlayerNameModal.tsx — name + phone entry, saved to localStorage + Firestore
 import { type FC, useState } from "react";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import '../../styles/Playernamemodal.css';
 
 interface Props {
@@ -20,6 +22,12 @@ export const PlayerNameModal: FC<Props> = ({ currentName, currentPhone, onSave, 
         if (!trimmedName)                          return setErr("Please enter your name.");
         if (!/^07\d{8}$/.test(trimmedPhone))       return setErr("Enter a valid phone number (07XXXXXXXX).");
         setErr("");
+        // Save to Firestore players collection (keyed by phone)
+        setDoc(doc(db, "players", trimmedPhone), {
+            name: trimmedName,
+            phone: trimmedPhone,
+            updatedAt: serverTimestamp(),
+        }, { merge: true }).catch(() => {});
         onSave(trimmedName, trimmedPhone);
         onClose();
     };

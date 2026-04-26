@@ -11,12 +11,14 @@ interface Props {
 
 export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
     const [cells, setCells] = useState<CellState[]>([]);
+    const [hasSelected, setHasSelected] = useState(false);
+    const [loading, setLoading] = useState(true);
     const cellsRef = useRef<CellState[]>([]);
 
     useEffect(() => { cellsRef.current = cells; }, [cells]);
 
-    const initializeCells = useCallback((): CellState[] => {
-        const prizes = getRandomPrizeItems(8);
+    const initializeCells = useCallback(async (): Promise<CellState[]> => {
+        const prizes = await getRandomPrizeItems(8);
         const result: CellState[] = [];
         for (let y = 0; y < 2; y++)
             for (let x = 0; x < 4; x++) {
@@ -27,17 +29,23 @@ export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
     }, []);
 
     useEffect(() => {
-        const c = initializeCells();
-        setCells(c);
-        cellsRef.current = c;
+        initializeCells().then(c => {
+            setCells(c);
+            cellsRef.current = c;
+            // Small delay to ensure canvas is ready
+            setTimeout(() => setLoading(false), 100);
+        });
     }, [initializeCells]);
 
-    const reshufflePrizes = useCallback(() => {
-        const prizes = getRandomPrizeItems(8);
+    const reshufflePrizes = useCallback(async () => {
+        if (hasSelected) return;
+        const prizes = await getRandomPrizeItems(8);
         setCells(prev => prev.map((cell, i) => ({ ...cell, isRevealed: false, prizeItem: prizes[i] })));
-    }, []);
+    }, [hasSelected]);
 
     const handleCellClick = useCallback((id: number) => {
+        if (hasSelected) return;
+        setHasSelected(true);
         setCells(prev => {
             const next = [...prev];
             if (next[id]) next[id] = { ...next[id], isRevealed: true };
@@ -47,7 +55,28 @@ export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
         if (cell?.prizeItem) {
             setTimeout(() => onPowerSelected(cell.prizeItem!), 3000);
         }
-    }, [onPowerSelected]);
+    }, [onPowerSelected, hasSelected]);
+
+    if (loading) {
+        return (
+            <div className="boxselect-root">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            border: '3px solid rgba(255,255,255,0.1)',
+                            borderTop: '3px solid #FFD700',
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                            margin: '0 auto 12px'
+                        }} />
+                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Preparing boxes...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="boxselect-root">

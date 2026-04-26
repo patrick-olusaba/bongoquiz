@@ -1,5 +1,7 @@
-// AdminView.tsx — Admin panel UI (frontend shell, no real API calls yet)
-import { useState } from "react";
+// AdminView.tsx — Admin panel UI
+import { useState, useEffect } from "react";
+import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import { AdminLogin }     from "./AdminLogin.tsx";
 import { AdminQuestions } from "./AdminQuestions.tsx";
 import { AdminPowers }    from "./AdminPowers.tsx";
@@ -67,96 +69,103 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard() {
-    const stats = [
-        { n: "1,284", l: "Total Players" },
-        { n: "KES 38,420", l: "Revenue Today" },
-        { n: "KES 214,800", l: "Revenue This Week" },
-        { n: "3,921", l: "Games Played" },
-        { n: "12,450", l: "Avg Score" },
-        { n: "87%", l: "Payment Success Rate" },
+    const [stats, setStats] = useState({ players: 0, gamesPlayed: 0, avgScore: 0, revenueToday: 0, revenueWeek: 0, paymentSuccessRate: 0 });
+
+    useEffect(() => {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
+
+        Promise.all([
+            getDocs(collection(db, "players")),
+            getDocs(collection(db, "gameSessions")),
+            getDocs(collection(db, "payments")),
+        ]).then(([playersSnap, sessSnap, paySnap]) => {
+            const sessions = sessSnap.docs.map(d => d.data());
+            const payments = paySnap.docs.map(d => d.data());
+
+            const uniquePlayers = playersSnap.size;
+            const gamesPlayed   = sessions.length;
+            const avgScore      = gamesPlayed ? Math.round(sessions.reduce((a, s) => a + (s.total ?? 0), 0) / gamesPlayed) : 0;
+
+            const paid = payments.filter(p => p.status === "paid");
+            const revenueToday = paid
+                .filter(p => p.createdAt?.toDate?.()?.getTime?.() >= todayStart)
+                .reduce((a, p) => a + (p.amount ?? 0), 0);
+            const revenueWeek = paid
+                .filter(p => p.createdAt?.toDate?.()?.getTime?.() >= weekStart)
+                .reduce((a, p) => a + (p.amount ?? 0), 0);
+            const paymentSuccessRate = payments.length
+                ? Math.round((paid.length / payments.length) * 100) : 0;
+
+            setStats({ players: uniquePlayers, gamesPlayed, avgScore, revenueToday, revenueWeek, paymentSuccessRate });
+        }).catch(() => {});
+    }, []);
+
+    const rows = [
+        { n: stats.players.toLocaleString(),                  l: "Total Players"          },
+        { n: `KES ${stats.revenueToday.toLocaleString()}`,    l: "Revenue Today"           },
+        { n: `KES ${stats.revenueWeek.toLocaleString()}`,     l: "Revenue This Week"       },
+        { n: stats.gamesPlayed.toLocaleString(),              l: "Games Played"            },
+        { n: stats.avgScore.toLocaleString(),                 l: "Avg Score"               },
+        { n: `${stats.paymentSuccessRate}%`,                  l: "Payment Success Rate"    },
     ];
+
     return <>
-        <div style={{ note: s.note } as any}>
-            <div style={s.note}>🟡 This is a frontend shell. Connect to <code>/api/admin/*</code> endpoints to load real data.</div>
-        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
-            {stats.map(st => (
+            {rows.map(st => (
                 <div key={st.l} style={s.stat}>
                     <div style={s.statN}>{st.n}</div>
                     <div style={s.statL}>{st.l}</div>
                 </div>
             ))}
         </div>
-        <Card title="Revenue Breakdown">
-            <Table
-                heads={["Metric", "Query"]}
-                rows={[
-                    ["Today's revenue",  "SUM(amount) WHERE status='paid' AND paid_at >= today"],
-                    ["This week",        "SUM(amount) WHERE status='paid' AND paid_at >= week_start"],
-                    ["Per round split",  "GROUP BY round — R1R2 vs R3 revenue"],
-                    ["Failed payments",  "COUNT WHERE status='failed' — drop-off rate"],
-                ]}
-            />
-        </Card>
-        <Card title="Admin Auth Note">
-            <p style={s.p}>All <code>/api/admin/*</code> routes require a JWT with <code>role: "admin"</code>. Admin accounts are managed in a separate <code>admins</code> table with hashed passwords.</p>
-        </Card>
     </>;
 }
 
 // ── Players ────────────────────────────────────────────────────────────────────
-type Player = { name: string; phone: string; games: string; best: string; streak: string; joined: string; status: "active" | "banned"; };
-
 function Players() {
     const [search, setSearch] = useState("");
-    const [players, setPlayers] = useState<Player[]>([
-        { name: "Jane Doe",     phone: "0712 345 678", games: "24", best: "42,500", streak: "7",  joined: "2026-01-10", status: "active" },
-        { name: "John Kamau",   phone: "0723 456 789", games: "18", best: "38,200", streak: "3",  joined: "2026-02-14", status: "active" },
-        { name: "Amina Wanjiru",phone: "0734 567 890", games: "5",  best: "12,100", streak: "1",  joined: "2026-04-01", status: "banned" },
-        { name: "Brian Otieno", phone: "0745 678 901", games: "31", best: "55,000", streak: "12", joined: "2025-12-20", status: "active" },
-    ]);
+    const [players, setPlayers] = useState<any[]>([]);
 
-    const toggle = (phone: string) =>
-        setPlayers(prev => prev.map(p => p.phone === phone ? { ...p, status: p.status === "banned" ? "active" : "banned" } : p));
+    useEffect(() => {
+        getDocs(collection(db, "players"))
+            .then(snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+            .catch(() => {});
+    }, []);
 
     const filtered = players.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) || p.phone.includes(search)
+        p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search)
     );
 
     return <>
         <Card title="Players">
-            <div style={{ marginBottom: 14 }}>
-                <input style={s.input} placeholder="Search by name or phone…" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
+            <input style={{ ...s.input, marginBottom: 14 }} placeholder="Search by name or phone…"
+                value={search} onChange={e => setSearch(e.target.value)} />
             <Table
-                heads={["Name", "Phone", "Games", "Best Score", "Streak", "Joined", "Status", "Actions"]}
-                rows={filtered.map(p => [
-                    p.name, p.phone, p.games, p.best, `${p.streak} days`, p.joined,
-                    <StatusBadge status={p.status} />,
-                    <button
-                        onClick={() => toggle(p.phone)}
-                        style={{ ...s.btn, background: p.status === "banned" ? "#dcfce7" : "#fee2e2", color: p.status === "banned" ? "#166534" : "#991b1b" }}>
-                        {p.status === "banned" ? "Unban" : "Ban"}
-                    </button>
-                ])}
+                heads={["Name", "Phone", "Joined"]}
+                rows={filtered.length ? filtered.map(p => [
+                    p.name ?? "—", p.phone ?? "—",
+                    p.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "—",
+                ]) : [["No players yet", "", ""]]}
             />
-        </Card>
-        <Card title="API Endpoints">
-            <p style={s.p}><code>GET /api/admin/players</code> — list all players</p>
         </Card>
     </>;
 }
 
 // ── Payments ───────────────────────────────────────────────────────────────────
 function Payments() {
+    const [rows, setRows] = useState<any[]>([]);
     const [filter, setFilter] = useState("all");
-    const all = [
-        ["ws_CO_001", "0712 345 678", "20",  "r1r2", "paid",    "QKA123XYZ", "2026-04-24 09:12"],
-        ["ws_CO_002", "0723 456 789", "10",  "r3",   "paid",    "QKB456ABC", "2026-04-24 09:45"],
-        ["ws_CO_003", "0734 567 890", "20",  "r1r2", "failed",  "—",         "2026-04-24 10:01"],
-        ["ws_CO_004", "0745 678 901", "20",  "r1r2", "pending", "—",         "2026-04-24 10:28"],
-    ];
-    const rows = filter === "all" ? all : all.filter(r => r[4] === filter);
+
+    useEffect(() => {
+        getDocs(collection(db, "payments"))
+            .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))))
+            .catch(() => {});
+    }, []);
+
+    const filtered = filter === "all" ? rows : rows.filter(r => r.status === filter);
 
     return <>
         <Card title="Payments">
@@ -167,65 +176,121 @@ function Payments() {
                         {f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                 ))}
-                <button style={{ ...s.btn, background: "#ffd200", color: "#000", marginLeft: "auto" }}>⬇️ Export CSV</button>
             </div>
             <Table
                 heads={["Checkout ID", "Phone", "Amount (KES)", "Round", "Status", "M-Pesa Receipt", "Date"]}
-                rows={rows.map(r => [...r.slice(0, 4), <StatusBadge status={r[4]} />, r[5], r[6]])}
+                rows={filtered.length ? filtered.map(r => [
+                    r.checkoutId ?? "—", r.phone ?? "—", r.amount ?? "—", r.round ?? "—",
+                    <StatusBadge status={r.status ?? "pending"} />,
+                    r.receipt ?? "—",
+                    r.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                ]) : [["No payments yet", "", "", "", "", "", ""]]}
             />
-        </Card>
-        <Card title="API Endpoints">
-            <p style={s.p}><code>GET /api/admin/payments</code> — all transactions (supports <code>?status=paid</code> filter)</p>
         </Card>
     </>;
 }
 
 // ── Game Sessions ──────────────────────────────────────────────────────────────
 function GameSessions() {
-    const rows = [
-        ["Jane Doe",     "Double Points",       "8,200", "12,500", "25,000", "45,700", "2026-04-24 09:15"],
-        ["John Kamau",   "No Penalty",          "6,100", "9,800",  "15,000", "30,900", "2026-04-24 09:50"],
-        ["Brian Otieno", "Mirror Effect",       "9,500", "14,000", "7,500",  "31,000", "2026-04-24 10:05"],
-    ];
+    const [rows, setRows] = useState<any[]>([]);
+    const [search, setSearch] = useState("");
+
+    useEffect(() => {
+        getDocs(collection(db, "gameSessions"))
+            .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))
+                .slice(0, 100)))
+            .catch(() => {});
+    }, []);
+
+    const filtered = rows.filter(r => {
+        if (!search) return true;
+        const term = search.toLowerCase();
+        return (r.name ?? "").toLowerCase().includes(term) || 
+               (r.phone ?? "").includes(term);
+    });
+
     return <>
         <Card title="Game Sessions">
+            <div style={{ marginBottom: 16 }}>
+                <input 
+                    type="text" 
+                    placeholder="Search by name or phone..." 
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={s.input}
+                />
+            </div>
             <Table
-                heads={["Player", "Power Used", "R1 Score", "R2 Score", "R3 Bonus", "Total", "Date"]}
-                rows={rows}
+                heads={["Player", "Phone", "Power Used", "R1", "R2", "R3", "Total", "Date"]}
+                rows={filtered.length ? filtered.map(r => [
+                    r.name ?? "—", r.phone ?? "—", r.power ?? "—",
+                    (r.r1Score ?? 0).toLocaleString(),
+                    (r.r2Score ?? 0).toLocaleString(),
+                    (r.r3Bonus ?? 0).toLocaleString(),
+                    (r.total   ?? 0).toLocaleString(),
+                    r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
             />
-        </Card>
-        <Card title="API Endpoints">
-            <p style={s.p}><code>GET /api/admin/games</code> — all game sessions (supports <code>?date=today</code> filter)</p>
         </Card>
     </>;
 }
 
 // ── Leaderboard ────────────────────────────────────────────────────────────────
 function AdminLeaderboard() {
-    const [period, setPeriod] = useState("all");
-    const rows = [
-        ["1", "Brian Otieno", "55,000", "2026-04-20"],
-        ["2", "Jane Doe",     "45,700", "2026-04-24"],
-        ["3", "John Kamau",   "38,200", "2026-04-18"],
-    ];
+    const [rows, setRows] = useState<any[]>([]);
+    const [search, setSearch] = useState("");
+
+    useEffect(() => {
+        getDocs(collection(db, "leaderboard"))
+            .then(snap => {
+                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // Group by phone and keep only highest score per phone
+                const byPhone = new Map<string, any>();
+                all.forEach(entry => {
+                    const phone = entry.phone || entry.id;
+                    const existing = byPhone.get(phone);
+                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) {
+                        byPhone.set(phone, entry);
+                    }
+                });
+                
+                const sorted = Array.from(byPhone.values())
+                    .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
+                    .slice(0, 50)
+                    .map((d, i) => ({ ...d, rank: i + 1 }));
+                setRows(sorted);
+            })
+            .catch(() => {});
+    }, []);
+
+    const filtered = rows.filter(r => {
+        if (!search) return true;
+        const term = search.toLowerCase();
+        return (r.name ?? "").toLowerCase().includes(term) || 
+               (r.phone ?? "").includes(term);
+    });
+
     return <>
         <Card title="Leaderboard">
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {["all", "today", "week"].map(p => (
-                    <button key={p} onClick={() => setPeriod(p)}
-                        style={{ ...s.btn, background: period === p ? "#4361ee" : "#f0f0f8", color: period === p ? "#fff" : "#444" }}>
-                        {p === "all" ? "All Time" : p === "today" ? "Today" : "This Week"}
-                    </button>
-                ))}
-                <button style={{ ...s.btn, background: "#fee2e2", color: "#991b1b", marginLeft: "auto" }}>🗑 Reset</button>
+            <div style={{ marginBottom: 16 }}>
+                <input 
+                    type="text" 
+                    placeholder="Search by name or phone..." 
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={s.input}
+                />
             </div>
             <Table
-                heads={["Rank", "Player", "Score", "Date"]}
-                rows={rows}
+                heads={["Rank", "Player", "Phone", "Score", "Date"]}
+                rows={filtered.length ? filtered.map(r => [
+                    String(r.rank), r.name ?? "—", r.phone ?? "—",
+                    (r.score ?? 0).toLocaleString(),
+                    r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                ]) : [["No entries found", "", "", "", ""]]}
             />
-        </Card>
-        <Card title="API Endpoints">
-            <p style={s.p}><code>GET /api/leaderboard?period=today|week</code></p>
         </Card>
     </>;
 }
@@ -346,9 +411,11 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 
 // ── Main export ────────────────────────────────────────────────────────────────
 export function AdminView() {
-    const [authed, setAuthed] = useState(() => sessionStorage.getItem("adm_auth") === "1");
+    const [authed, setAuthed] = useState(() => sessionStorage.getItem("adminAuthed") === "1");
     const [tab, setTab] = useState<AdminTab>("dashboard");
     const changeTab = (t: AdminTab) => { setTab(t); document.getElementById("adm-content")?.scrollTo({ top: 0 }); };
+
+    const handleLogout = () => { sessionStorage.removeItem("adminAuthed"); setAuthed(false); };
 
     if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
 
@@ -360,7 +427,7 @@ export function AdminView() {
                 <h1>🛠️ Bongo Quiz — Admin Panel</h1>
                 <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <a href="#/">← Back to Game</a>
-                    <button onClick={() => { sessionStorage.removeItem("adm_auth"); setAuthed(false); }}
+                    <button onClick={handleLogout}
                         style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#fee2e2", color: "#991b1b", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit" }}>
                         Logout
                     </button>

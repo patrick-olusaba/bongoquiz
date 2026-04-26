@@ -30,15 +30,35 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
         setPlayerPhone(phone);
         localStorage.setItem("bongo_player_name", name);
         localStorage.setItem("bongo_player_phone", phone);
+        localStorage.setItem("bongo_last_activity", Date.now().toString());
+    };
+
+    const checkInactivity = () => {
+        const lastActivity = localStorage.getItem("bongo_last_activity");
+        if (lastActivity) {
+            const hoursSinceActivity = (Date.now() - parseInt(lastActivity)) / (1000 * 60 * 60);
+            if (hoursSinceActivity >= 4) {
+                // Clear cache after 4 hours of inactivity
+                ["bongo_player_name","bongo_player_phone","bongo_best_score",
+                 "bongo_session_score","bongo_achievements","bongo_streak","bongo_last_activity"].forEach(k => localStorage.removeItem(k));
+                setPlayerName("Player");
+                setPlayerPhone("");
+            }
+        }
     };
 
     const handlePlay = () => {
+        localStorage.setItem("bongo_last_activity", Date.now().toString());
         if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) {
             setShowNameModal(true);
         } else {
             onStart(playerName);
         }
     };
+
+    useEffect(() => {
+        checkInactivity();
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -105,9 +125,11 @@ export const HomeScreen: FC<Props> = ({ onStart, onLeaderboard }) => {
 
                 {/* Player name + personal best bar */}
                 <div className="home-player-bar">
-                    <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}>
-                        👤 {playerName} {playerPhone && <span style={{ fontSize: "0.75rem", color: "#aaa" }}>· {playerPhone}</span>} <span className="home-player-edit">✏️</span>
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}>
+                            👤 {playerName} {playerPhone && <span style={{ fontSize: "0.75rem", color: "#aaa" }}>· {playerPhone}</span>} <span className="home-player-edit">✏️</span>
+                        </button>
+                    </div>
                     {(personalBest > 0 || streakInfo.current > 0) && (
                         <div className="home-player-bar-row">
                             {personalBest > 0 && (

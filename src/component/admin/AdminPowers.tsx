@@ -1,5 +1,7 @@
 // AdminPowers.tsx — Powers manager with images, edit & add
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 
 import BonusTime            from "../../assets/Items/BonusTime.png";
 import TimeTax              from "../../assets/Items/TimeTax.png";
@@ -20,7 +22,7 @@ import SuddenDeath          from "../../assets/Items/SuddenDeathDisqualified.png
 import Disqualified         from "../../assets/Items/Disqualified.png";
 
 type Power = {
-    id: number;
+    id?: string;
     name: string;
     img: string;           // data URL (uploaded) or imported asset URL
     roundEffect: string;
@@ -28,24 +30,24 @@ type Power = {
     active: boolean;
 };
 
-const SEED: Power[] = [
-    { id:  1, name: "Bonus Time",               img: BonusTime,        roundEffect: "+30s R1 / +15s R2",         scoreModifier: "None",                              active: true },
-    { id:  2, name: "Time Tax",                 img: TimeTax,          roundEffect: "−20s R1 / −12s R2",         scoreModifier: "None",                              active: true },
-    { id:  3, name: "Freeze Frame",             img: FreezeFrame,      roundEffect: "Pause 15s R1 / 10s R2",     scoreModifier: "None",                              active: true },
-    { id:  4, name: "No Penalty",               img: NoPenalty,        roundEffect: "Wrong = 0 pts",             scoreModifier: "None",                              active: true },
-    { id:  5, name: "Second Chance",            img: SecondChance,     roundEffect: "1 retry on wrong",          scoreModifier: "None",                              active: true },
-    { id:  6, name: "Question Swap",            img: QuestionSwap,     roundEffect: "Skip 3 R1 / 2 R2",         scoreModifier: "None",                              active: true },
-    { id:  7, name: "Borrowed Brain",           img: BorrowedBrain,    roundEffect: "Eliminate 2 options",       scoreModifier: "None",                              active: true },
-    { id:  8, name: "Double Points",            img: DoublePoints,     roundEffect: "R2 correct ×2",             scoreModifier: "R1 score ×2",                       active: true },
-    { id:  9, name: "Double Or Nothing",        img: DoubleOrNothing,  roundEffect: "None",                      scoreModifier: "All correct → ×2, any wrong → 0",   active: true },
-    { id: 10, name: "Point Gamble",             img: PointGamble,      roundEffect: "None",                      scoreModifier: "50%: ×2 or ÷2",                     active: true },
-    { id: 11, name: "Point Chance Brain",       img: PointChanceBrain, roundEffect: "None",                      scoreModifier: "50%: ×2 or unchanged",              active: true },
-    { id: 12, name: "Insurance",                img: Insurance,        roundEffect: "None",                      scoreModifier: "Floor: 500 (R1), 1000 (R2)",        active: true },
-    { id: 13, name: "Mirror Effect",            img: MirrorEffect,     roundEffect: "None",                      scoreModifier: "Score ×1.5",                        active: true },
-    { id: 14, name: "Steal A Point",            img: StealAPoint,      roundEffect: "None",                      scoreModifier: "+200 (R1), +500 (R2)",              active: true },
-    { id: 15, name: "Swap Fate",                img: SwapFate,         roundEffect: "None",                      scoreModifier: "Score ×1.25",                       active: true },
-    { id: 16, name: "Sudden Death Disqualified",img: SuddenDeath,      roundEffect: "None",                      scoreModifier: "Any wrong → ÷2 (R1), → 0 (R2)",    active: true },
-    { id: 17, name: "Disqualified",             img: Disqualified,     roundEffect: "None",                      scoreModifier: "Final score = 0",                   active: true },
+const SEED: Omit<Power, "id">[] = [
+    { name: "Bonus Time",               img: BonusTime,        roundEffect: "+30s R1 / +15s R2",         scoreModifier: "None",                              active: true },
+    { name: "Time Tax",                 img: TimeTax,          roundEffect: "−20s R1 / −12s R2",         scoreModifier: "None",                              active: true },
+    { name: "Freeze Frame",             img: FreezeFrame,      roundEffect: "Pause 15s R1 / 10s R2",     scoreModifier: "None",                              active: true },
+    { name: "No Penalty",               img: NoPenalty,        roundEffect: "Wrong = 0 pts",             scoreModifier: "None",                              active: true },
+    { name: "Second Chance",            img: SecondChance,     roundEffect: "1 retry on wrong",          scoreModifier: "None",                              active: true },
+    { name: "Question Swap",            img: QuestionSwap,     roundEffect: "Skip 3 R1 / 2 R2",         scoreModifier: "None",                              active: true },
+    { name: "Borrowed Brain",           img: BorrowedBrain,    roundEffect: "Eliminate 2 options",       scoreModifier: "None",                              active: true },
+    { name: "Double Points",            img: DoublePoints,     roundEffect: "R2 correct ×2",             scoreModifier: "R1 score ×2",                       active: true },
+    { name: "Double Or Nothing",        img: DoubleOrNothing,  roundEffect: "None",                      scoreModifier: "All correct → ×2, any wrong → 0",   active: true },
+    { name: "Point Gamble",             img: PointGamble,      roundEffect: "None",                      scoreModifier: "50%: ×2 or ÷2",                     active: true },
+    { name: "Point Chance Brain",       img: PointChanceBrain, roundEffect: "None",                      scoreModifier: "50%: ×2 or unchanged",              active: true },
+    { name: "Insurance",                img: Insurance,        roundEffect: "None",                      scoreModifier: "Floor: 500 (R1), 1000 (R2)",        active: true },
+    { name: "Mirror Effect",            img: MirrorEffect,     roundEffect: "None",                      scoreModifier: "Score ×1.5",                        active: true },
+    { name: "Steal A Point",            img: StealAPoint,      roundEffect: "None",                      scoreModifier: "+200 (R1), +500 (R2)",              active: true },
+    { name: "Swap Fate",                img: SwapFate,         roundEffect: "None",                      scoreModifier: "Score ×1.25",                       active: true },
+    { name: "Sudden Death Disqualified",img: SuddenDeath,      roundEffect: "None",                      scoreModifier: "Any wrong → ÷2 (R1), → 0 (R2)",    active: true },
+    { name: "Disqualified",             img: Disqualified,     roundEffect: "None",                      scoreModifier: "Final score = 0",                   active: true },
 ];
 
 const BLANK: Omit<Power, "id"> = { name: "", img: "", roundEffect: "", scoreModifier: "", active: true };
@@ -68,9 +70,9 @@ const s: Record<string, React.CSSProperties> = {
     peff:    { fontSize: "0.78rem", color: "#666", lineHeight: 1.5 },
 };
 
-type ModalProps = { power: Power | null; onSave: (p: Power) => void; onClose: () => void; nextId: number; };
+type ModalProps = { power: Power | null; onSave: (p: Power) => void; onClose: () => void; };
 
-function PowerModal({ power, onSave, onClose, nextId }: ModalProps) {
+function PowerModal({ power, onSave, onClose }: ModalProps) {
     const [form, setForm] = useState<Omit<Power, "id"> & { id?: number }>(power ?? BLANK);
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -84,7 +86,7 @@ function PowerModal({ power, onSave, onClose, nextId }: ModalProps) {
 
     const save = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...form, id: form.id ?? nextId } as Power);
+        onSave(form as Power);
     };
 
     return (
@@ -141,24 +143,53 @@ function PowerModal({ power, onSave, onClose, nextId }: ModalProps) {
 }
 
 export function AdminPowers() {
-    const [powers,  setPowers]  = useState<Power[]>(SEED);
+    const [powers,  setPowers]  = useState<Power[]>([]);
     const [editing, setEditing] = useState<Power | null>(null);
     const [adding,  setAdding]  = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    const nextId = Math.max(0, ...powers.map(p => p.id)) + 1;
+    useEffect(() => {
+        getDocs(collection(db, "powers"))
+            .then(snap => {
+                if (snap.empty) {
+                    // Seed initial data
+                    Promise.all(SEED.map(p => addDoc(collection(db, "powers"), p)))
+                        .then(() => getDocs(collection(db, "powers")))
+                        .then(snap => setPowers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Power))))
+                        .finally(() => setLoading(false));
+                } else {
+                    setPowers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Power)));
+                    setLoading(false);
+                }
+            })
+            .catch(() => setLoading(false));
+    }, []);
 
-    const save = (p: Power) => {
-        setPowers(prev => prev.some(x => x.id === p.id) ? prev.map(x => x.id === p.id ? p : x) : [...prev, p]);
+    const save = async (p: Power) => {
+        if (p.id) {
+            await updateDoc(doc(db, "powers", p.id), { name: p.name, img: p.img, roundEffect: p.roundEffect, scoreModifier: p.scoreModifier, active: p.active });
+            setPowers(prev => prev.map(x => x.id === p.id ? p : x));
+        } else {
+            const docRef = await addDoc(collection(db, "powers"), { name: p.name, img: p.img, roundEffect: p.roundEffect, scoreModifier: p.scoreModifier, active: p.active });
+            setPowers(prev => [...prev, { ...p, id: docRef.id }]);
+        }
         setEditing(null);
         setAdding(false);
     };
 
-    const del = (id: number) => { if (confirm("Delete this power?")) setPowers(prev => prev.filter(p => p.id !== id)); };
+    const del = async (id: string) => { 
+        if (confirm("Delete this power?")) {
+            await deleteDoc(doc(db, "powers", id));
+            setPowers(prev => prev.filter(p => p.id !== id));
+        }
+    };
+
+    if (loading) return <div style={s.card}><p>Loading powers...</p></div>;
 
     return (
         <>
         {(editing || adding) && (
-            <PowerModal power={editing} onSave={save} onClose={() => { setEditing(null); setAdding(false); }} nextId={nextId} />
+            <PowerModal power={editing} onSave={save} onClose={() => { setEditing(null); setAdding(false); }} />
         )}
 
         <div style={s.card}>
@@ -181,7 +212,7 @@ export function AdminPowers() {
                                 {p.active ? "active" : "inactive"}
                             </span>
                             <button onClick={() => setEditing(p)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e", marginLeft: "auto" }}>Edit</button>
-                            <button onClick={() => del(p.id)}     style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
+                            <button onClick={() => del(p.id!)}     style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
                         </div>
                     </div>
                 ))}

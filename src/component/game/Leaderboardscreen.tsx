@@ -1,28 +1,17 @@
 // LeaderboardScreen.tsx
-import { type FC, useEffect, useState } from "react";
+import { type FC, useEffect, useState, useRef } from "react";
+import { collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import '../../styles/Leaderboardscreen.css';
 
 interface LeaderboardEntry {
     rank: number;
     name: string;
+    phone?: string;
     score: number;
     badge: string;
     isCurrentPlayer?: boolean;
 }
-
-// Dummy data — replace with API call when backend is ready
-const DUMMY_LEADERS: LeaderboardEntry[] = [
-    { rank: 1,  name: "NairobiNinja",    score: 45000, badge: "👑" },
-    { rank: 2,  name: "SavannaScholar",  score: 40000, badge: "🥈" },
-    { rank: 3,  name: "KilimanjaroKid",  score: 35000, badge: "🥉" },
-    { rank: 4,  name: "MombasaMaster",   score: 30000, badge: "⭐" },
-    { rank: 5,  name: "SerengtiSage",    score: 25000, badge: "⭐" },
-    { rank: 6,  name: "RiftValleyRex",   score: 20000, badge: "⭐" },
-    { rank: 7,  name: "LakeVictoriaVip", score: 15000, badge: "⭐" },
-    { rank: 8,  name: "NakuruNerd",      score: 13000, badge: "⭐" },
-    { rank: 9,  name: "AberdareAce",     score: 12000, badge: "⭐" },
-    { rank: 10, name: "TsavoTrivia",     score: 10000, badge: "⭐" },
-];
 
 interface Props {
     playerScore: number;
@@ -34,24 +23,61 @@ interface Props {
 export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", onPlayAgain, onClose }) => {
     const [visible, setVisible] = useState(false);
     const [highlightRow, setHighlightRow] = useState(-1);
+    const [dbLeaders, setDbLeaders] = useState<LeaderboardEntry[]>([]);
+    const savedRef = useRef(false);
 
-    // Build list — inject player at correct rank
-    const entries: LeaderboardEntry[] = (() => {
-        const playerRank = DUMMY_LEADERS.filter(e => e.score > playerScore).length + 1;
-        const list = DUMMY_LEADERS.map(e => ({ ...e }));
-        const playerEntry: LeaderboardEntry = {
-            rank: playerRank,
-            name: playerName,
-            score: playerScore,
-            badge: playerRank <= 3 ? ["👑","🥈","🥉"][playerRank - 1] : "⭐",
-            isCurrentPlayer: true,
-        };
-        // Insert player and re-sort
-        list.push(playerEntry);
-        list.sort((a, b) => b.score - a.score);
-        list.forEach((e, i) => { e.rank = i + 1; });
-        return list.slice(0, 10);
-    })();
+    useEffect(() => {
+        // Save this player's score first
+        if (!savedRef.current) {
+            savedRef.current = true;
+            const phone = localStorage.getItem("bongo_player_phone") ?? "";
+            const leaderboardKey = `lb_${phone}_${playerScore}`;
+            const lastSaved = sessionStorage.getItem("last_leaderboard_saved");
+            
+            if (lastSaved !== leaderboardKey && phone) {
+                sessionStorage.setItem("last_leaderboard_saved", leaderboardKey);
+                addDoc(collection(db, "leaderboard"), {
+                    name: playerName, phone, score: playerScore, playedAt: serverTimestamp(),
+                }).catch(() => {});
+            }
+        }
+        
+        // Fetch and filter leaderboard
+        getDocs(collection(db, "leaderboard"))
+            .then(snap => {
+                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // Group by phone and keep only highest score per phone
+                const byPhone = new Map<string, any>();
+                all.forEach(entry => {
+                    const phone = entry.phone || entry.id;
+                    const existing = byPhone.get(phone);
+                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) {
+                        byPhone.set(phone, entry);
+                    }
+                });
+                
+                // Sort by score and add rank
+                const sorted = Array.from(byPhone.values())
+                    .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
+                    .slice(0, 10)
+                    .map((d, i) => ({
+                        rank: i + 1,
+                        name: d.name as string,
+                        phone: d.phone as string,
+                        score: d.score as number,
+                        badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
+                    }));
+                setDbLeaders(sorted);
+            })
+            .catch(() => {});
+    }, [playerScore, playerName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Mark current player in the fetched list
+    const entries: LeaderboardEntry[] = dbLeaders.map(e => ({
+        ...e,
+        isCurrentPlayer: e.name === playerName && e.score === playerScore,
+    }));
 
     useEffect(() => {
         const t1 = setTimeout(() => setVisible(true), 50);
@@ -60,7 +86,7 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
             if (idx !== -1) setHighlightRow(idx);
         }, 800);
         return () => { clearTimeout(t1); clearTimeout(t2); };
-    }, []);
+    }, [dbLeaders]); // re-run once data loads
 
     const podium = entries.slice(0, 3);
 
@@ -125,35 +151,42 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
 
                 {/* Full table */}
                 <div className="lb-table">
-                    {entries.map((entry, i) => (
-                        <div
-                            key={entry.rank}
-                            className={`lb-row
-                                ${entry.isCurrentPlayer ? "lb-row--player" : ""}
-                                ${i === highlightRow ? "lb-row--highlight" : ""}
-                                ${entry.rank <= 3 ? "lb-row--top3" : ""}
-                            `}
-                            style={{ animationDelay: `${i * 60}ms` }}
-                        >
-                            <div className="lb-row-rank">
-                                {entry.rank <= 3
-                                    ? ["🥇","🥈","🥉"][entry.rank - 1]
-                                    : <span className="lb-row-rank-num">{entry.rank}</span>
-                                }
+                    {entries.map((entry, i) => {
+                        const maskedPhone = entry.phone 
+                            ? entry.phone.slice(0, 4) + "******" 
+                            : "";
+                        
+                        return (
+                            <div
+                                key={entry.rank}
+                                className={`lb-row
+                                    ${entry.isCurrentPlayer ? "lb-row--player" : ""}
+                                    ${i === highlightRow ? "lb-row--highlight" : ""}
+                                    ${entry.rank <= 3 ? "lb-row--top3" : ""}
+                                `}
+                                style={{ animationDelay: `${i * 60}ms` }}
+                            >
+                                <div className="lb-row-rank">
+                                    {entry.rank <= 3
+                                        ? ["🥇","🥈","🥉"][entry.rank - 1]
+                                        : <span className="lb-row-rank-num">{entry.rank}</span>
+                                    }
+                                </div>
+                                <div className="lb-row-avatar">
+                                    {entry.name.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="lb-row-name">
+                                    {entry.name}
+                                    {entry.isCurrentPlayer && <span className="lb-you-tag">YOU</span>}
+                                    {maskedPhone && <div style={{ fontSize: "0.75rem", color: "#888", marginTop: 2 }}>{maskedPhone}</div>}
+                                </div>
+                                <div className="lb-row-score">
+                                    {entry.score.toLocaleString()}
+                                    <span className="lb-row-pts">pts</span>
+                                </div>
                             </div>
-                            <div className="lb-row-avatar">
-                                {entry.name.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="lb-row-name">
-                                {entry.name}
-                                {entry.isCurrentPlayer && <span className="lb-you-tag">YOU</span>}
-                            </div>
-                            <div className="lb-row-score">
-                                {entry.score.toLocaleString()}
-                                <span className="lb-row-pts">pts</span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {/* Actions */}

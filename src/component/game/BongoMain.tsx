@@ -1,5 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
-import { type FC, useState } from "react";
+import { type FC, useState, useRef } from "react";
+import { addDoc, updateDoc, doc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 
@@ -32,13 +34,13 @@ function applyR1Power(rawScore: number, correct: number, total: number, power: P
         case "Swap Fate":                  s = Math.floor(s * 1.25); break;
         default: break;
     }
-    return Math.max(0, Math.round(s));
+    return Math.round(s);
 }
 
 // ─── R2 score modifier ────────────────────────────────────────────────────────
 // rawScore already includes correct/wrong/pass deltas from the screen
 function applyR2Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
-    let s = Math.max(0, rawScore); // floor at 0 before power
+    let s = rawScore; // Allow negative scores
     switch (power.name) {
         case "Disqualified":               return 0;
         // Double Points already handled in screen (ptsCorrect × 2)
@@ -52,7 +54,7 @@ function applyR2Power(rawScore: number, correct: number, total: number, power: P
         case "Swap Fate":                  s = Math.floor(s * 1.25); break;
         default: break;
     }
-    return Math.max(0, Math.round(s));
+    return Math.round(s);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -78,6 +80,20 @@ export const BongoMain: FC = () => {
     // R3
     const [r3Bonus,     setR3Bonus]     = useState(0);
 
+    const sessionIdRef = useRef<string | null>(null);
+
+    const saveSession = async (data: Record<string, any>) => {
+        const phone = localStorage.getItem("bongo_player_phone") ?? "";
+        if (!sessionIdRef.current) {
+            const docRef = await addDoc(collection(db, "gameSessions"), {
+                name: playerName, phone, ...data, startedAt: serverTimestamp(),
+            }).catch(() => null);
+            if (docRef) sessionIdRef.current = docRef.id;
+        } else {
+            await updateDoc(doc(db, "gameSessions", sessionIdRef.current), data).catch(() => {});
+        }
+    };
+
     const resetGame = () => {
         localStorage.removeItem("bongo_session_score");
         const savedName = localStorage.getItem("bongo_player_name") ?? "Player";
@@ -86,6 +102,7 @@ export const BongoMain: FC = () => {
         setR1Score(0); setR1TimeLeft(0); setR1MaxStreak(0); setR1Correct(0); setR1Total(0);
         setR2Category("Sport"); setR2Score(0); setR2Correct(0); setR2Total(0);
         setR3Bonus(0);
+        sessionIdRef.current = null;
         setScreen("home");
     };
 

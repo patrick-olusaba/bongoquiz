@@ -16,6 +16,7 @@ interface Props {
 
 export const Round2ResultScreen: FC<Props> = ({ power, category, r1Score, r2Score, correct, total, onContinue }) => {
     const cm = CATEGORY_META[category];
+    const scorePrefix = r2Score > 0 ? "+" : "";
     return (
         <div className="game-root">
             <div className="game-card game-card--center">
@@ -24,7 +25,7 @@ export const Round2ResultScreen: FC<Props> = ({ power, category, r1Score, r2Scor
                 <p className="game-result-sub">
                     Category: <strong style={{ color: cm.color }}>{category}</strong> · {correct}/{total} correct
                 </p>
-                <div className="game-big-score" style={{ color: "#4d96ff" }}>+{r2Score} pts</div>
+                <div className="game-big-score" style={{ color: r2Score < 0 ? "#ff6b6b" : "#4d96ff" }}>{scorePrefix}{r2Score} pts</div>
 
                 <div className="game-score-grid">
                     {[

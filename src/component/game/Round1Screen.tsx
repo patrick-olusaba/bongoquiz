@@ -1,7 +1,8 @@
 // Round1Screen.tsx
 import { type FC, useEffect, useRef, useState } from "react";
 import type { PrizeItem } from "../../types/bongotypes.ts";
-import { R1_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
+import { shuffle, type Question } from "../../types/gametypes.ts";
+import { useR1Questions } from "../../hooks/useQuestions.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
 import '../../styles/game.css';
 
@@ -28,7 +29,8 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     const baseTime = hasBonusTime ? 105 : hasTimeTax ? 55 : 75;
     const swapLimit = 3;
 
-    const [questions]   = useState<Question[]>(() => shuffle(R1_QUESTIONS));
+    const { questions, loading } = useR1Questions();
+
     const [index,       setIndex]       = useState(0);
     const [score,       setScore]       = useState(0);
     const [correct,     setCorrect]     = useState(0);
@@ -64,7 +66,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     };
 
     useEffect(() => {
-        if (frozen) return;
+        if (frozen || loading) return;
         timerRef.current = setInterval(() => {
             setTimer(t => {
                 const next = t - 1;
@@ -78,7 +80,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
-    }, [frozen]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [frozen, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const nextQuestion = () => {
         const next = index + 1;
@@ -182,6 +184,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
 
     const pct = (timer / baseTime) * 100;
     const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";
+    if (loading) return <div className="game-root"><div className="game-card" style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.1rem", color:"#888" }}>⏳ Loading questions…</div></div>;
     const q = questions[index];
     if (!q) return null;
 

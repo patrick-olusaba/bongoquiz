@@ -46,10 +46,10 @@ function snapToCenter(rotDeg: number): number {
 }
 
 function calcFinalRotation(currentRot: number, targetIndex: number): number {
-    const fullSpins  = (Math.floor(Math.random() * 5) + 7) * 360;
+    const fullSpins    = (Math.floor(Math.random() * 5) + 7) * 360;
     const targetCenter = -(targetIndex * SLICE);
-    const targetMod  = ((targetCenter % 360) + 360) % 360;
-    const currentMod = ((currentRot   % 360) + 360) % 360;
+    const targetMod    = ((targetCenter % 360) + 360) % 360;
+    const currentMod   = ((currentRot   % 360) + 360) % 360;
     let delta = targetMod - currentMod;
     if (delta <= 0) delta += 360;
     if (delta < SLICE * 2) delta += 360;
@@ -98,7 +98,6 @@ const Confetti: FC = () => {
                 p.x += p.dx;
                 p.y += p.dy;
                 p.r += p.dr;
-                // Recycle pieces that fall off the bottom
                 if (p.y > canvas.height + 20) {
                     p.y = -20 - Math.random() * 100;
                     p.x = Math.random() * canvas.width;
@@ -154,17 +153,17 @@ const BulbRing: FC<{ spinning: boolean }> = ({ spinning }) => {
 
 // ─── Question panel shown after each spin ─────────────────────────────────────
 interface QuestionPanelProps {
-    question:   Question;
-    spinPts:    number;
-    onCorrect:  () => void;
-    onWrong:    () => void;
+    question:  Question;
+    spinPts:   number;
+    onCorrect: () => void;
+    onWrong:   () => void;
 }
 
 const QuestionPanel: FC<QuestionPanelProps> = ({ question, spinPts, onCorrect, onWrong }) => {
     const { play } = useSoundFX();
     const [answered, setAnswered] = useState<number | null>(null);
     const [timer,    setTimer]    = useState(15);
-    const doneRef = useRef(false);
+    const doneRef  = useRef(false);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const resolve = (correct: boolean) => {
@@ -211,14 +210,16 @@ const QuestionPanel: FC<QuestionPanelProps> = ({ question, spinPts, onCorrect, o
                 <div className="game-timer-bar" style={{ width: `${pct}%`, background: timerColor }} />
             </div>
 
-            <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}><p>{question.q}</p></div>
+            <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}>
+                <p>{question.q}</p>
+            </div>
 
             {question.options.map((opt, i) => {
                 let cls = "game-option";
                 if (answered !== null) {
-                    if (i === question.answer)   cls = "game-option game-option--correct";
-                    else if (i === answered)     cls = "game-option game-option--wrong";
-                    else                         cls = "game-option game-option--disabled";
+                    if (i === question.answer) cls = "game-option game-option--correct";
+                    else if (i === answered)   cls = "game-option game-option--wrong";
+                    else                       cls = "game-option game-option--disabled";
                 }
                 return (
                     <button key={i} className={cls}
@@ -241,8 +242,8 @@ const QuestionPanel: FC<QuestionPanelProps> = ({ question, spinPts, onCorrect, o
 
 // ─── Decision panel: stop or risk next spin ───────────────────────────────────
 interface DecisionProps {
-    spinNum:    number;    // which spin just completed (1 or 2)
-    banked:     number;   // total pts banked so far
+    spinNum:    number;
+    banked:     number;
     onStop:     () => void;
     onContinue: () => void;
 }
@@ -286,9 +287,8 @@ interface Props { currentScore: number; onComplete: (r3Score: number) => void; }
 export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
     const { play, stop } = useSoundFX();
 
-    // One shuffled question pool — draw one per spin
     const [questions]    = useState<Question[]>(() => shuffle(R1_QUESTIONS));
-    const questionRef    = useRef(0); // index into questions
+    const questionRef    = useRef(0);
 
     const rotRef         = useRef(START_DEG);
     const angleRef       = useRef(START_DEG * Math.PI / 180);
@@ -298,9 +298,9 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
 
     const [phase,        setPhase]        = useState<Phase>("spin");
     const [spinning,     setSpinning]     = useState(false);
-    const [spinNum,      setSpinNum]      = useState(1);          // 1, 2, 3
-    const [spinPts,      setSpinPts]      = useState(0);          // pts from current spin
-    const [banked,       setBanked]       = useState(0);          // accumulated correct pts
+    const [spinNum,      setSpinNum]      = useState(1);
+    const [spinPts,      setSpinPts]      = useState(0);
+    const [banked,       setBanked]       = useState(0);
     const [showConfetti, setShowConfetti] = useState(false);
     const [currentSeg,   setCurrentSeg]  = useState<Segment | null>(null);
 
@@ -325,12 +325,10 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
         const img = new Image();
         img.src = wheelImg;
         img.onload = () => { imgRef.current = img; drawFrame(angleRef.current); };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        if (phase === "spin") {
-            drawFrame(angleRef.current);
-        }
+        if (phase === "spin") drawFrame(angleRef.current);
     }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => () => {
@@ -356,8 +354,8 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
         const startTime = performance.now();
 
         const animate = (now: number) => {
-            const p     = Math.min((now - startTime) / duration, 1);
-            const eased = 1 - Math.pow(1 - p, 4);
+            const p      = Math.min((now - startTime) / duration, 1);
+            const eased  = 1 - Math.pow(1 - p, 4);
             const curDeg = startDeg + deltaDeg * eased;
             angleRef.current = curDeg * Math.PI / 180;
             drawFrame(angleRef.current);
@@ -372,7 +370,6 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
 
                 const idx = segmentAtTop(snappedFinal);
                 const seg = SEGMENTS[idx];
-                // Resolve multiplier against current total score + banked so far
                 const pts = seg.multiplier
                     ? (currentScore + banked) * seg.multiplier
                     : seg.points;
@@ -393,7 +390,6 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
         setTimeout(() => setShowConfetti(false), 3000);
 
         if (spinNum >= MAX_SPINS) {
-            // All 3 spins done — keep everything
             setPhase("done");
             setTimeout(() => onComplete(newBanked), 1500);
         } else {
@@ -401,22 +397,14 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
         }
     };
 
-    const handleWrong = () => {
-        setPhase("lost");
-    };
-
-    const handleStop = () => {
-        onComplete(banked);
-    };
+    const handleWrong    = () => setPhase("lost");
+    const handleStop     = () => onComplete(banked);
+    const handleLostDone = () => onComplete(0);
 
     const handleContinue = () => {
         questionRef.current += 1;
         setSpinNum(n => n + 1);
         setPhase("spin");
-    };
-
-    const handleLostDone = () => {
-        onComplete(0);
     };
 
     const currentQuestion = questions[questionRef.current] ?? questions[0];
@@ -471,7 +459,6 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
                     </div>
                 </div>
 
-                {/* Phase panels below the wheel */}
                 <div className="spin-action">
                     {phase === "spin" && !spinning && (
                         <div className="spin-btn-wrap">

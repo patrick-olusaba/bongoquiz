@@ -1,7 +1,7 @@
-// Round2QuestionScreen.tsx — 40s total timer, random mixed categories, +500/−250
 import { type FC, useEffect, useRef, useState } from "react";
 import type { PrizeItem } from "../../types/bongotypes.ts";
-import { R2_QUESTIONS, CATEGORIES, CATEGORY_META, shuffle, type Category } from "../../types/gametypes.ts";
+import { CATEGORY_META, type Category } from "../../types/gametypes.ts";
+import { useR2Questions } from "../../hooks/useQuestions.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
 import '../../styles/game.css';
 
@@ -16,16 +16,6 @@ const POINTS_WRONG   = -250;
 const POINTS_PASS    = -250;
 const TOTAL_TIME     = 40;
 
-// Mix ALL category questions into one pool and shuffle
-function buildQuestionPool() {
-    const all: { q: string; options: string[]; answer: number; category: Category }[] = [];
-    for (const cat of CATEGORIES) {
-        for (const q of (R2_QUESTIONS[cat] ?? [])) {
-            all.push({ ...q, category: cat });
-        }
-    }
-    return shuffle(all);
-}
 
 export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) => {
     const { play } = useSoundFX();
@@ -45,7 +35,7 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
     const ptsPass    = hasNoPenalty ? 0 : POINTS_PASS;
     const swapLimit  = 2;
 
-    const [questions]    = useState(() => buildQuestionPool());
+    const { questions, loading } = useR2Questions();
     const [index,        setIndex]        = useState(0);
     const [score,        setScore]        = useState(0);
     const [correct,      setCorrect]      = useState(0);
@@ -75,7 +65,7 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
 
     // Single countdown for entire round (like R1)
     useEffect(() => {
-        if (frozen) return;
+        if (frozen || loading) return;
         timerRef.current = setInterval(() => {
             setTimer(t => {
                 const next = t - 1;
@@ -88,7 +78,7 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
-    }, [frozen]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [frozen, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const nextQuestion = () => {
         const next = index + 1;
@@ -169,12 +159,18 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
         setBrainUsed(true);
     };
 
+    if (loading) return <div className="game-root"><div className="game-card" style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.1rem", color:"#888" }}>⏳ Loading questions…</div></div>;
+    
+    if (questions.length === 0) {
+        return <div className="game-root"><div className="game-card" style={{ display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.1rem", color:"#e52d27" }}>❌ No questions available</div></div>;
+    }
+    
     const q = questions[index];
     if (!q) return null;
 
     const pct = (timer / baseTime) * 100;
     const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";
-    const cm = CATEGORY_META[q.category];
+    const cm = CATEGORY_META[q.category] || { icon: "❓", color: "#888888" };
 
     return (
         <div className="game-root">
