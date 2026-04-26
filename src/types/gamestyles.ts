@@ -19,6 +19,7 @@ export const pageWrap: React.CSSProperties = {
     overflowX: 'hidden',
 };
 
+
 // Glassmorphic card — used on every screen
 export const card: React.CSSProperties = {
     background: 'rgba(255, 255, 255, 0.05)',
