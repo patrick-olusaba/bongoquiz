@@ -1,7 +1,6 @@
 // BongoMain.tsx — top-level game orchestrator
-import { type FC, useState, useRef } from "react";
-import { addDoc, updateDoc, doc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { type FC, useState } from "react";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 
@@ -80,17 +79,19 @@ export const BongoMain: FC = () => {
     // R3
     const [r3Bonus,     setR3Bonus]     = useState(0);
 
-    const sessionIdRef = useRef<string | null>(null);
-
-    const saveSession = async (data: Record<string, any>) => {
-        const phone = localStorage.getItem("bongo_player_phone") ?? "";
-        if (!sessionIdRef.current) {
-            const docRef = await addDoc(collection(db, "gameSessions"), {
-                name: playerName, phone, ...data, startedAt: serverTimestamp(),
-            }).catch(() => null);
-            if (docRef) sessionIdRef.current = docRef.id;
-        } else {
-            await updateDoc(doc(db, "gameSessions", sessionIdRef.current), data).catch(() => {});
+    const saveSession = async (r1: number, r2: number, r3: number, powerName: string) => {
+        try {
+            const save = httpsCallable(getFunctions(), "saveGameSession");
+            await save({
+                name:    playerName,
+                phone:   localStorage.getItem("bongo_player_phone") ?? "",
+                power:   powerName,
+                r1Score: r1,
+                r2Score: r2,
+                r3Bonus: r3,
+            });
+        } catch {
+            // Non-fatal — game still completes for the player
         }
     };
 
@@ -102,7 +103,6 @@ export const BongoMain: FC = () => {
         setR1Score(0); setR1TimeLeft(0); setR1MaxStreak(0); setR1Correct(0); setR1Total(0);
         setR2Category("Sport"); setR2Score(0); setR2Correct(0); setR2Total(0);
         setR3Bonus(0);
-        sessionIdRef.current = null;
         setScreen("home");
     };
 
@@ -205,7 +205,11 @@ export const BongoMain: FC = () => {
     if (screen === "round3_spin")
         return <Round3SpinScreen
             currentScore={r1Score + r2Score}
-            onComplete={r3Score => { setR3Bonus(r3Score); setScreen("final_result"); }}
+            onComplete={r3Score => {
+                setR3Bonus(r3Score);
+                saveSession(r1Score, r2Score, r3Score, power?.name ?? "");
+                setScreen("final_result");
+            }}
         />;
 
     // ── Final ──────────────────────────────────────────────────────────────────

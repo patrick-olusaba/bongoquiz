@@ -1,7 +1,7 @@
-// AdminLogin.tsx — PIN verified against Firestore admins collection
+// AdminLogin.tsx — Firebase Auth email + PIN, with brute-force lockout
 import { useState, useRef } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../firebase.ts";
 
 const CSS = `
 .al-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
@@ -20,53 +20,77 @@ const CSS = `
 .al-back:hover{color:#4361ee}
 `;
 
+// Admin Firebase Auth email — PIN maps to password via convention:
+// password = "bongo_admin_" + PIN  (set this in Firebase Auth console)
+const ADMIN_EMAIL = "admin@bongoquiz.app";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
+
+// Module-level so it survives re-renders but resets on page reload
+let attempts = 0;
+let lockedUntil = 0;
+
 export function AdminLogin({ onLogin }: { onLogin: () => void }) {
     const [pins,    setPins]    = useState(["", "", "", ""]);
     const [err,     setErr]     = useState("");
     const [loading, setLoading] = useState(false);
-    const inputs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+    const inputs = [
+        useRef<HTMLInputElement>(null),
+        useRef<HTMLInputElement>(null),
+        useRef<HTMLInputElement>(null),
+        useRef<HTMLInputElement>(null),
+    ];
 
     const handleChange = (i: number, val: string) => {
         const digit = val.replace(/\D/g, "").slice(-1);
-        const next = [...pins];
-        next[i] = digit;
-        setPins(next);
+        const next = [...pins]; next[i] = digit; setPins(next);
         if (digit && i < 3) inputs[i + 1].current?.focus();
     };
 
     const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
-        if (e.key === "Backspace" && !pins[i] && i > 0) {
-            inputs[i - 1].current?.focus();
-        }
+        if (e.key === "Backspace" && !pins[i] && i > 0) inputs[i - 1].current?.focus();
     };
+
+    const reset = () => { setPins(["", "", "", ""]); inputs[0].current?.focus(); };
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
         const pin = pins.join("");
         if (pin.length < 4) return;
+
+        // Lockout check
+        const now = Date.now();
+        if (now < lockedUntil) {
+            const mins = Math.ceil((lockedUntil - now) / 60000);
+            setErr(`Too many attempts. Try again in ${mins} minute${mins > 1 ? "s" : ""}.`);
+            return;
+        }
+
         setErr(""); setLoading(true);
         try {
-            const snap = await getDocs(
-                query(collection(db, "admins"), where("pin", "==", Number(pin)))
-            );
-            if (snap.empty) {
-                setErr("Incorrect PIN.");
-                setPins(["", "", "", ""]);
-                inputs[0].current?.focus();
-                return;
-            }
-            sessionStorage.setItem("adminAuthed", "1");
+            // Password convention: "bongo_admin_" + PIN
+            // Create this user in Firebase Auth console with that password
+            await signInWithEmailAndPassword(auth, ADMIN_EMAIL, `bongo_admin_${pin}`);
+            attempts = 0;
             onLogin();
         } catch {
-            setErr("Login failed. Try again.");
-            setPins(["", "", "", ""]);
-            inputs[0].current?.focus();
+            attempts += 1;
+            const remaining = MAX_ATTEMPTS - attempts;
+            if (attempts >= MAX_ATTEMPTS) {
+                lockedUntil = Date.now() + LOCKOUT_MS;
+                attempts = 0;
+                setErr("Too many failed attempts. Locked for 5 minutes.");
+            } else {
+                setErr(`Incorrect PIN. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`);
+            }
+            reset();
         } finally {
             setLoading(false);
         }
     };
 
     const filled = pins.join("").length === 4;
+    const locked = Date.now() < lockedUntil;
 
     return (
         <>
@@ -87,13 +111,14 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
                                 inputMode="numeric"
                                 maxLength={1}
                                 value={p}
+                                disabled={locked}
                                 onChange={e => handleChange(i, e.target.value)}
                                 onKeyDown={e => handleKeyDown(i, e)}
                                 autoFocus={i === 0}
                             />
                         ))}
                     </div>
-                    <button className="al-btn" type="submit" disabled={!filled || loading}>
+                    <button className="al-btn" type="submit" disabled={!filled || loading || locked}>
                         {loading ? "Verifying…" : "Enter"}
                     </button>
                 </form>

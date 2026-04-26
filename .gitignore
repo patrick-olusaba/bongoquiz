@@ -1,0 +1,16 @@
+# env — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# deps & build
+node_modules
+dist
+dist-ssr
+
+# editor
+.vscode
+.idea
+
+# misc
+*.local

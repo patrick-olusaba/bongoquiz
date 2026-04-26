@@ -3,14 +3,14 @@ import { getFirestore }  from "firebase/firestore";
 import { getAuth }       from "firebase/auth";
 
 const firebaseConfig = {
-    apiKey:            "AIzaSyBETgk4L08AfM1vWQJWxvqGHkFv1Jof8HE",
-    authDomain:        "bongoquiz-23ad4.firebaseapp.com",
-    databaseURL:       "https://bongoquiz-23ad4-default-rtdb.firebaseio.com",
-    projectId:         "bongoquiz-23ad4",
-    storageBucket:     "bongoquiz-23ad4.firebasestorage.app",
-    messagingSenderId: "137543415708",
-    appId:             "1:137543415708:web:fef699dfa9169c5c573a59",
-    measurementId:     "G-33CTK3CEGV",
+    apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL:       import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);

@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Players — anyone can create/update their own record (keyed by phone)
+    // No one can read other players' records from the client
+    match /players/{phone} {
+      allow create, update: if true;
+      allow read:           if false; // admin reads via Cloud Function / Firebase console
+    }
+
+    // Questions — public read, no client writes
+    match /questions/{id} {
+      allow read:  if true;
+      allow write: if false; // admin writes via authenticated admin panel
+    }
+
+    // Leaderboard — public read, no direct client writes (Cloud Function writes)
+    match /leaderboard/{id} {
+      allow read:  if true;
+      allow write: if false;
+    }
+
+    // Game sessions — no direct client writes (Cloud Function writes)
+    match /gameSessions/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    // Admins — no client access at all (admin panel uses Firebase Auth, not PIN lookup)
+    match /admins/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    // Payments — M-Pesa webhook writes via Admin SDK (server-side), no client access
+    match /payments/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    // Powers — public read, no client writes
+    match /powers/{id} {
+      allow read:  if true;
+      allow write: if false;
+    }
+  }
+}

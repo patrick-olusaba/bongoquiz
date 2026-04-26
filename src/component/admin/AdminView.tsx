@@ -1,7 +1,8 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
 import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { db, auth } from "../../firebase.ts";
 import { AdminLogin }     from "./AdminLogin.tsx";
 import { AdminQuestions } from "./AdminQuestions.tsx";
 import { AdminPowers }    from "./AdminPowers.tsx";
@@ -411,13 +412,23 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 
 // ── Main export ────────────────────────────────────────────────────────────────
 export function AdminView() {
-    const [authed, setAuthed] = useState(() => sessionStorage.getItem("adminAuthed") === "1");
+    const [authed, setAuthed] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
     const [tab, setTab] = useState<AdminTab>("dashboard");
     const changeTab = (t: AdminTab) => { setTab(t); document.getElementById("adm-content")?.scrollTo({ top: 0 }); };
 
-    const handleLogout = () => { sessionStorage.removeItem("adminAuthed"); setAuthed(false); };
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, user => {
+            setAuthed(!!user);
+            setAuthChecked(true);
+        });
+        return unsub;
+    }, []);
 
-    if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
+    const handleLogout = () => signOut(auth);
+
+    if (!authChecked) return null; // wait for Firebase Auth to resolve
+    if (!authed) return <AdminLogin onLogin={() => {}} />;
 
     return (
         <>
