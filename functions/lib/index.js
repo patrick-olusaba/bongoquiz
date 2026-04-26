@@ -33,9 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveGameSession = void 0;
+exports.initiateStkPush = exports.saveGameSession = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
+const https = __importStar(require("https"));
 admin.initializeApp();
 const db = admin.firestore();
 /**
@@ -85,4 +86,43 @@ exports.saveGameSession = functions.https.onCall(async (request) => {
         });
     }
     return { sessionId: sessionRef.id, total };
+});
+/**
+ * initiateStkPush — callable Cloud Function.
+ * Forwards name + phone + amount to the payment backend to trigger an M-Pesa STK push.
+ */
+exports.initiateStkPush = functions.https.onCall(async (request) => {
+    const { name, phone, amount } = request.data;
+    if (typeof name !== "string" || name.trim().length === 0)
+        throw new functions.https.HttpsError("invalid-argument", "Invalid name");
+    if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
+        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    if (typeof amount !== "number" || amount <= 0)
+        throw new functions.https.HttpsError("invalid-argument", "Invalid amount");
+    const backendUrl = process.env.PAYMENT_BACKEND_URL;
+    if (!backendUrl)
+        throw new functions.https.HttpsError("internal", "Payment backend not configured");
+    const payload = JSON.stringify({ name: name.trim(), phone, amount });
+    const url = new URL("/api/pay/initiate", backendUrl);
+    const result = await new Promise((resolve, reject) => {
+        const req = https.request({ hostname: url.hostname, port: url.port || 443, path: url.pathname, method: "POST",
+            headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } }, (res) => {
+            let body = "";
+            res.on("data", (chunk) => { body += chunk; });
+            res.on("end", () => {
+                if (res.statusCode !== 200)
+                    return reject(new Error(`Backend error ${res.statusCode}: ${body}`));
+                try {
+                    resolve(JSON.parse(body));
+                }
+                catch {
+                    reject(new Error("Invalid backend response"));
+                }
+            });
+        });
+        req.on("error", reject);
+        req.write(payload);
+        req.end();
+    });
+    return { checkoutRequestId: result.checkoutRequestId };
 });

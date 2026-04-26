@@ -124,7 +124,13 @@ export const BongoMain: FC = () => {
             amount={20}
             roundLabel="Rounds 1 & 2"
             phone={playerPhone}
-            onAccept={() => setScreen("transition_r1")}
+            onAccept={async () => {
+                try {
+                    const push = httpsCallable(getFunctions(), "initiateStkPush");
+                    await push({ name: playerName, phone: playerPhone, amount: 20 });
+                } catch { /* non-fatal — proceed anyway */ }
+                setScreen("transition_r1");
+            }}
             onDecline={resetGame}
         />;
 
@@ -133,7 +139,13 @@ export const BongoMain: FC = () => {
             amount={10}
             roundLabel="Round 3"
             phone={playerPhone}
-            onAccept={() => setScreen("transition_r3")}
+            onAccept={async () => {
+                try {
+                    const push = httpsCallable(getFunctions(), "initiateStkPush");
+                    await push({ name: playerName, phone: playerPhone, amount: 10 });
+                } catch { /* non-fatal — proceed anyway */ }
+                setScreen("transition_r3");
+            }}
             onDecline={() => setScreen("round2_result")}
         />;
 
