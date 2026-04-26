@@ -161,7 +161,7 @@ export const BongoMain: FC = () => {
     if (screen === "transition_r2")
         return <RoundTransitionScreen
             roundNum={2} title="Category Rush" icon="🗂️"
-            subtitle="40s · +500 correct · −250 wrong/pass"
+            subtitle="40s · 10 questions · +500 correct · −250 wrong/pass"
             color="#FF6B6B"
             onDone={() => setScreen("round2_question")}
         />;

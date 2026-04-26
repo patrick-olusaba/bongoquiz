@@ -39,7 +39,7 @@ const TOTAL      = SEGMENTS.length;
 const SLICE      = 360 / TOTAL;
 const STAR_INDEX = 0;
 const START_DEG  = 0;
-const MAX_SPINS  = 3;
+const MAX_SPINS  = 5;
 
 function snapToCenter(rotDeg: number): number {
     return Math.round(rotDeg / SLICE) * SLICE;
