@@ -30,6 +30,12 @@ import PointGamble from "../assets/Items/PointGamble.png";
 import QuestionSwap from "../assets/Items/questionswap.png";
 import SecondChance from "../assets/Items/secondchance.png";
 import TimeTax from '../assets/Items/TimeTax.png';
+import BorrowedBrain from "../assets/Items/BorrowedBrain.png";
+import PointChanceBrain from "../assets/Items/pointChanceBrain.png";
+import MirrorEffect from "../assets/Items/MirrorEffect.png";
+import StealAPoint from "../assets/Items/StealAPoint.png";
+import SwapFate from "../assets/Items/SwapFate.png";
+import SuddenDeath from "../assets/Items/SuddenDeathDisqualified.png";
 
 // Master list of all available prize items
 export const PRIZE_ITEMS: PrizeItem[] = [
@@ -83,17 +89,23 @@ export const CUSTOM_PRIZE_LIST_3: PrizeItem[] = [
 
 // Map power names to locally-imported images so Firestore img paths are never used directly
 const LOCAL_IMG_MAP: Record<string, string> = {
-    "Bonus Time": BonusTime,
-    "Disqualified": Disqualified,
-    "Double Or Nothing": DoubleOrNothing,
-    "Double Points": DoublePoints,
-    "Freeze Frame": FreezeFrame,
-    "Insurance": Insurance,
-    "No Penalty": NoPenalty,
-    "Point Gamble": PointGamble,
-    "Question Swap": QuestionSwap,
-    "Second Chance": SecondChance,
-    "Time Tax": TimeTax,
+    "Bonus Time":                  BonusTime,
+    "Disqualified":                Disqualified,
+    "Double Or Nothing":           DoubleOrNothing,
+    "Double Points":               DoublePoints,
+    "Freeze Frame":                FreezeFrame,
+    "Insurance":                   Insurance,
+    "No Penalty":                  NoPenalty,
+    "Point Gamble":                PointGamble,
+    "Question Swap":               QuestionSwap,
+    "Second Chance":               SecondChance,
+    "Time Tax":                    TimeTax,
+    "Borrowed Brain":              BorrowedBrain,
+    "Point Chance Brain":          PointChanceBrain,
+    "Mirror Effect":               MirrorEffect,
+    "Steal A Point":               StealAPoint,
+    "Swap Fate":                   SwapFate,
+    "Sudden Death Disqualified":   SuddenDeath,
 };
 
 export const getRandomPrizeItems = async (count: number = 8): Promise<PrizeItem[]> => {
