@@ -3,10 +3,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Players — anyone can create/update their own record (keyed by phone)
-    // No one can read other players' records from the client
+    // Only authenticated admin can read
     match /players/{phone} {
       allow create, update: if true;
-      allow read:           if false; // admin reads via Cloud Function / Firebase console
+      allow read:           if request.auth != null;
     }
 
     // Questions — public read, authenticated admin can write
@@ -15,27 +15,27 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Leaderboard — public read, no direct client writes (Cloud Function writes)
+    // Leaderboard — public read, authenticated admin can write
     match /leaderboard/{id} {
       allow read:  if true;
-      allow write: if false;
+      allow write: if request.auth != null;
     }
 
-    // Game sessions — no direct client writes (Cloud Function writes)
+    // Game sessions — authenticated admin only
     match /gameSessions/{id} {
-      allow read:  if false;
-      allow write: if false;
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null;
     }
 
-    // Admins — no client access at all (admin panel uses Firebase Auth, not PIN lookup)
+    // Admins — no client access
     match /admins/{id} {
       allow read:  if false;
       allow write: if false;
     }
 
-    // Payments — M-Pesa webhook writes via Admin SDK (server-side), no client access
+    // Payments — authenticated admin can read, server writes via Admin SDK
     match /payments/{id} {
-      allow read:  if false;
+      allow read:  if request.auth != null;
       allow write: if false;
     }
 
