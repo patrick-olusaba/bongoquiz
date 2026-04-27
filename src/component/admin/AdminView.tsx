@@ -193,38 +193,43 @@ function Payments() {
 
 // ── Game Sessions ──────────────────────────────────────────────────────────────
 function GameSessions() {
-    const [rows, setRows] = useState<any[]>([]);
+    const [rows,   setRows]   = useState<any[]>([]);
     const [search, setSearch] = useState("");
+    const [page,   setPage]   = useState(1);
+    const PAGE_SIZE = 20;
 
     useEffect(() => {
         getDocs(collection(db, "gameSessions"))
             .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))
-                .slice(0, 100)))
+                .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))))
             .catch(() => {});
     }, []);
 
-    const filtered = rows.filter(r => {
+    const filtered   = rows.filter(r => {
         if (!search) return true;
         const term = search.toLowerCase();
-        return (r.name ?? "").toLowerCase().includes(term) || 
-               (r.phone ?? "").includes(term);
+        return (r.name ?? "").toLowerCase().includes(term) || (r.phone ?? "").includes(term);
     });
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Game Sessions">
-            <div style={{ marginBottom: 16 }}>
-                <input 
-                    type="text" 
-                    placeholder="Search by name or phone..." 
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                    Total: <strong>{filtered.length}</strong> session{filtered.length !== 1 ? "s" : ""}
+                </span>
+                <input
+                    type="text"
+                    placeholder="Search by name or phone..."
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    style={s.input}
+                    onChange={e => { setSearch(e.target.value); setPage(1); }}
+                    style={{ ...s.input, width: "auto", minWidth: 220 }}
                 />
             </div>
             <Table
                 heads={["Player", "Phone", "Power Used", "R1", "R2", "R3", "Total", "Date"]}
-                rows={filtered.length ? filtered.map(r => [
+                rows={paginated.length ? paginated.map(r => [
                     r.name ?? "—", r.phone ?? "—", r.power ?? "—",
                     (r.r1Score ?? 0).toLocaleString(),
                     (r.r2Score ?? 0).toLocaleString(),
@@ -233,6 +238,15 @@ function GameSessions() {
                     r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
                 ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
             />
+            {totalPages > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                    <span style={{ fontSize: "0.82rem", color: "#888" }}>Page {page} of {totalPages}</span>
+                    <button style={{ ...s.btn, background: page === 1 ? "#eee" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}
+                        disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                    <button style={{ ...s.btn, background: page === totalPages ? "#eee" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}
+                        disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+            )}
         </Card>
     </>;
 }
