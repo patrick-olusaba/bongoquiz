@@ -5,6 +5,7 @@ import logoBg from './assets/bongo-logo.png';
 import { BongoMain }    from "./component/game/BongoMain.tsx";
 import { GameInfoDocs } from "./component/docs/GameInfoDocs.tsx";
 import { AdminView }    from "./component/admin/AdminView.tsx";
+import { SummaryView } from "./component/summary/SummaryView.tsx";
 
 function App() {
     const [hash, setHash] = useState(window.location.hash);
@@ -83,6 +84,8 @@ function App() {
 
     if (hash === "#/docs")  return <GameInfoDocs />;
     if (hash === "#/admin") return <AdminView />;
+    const summaryMatch = hash.match(/^#\/summary\/(.+)$/) || window.location.pathname.match(/^\/summary\/(.+)$/);
+    if (summaryMatch) return <SummaryView summaryId={summaryMatch[1]} />;
     return <BongoMain />;
 }
 

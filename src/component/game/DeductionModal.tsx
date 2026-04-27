@@ -38,7 +38,7 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
             // console.log("Payment response:", result);
             
             if (!response.ok) {
-                throw new Error(result.error || "Payment failed");
+                throw new Error(result.error || "");
             }
             
             // Poll Firestore to check if payment is confirmed
@@ -56,8 +56,8 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
                     unsubscribe();
                     onAccept();
                 }
-            }, (error) => {
-                console.error("Snapshot error:", error);
+            }, () => {
+                // console.error("Snapshot error:", error);
             });
             
             // Timeout after 60 seconds
@@ -68,7 +68,7 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
             }, 60000);
             
         } catch (error) {
-            console.error("Payment failed:", error);
+            // console.error("Payment failed:", error);
             // alert(`Payment failed: ${error.message}`);
             setLoading(false);
         }
