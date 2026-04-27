@@ -6,6 +6,18 @@ import {
 import { db } from "../../firebase.ts";
 import { clearQuestionsCache } from "../../hooks/useQuestions.ts";
 
+const API = "http://143.244.158.85:3535";
+
+function toApiShape(q: Omit<Question, "id">) {
+    return {
+        round: q.round, category: q.category, active: q.active,
+        questionText: q.question,
+        optionA: q.options[0], optionB: q.options[1],
+        optionC: q.options[2], optionD: q.options[3],
+        correctIndex: q.correct,
+    };
+}
+
 export type Question = {
     id?: string;          // Firestore doc id
     round: "r1" | "r2" | "r3";
@@ -316,8 +328,16 @@ export function AdminQuestions() {
         const { id, ...data } = q;
         if (id) {
             await updateDoc(doc(db, "questions", id), data);
+            fetch(`${API}/api/admin/questions/${id}`, {
+                method: "PUT", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(toApiShape(data)),
+            }).catch(() => {});
         } else {
             await addDoc(collection(db, "questions"), data);
+            fetch(`${API}/api/admin/questions`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(toApiShape(data)),
+            }).catch(() => {});
         }
         setEditing(null); setAdding(false);
         await load();
@@ -326,6 +346,7 @@ export function AdminQuestions() {
     const del = async (id: string) => {
         if (!confirm("Delete this question?")) return;
         await deleteDoc(doc(db, "questions", id));
+        fetch(`${API}/api/admin/questions/${id}`, { method: "DELETE" }).catch(() => {});
         setQs(prev => prev.filter(q => q.id !== id));
     };
 
@@ -338,6 +359,11 @@ export function AdminQuestions() {
         const batch = writeBatch(db);
         unique.forEach(q => batch.set(doc(collection(db, "questions")), q));
         await batch.commit();
+        // Bulk import to company API
+        fetch(`${API}/api/admin/questions/bulk-import`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ questions: unique.map(toApiShape) }),
+        }).catch(() => {});
         await load();
     };
 

@@ -42,35 +42,46 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
             }
         }
         
-        // Fetch and filter leaderboard
-        getDocs(collection(db, "leaderboard"))
-            .then(snap => {
-                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                // Group by phone and keep only highest score per phone
-                const byPhone = new Map<string, any>();
-                all.forEach(entry => {
-                    const phone = entry.phone || entry.id;
-                    const existing = byPhone.get(phone);
-                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) {
-                        byPhone.set(phone, entry);
-                    }
-                });
-                
-                // Sort by score and add rank
-                const sorted = Array.from(byPhone.values())
-                    .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
-                    .slice(0, 10)
-                    .map((d, i) => ({
-                        rank: i + 1,
-                        name: d.name as string,
-                        phone: d.phone as string,
-                        score: d.score as number,
+        // Fetch from company API first, fall back to Firebase
+        fetch("http://143.244.158.85:3535/api/leaderboard/public/top10")
+            .then(r => r.json())
+            .then(json => {
+                const apiData: any[] = json.data ?? [];
+                if (apiData.length > 0) {
+                    setDbLeaders(apiData.map((d, i) => ({
+                        rank: d.rank ?? i + 1,
+                        name: d.playerName ?? d.name,
+                        phone: d.phone ?? "",
+                        score: d.score,
                         badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
-                    }));
-                setDbLeaders(sorted);
+                    })));
+                    return;
+                }
+                throw new Error("empty");
             })
-            .catch(() => {});
+            .catch(() => {
+                // Fallback: Firebase
+                getDocs(collection(db, "leaderboard")).then(snap => {
+                    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    const byPhone = new Map<string, any>();
+                    all.forEach(entry => {
+                        const phone = entry.phone || entry.id;
+                        const existing = byPhone.get(phone);
+                        if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) byPhone.set(phone, entry);
+                    });
+                    const sorted = Array.from(byPhone.values())
+                        .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
+                        .slice(0, 10)
+                        .map((d, i) => ({
+                            rank: i + 1,
+                            name: d.name as string,
+                            phone: d.phone as string,
+                            score: d.score as number,
+                            badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
+                        }));
+                    setDbLeaders(sorted);
+                }).catch(() => {});
+            });
     }, [playerScore, playerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Mark current player in the fetched list

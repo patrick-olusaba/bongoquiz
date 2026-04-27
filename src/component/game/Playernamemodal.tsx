@@ -22,12 +22,17 @@ export const PlayerNameModal: FC<Props> = ({ currentName, currentPhone, onSave, 
         if (!trimmedName)                          return setErr("Please enter your name.");
         if (!/^07\d{8}$/.test(trimmedPhone))       return setErr("Enter a valid phone number (07XXXXXXXX).");
         setErr("");
-        // Save to Firestore players collection (keyed by phone)
+        // Save to Firebase
         setDoc(doc(db, "players", trimmedPhone), {
-            name: trimmedName,
-            phone: trimmedPhone,
-            updatedAt: serverTimestamp(),
+            name: trimmedName, phone: trimmedPhone, updatedAt: serverTimestamp(),
         }, { merge: true }).catch(() => {});
+
+        // Save to company API
+        fetch("http://143.244.158.85:3535/api/player/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: trimmedPhone, name: trimmedName }),
+        }).catch(() => {});
         onSave(trimmedName, trimmedPhone);
         onClose();
     };
