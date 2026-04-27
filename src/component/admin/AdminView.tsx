@@ -3,11 +3,12 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
-import { AdminLogin }     from "./AdminLogin.tsx";
+import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
 import { AdminQuestions } from "./AdminQuestions.tsx";
 import { AdminPowers }    from "./AdminPowers.tsx";
+import { AdminKCSE }      from "./AdminKCSE.tsx";
 
-type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements";
+type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse";
 
 const TABS: { id: AdminTab; label: string }[] = [
     { id: "dashboard",   label: "📊 Dashboard"      },
@@ -18,6 +19,7 @@ const TABS: { id: AdminTab; label: string }[] = [
     { id: "questions",   label: "❓ Questions"       },
     { id: "powers",      label: "⚡ Powers"          },
     { id: "achievements",label: "🏅 Achievements"    },
+    { id: "kcse",        label: "📄 KCSE Papers"     },
 ];
 
 const s: Record<string, React.CSSProperties> = {
@@ -131,7 +133,8 @@ function Players() {
 
     useEffect(() => {
         getDocs(collection(db, "players"))
-            .then(snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+            .then(snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))))
             .catch(() => {});
     }, []);
 
@@ -374,15 +377,6 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 .adm-topbar a  { color: #aaa; font-size: 0.8rem; text-decoration: none; }
 .adm-topbar a:hover { color: #fff; }
 
-.adm-mobile-tabs {
-  display: none;
-  background: #16213e;
-  border-bottom: 1px solid #0f3460;
-  padding: 8px 12px;
-  gap: 6px;
-  overflow-x: auto;
-  flex-shrink: 0;
-}
 .adm-layout { display: flex; flex: 1; overflow: hidden; }
 .adm-sidebar {
   width: 210px; min-width: 210px;
@@ -408,19 +402,43 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 .adm-tab.active .adm-dot { background: #4361ee; }
 .adm-dot { width: 6px; height: 6px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
 
-.adm-mob-tab {
-  padding: 6px 12px; border-radius: 20px; border: 1px solid #0f3460;
-  background: transparent; color: #aaa; cursor: pointer; font-size: 0.78rem;
-  white-space: nowrap; font-family: inherit; flex-shrink: 0;
-}
-.adm-mob-tab.active { background: #ffd200; color: #000; border-color: #ffd200; font-weight: 700; }
-
 .adm-content { flex: 1; overflow-y: auto; padding: 28px 28px 60px; min-width: 0; }
 
+/* Mobile hamburger drawer */
+.adm-hamburger {
+  display: none; background: none; border: none; cursor: pointer;
+  flex-direction: column; gap: 5px; padding: 6px; border-radius: 6px;
+}
+.adm-hamburger span { display: block; width: 22px; height: 2px; background: #ffd200; border-radius: 2px; }
+.adm-hamburger:hover { background: rgba(255,255,255,0.08); }
+
+.adm-drawer-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50;
+}
+.adm-drawer {
+  position: fixed; top: 0; left: 0; height: 100vh; width: 240px;
+  background: #fff; z-index: 51; transform: translateX(-100%);
+  transition: transform 0.25s ease; display: flex; flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+}
+.adm-drawer.open { transform: translateX(0); }
+.adm-drawer-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 16px 16px 14px; display: flex; align-items: center; justify-content: space-between;
+}
+.adm-drawer-header span { color: #ffd200; font-weight: 800; font-size: 0.95rem; }
+.adm-drawer-close {
+  background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+}
+.adm-drawer-close:hover { color: #fff; }
+.adm-drawer-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+
 @media (max-width: 720px) {
-  .adm-sidebar      { display: none; }
-  .adm-mobile-tabs  { display: flex; }
-  .adm-content      { padding: 16px 14px 60px; }
+  .adm-sidebar        { display: none; }
+  .adm-mobile-tabs    { display: none; }
+  .adm-hamburger      { display: flex; }
+  .adm-drawer-backdrop.open { display: block; }
+  .adm-content        { padding: 16px 14px 60px; }
 }
 `;
 
@@ -429,11 +447,18 @@ export function AdminView() {
     const [authed, setAuthed] = useState(false);
     const [authChecked, setAuthChecked] = useState(false);
     const [tab, setTab] = useState<AdminTab>("dashboard");
-    const changeTab = (t: AdminTab) => { setTab(t); document.getElementById("adm-content")?.scrollTo({ top: 0 }); };
+    const [drawerOpen, setDrawerOpen] = useState(false);
+
+    const changeTab = (t: AdminTab) => {
+        setTab(t);
+        setDrawerOpen(false);
+        document.getElementById("adm-content")?.scrollTo({ top: 0 });
+    };
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, user => {
-            setAuthed(!!user);
+            // Block KCSE uploader from accessing full admin
+            setAuthed(!!user && user.email !== KCSE_EMAIL);
             setAuthChecked(true);
         });
         return unsub;
@@ -441,7 +466,7 @@ export function AdminView() {
 
     const handleLogout = () => signOut(auth);
 
-    if (!authChecked) return null; // wait for Firebase Auth to resolve
+    if (!authChecked) return null;
     if (!authed) return <AdminLogin onLogin={() => {}} />;
 
     return (
@@ -449,7 +474,12 @@ export function AdminView() {
         <style>{CSS}</style>
         <div className="adm-root">
             <header className="adm-topbar">
-                <h1>🛠️ Bongo Quiz — Admin Panel</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button className="adm-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
+                        <span/><span/><span/>
+                    </button>
+                    <h1>🛠️ Bongo Quiz — Admin Panel</h1>
+                </div>
                 <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <a href="#/">← Back to Game</a>
                     <button onClick={handleLogout}
@@ -459,12 +489,20 @@ export function AdminView() {
                 </div>
             </header>
 
-            <div className="adm-mobile-tabs">
-                {TABS.map(t => (
-                    <button key={t.id} className={`adm-mob-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                        {t.label}
-                    </button>
-                ))}
+            {/* Mobile drawer */}
+            <div className={`adm-drawer-backdrop${drawerOpen ? " open" : ""}`} onClick={() => setDrawerOpen(false)} />
+            <div className={`adm-drawer${drawerOpen ? " open" : ""}`}>
+                <div className="adm-drawer-header">
+                    <span>🛠️ Admin Menu</span>
+                    <button className="adm-drawer-close" onClick={() => setDrawerOpen(false)}>✕</button>
+                </div>
+                <div className="adm-drawer-nav">
+                    {TABS.map(t => (
+                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
+                            <span className="adm-dot" />{t.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="adm-layout">
@@ -487,6 +525,7 @@ export function AdminView() {
                     {tab === "questions"    && <AdminQuestions />}
                     {tab === "powers"       && <AdminPowers />}
                     {tab === "achievements" && <Achievements />}
+                    {tab === "kcse"         && <AdminKCSE />}
                 </main>
             </div>
         </div>

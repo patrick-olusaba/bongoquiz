@@ -2,10 +2,41 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import mainLogo from './assets/logo.png';
 import logoBg from './assets/bongo-logo.png';
-import { BongoMain }    from "./component/game/BongoMain.tsx";
-import { GameInfoDocs } from "./component/docs/GameInfoDocs.tsx";
-import { AdminView }    from "./component/admin/AdminView.tsx";
-import { SummaryView } from "./component/summary/SummaryView.tsx";
+import { BongoMain }       from "./component/game/BongoMain.tsx";
+import { GameInfoDocs }    from "./component/docs/GameInfoDocs.tsx";
+import { AdminView }       from "./component/admin/AdminView.tsx";
+import { SummaryView }     from "./component/summary/SummaryView.tsx";
+import { KCSEPastPapers }  from "./component/KCSEPastPapers/KCSEPastPapers.tsx";
+import { AdminKCSE }       from "./component/admin/AdminKCSE.tsx";
+import { AdminLogin, KCSE_EMAIL } from "./component/admin/AdminLogin.tsx";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase.ts";
+
+function KCSEAdminRoute() {
+    const [authed, setAuthed] = useState<boolean | null>(null);
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, user => {
+            // Allow KCSE uploader OR full admin
+            setAuthed(!!user);
+        });
+        return unsub;
+    }, []);
+    if (authed === null) return null;
+    if (!authed) return <AdminLogin onLogin={() => {}} email={KCSE_EMAIL} label="KCSE Uploader" />;
+    return (
+        <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#f4f5fb", minHeight: "100vh" }}>
+            <style>{`html,body{overflow:auto!important;height:auto!important;display:block!important;place-items:unset!important}`}</style>
+            <div style={{ background: "#1a1a2e", padding: "14px 24px", display: "flex", alignItems: "center", gap: 12, marginBottom: 0 }}>
+                <button onClick={() => { window.location.hash = "/"; }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.9rem", color: "#aaa" }}>← Back</button>
+                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#ffd200" }}>📄 KCSE Papers — Admin</h2>
+            </div>
+            <div style={{ padding: 24 }}>
+                <AdminKCSE />
+            </div>
+        </div>
+    );
+}
 
 function App() {
     const [hash, setHash] = useState(window.location.hash);
@@ -82,8 +113,10 @@ function App() {
         );
     }
 
-    if (hash === "#/docs")  return <GameInfoDocs />;
-    if (hash === "#/admin") return <AdminView />;
+    if (hash === "#/docs")       return <GameInfoDocs />;
+    if (hash === "#/admin-main")      return <AdminView />;
+    if (hash === "#/kcse")       return <KCSEPastPapers onBack={() => { window.location.hash = "/"; }} />;
+    if (hash === "#/kcse-admin") return <KCSEAdminRoute />;
     const summaryMatch = hash.match(/^#\/summary\/(.+)$/) || window.location.pathname.match(/^\/summary\/(.+)$/);
     if (summaryMatch) return <SummaryView summaryId={summaryMatch[1]} />;
     return <BongoMain />;

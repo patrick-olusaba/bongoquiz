@@ -23,6 +23,7 @@ const CSS = `
 // Admin Firebase Auth email — PIN maps to password via convention:
 // password = "bongo_admin_" + PIN  (set this in Firebase Auth console)
 const ADMIN_EMAIL = "waruchojanen@gmail.com";
+export const KCSE_EMAIL  = "kcseuploader@bongoquiz.com"; // create this user in Firebase Auth console
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
 
@@ -30,7 +31,7 @@ const LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutes
 let attempts = 0;
 let lockedUntil = 0;
 
-export function AdminLogin({ onLogin }: { onLogin: () => void }) {
+export function AdminLogin({ onLogin, email = ADMIN_EMAIL, label = "Admin" }: { onLogin: () => void; email?: string; label?: string }) {
     const [pins,    setPins]    = useState(["", "", "", ""]);
     const [err,     setErr]     = useState("");
     const [loading, setLoading] = useState(false);
@@ -70,7 +71,7 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
         try {
             // Password convention: "bongo_admin_" + PIN
             // Create this user in Firebase Auth console with that password
-            await signInWithEmailAndPassword(auth, ADMIN_EMAIL, `bongo_admin_${pin}`);
+            await signInWithEmailAndPassword(auth, email, `bongo_admin_${pin}`);
             attempts = 0;
             onLogin();
         } catch {
@@ -98,7 +99,7 @@ export function AdminLogin({ onLogin }: { onLogin: () => void }) {
         <div className="al-wrap">
             <div className="al-box">
                 <div className="al-logo">🛠️ Bongo Quiz</div>
-                <div className="al-sub">Enter your 4-digit admin PIN</div>
+                <div className="al-sub">Enter your 4-digit {label} PIN</div>
                 {err && <div className="al-err">{err}</div>}
                 <form onSubmit={submit}>
                     <div className="al-pin-row">

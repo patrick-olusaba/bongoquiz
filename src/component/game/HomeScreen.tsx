@@ -193,7 +193,10 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard}) => {
                 <p className="more-section-title">Browse</p>
                 <div className="more-scroll">
                     {moreApps.map((app, i) => (
-                        <div key={app.label} className={`more-pill${i === 0 ? ' more-pill--active' : ''}`}>
+                        <div key={app.label}
+                            className={`more-pill${i === 0 ? ' more-pill--active' : ''}`}
+                            onClick={() => { if (i === 0) window.location.hash = "/kcse"; }}
+                            style={{ cursor: i === 0 ? "pointer" : "default" }}>
                             <span className="more-pill-icon">{app.icon}</span>
                             <span className="more-pill-label">{app.label}</span>
                         </div>
