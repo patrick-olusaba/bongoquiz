@@ -487,12 +487,19 @@ function GameSessions() {
                         (p.phone ?? "—").replace(/^254/, "0"),
                         p.amount != null ? `KSh ${p.amount}` : "—",
                         p.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
-                        <button
-                            disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
-                            onClick={() => grantSession(p)}
-                            style={{ ...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1 }}>
-                            {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
-                        </button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                                disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
+                                onClick={() => grantSession(p)}
+                                style={{ ...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1 }}>
+                                {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
+                            </button>
+                            <button
+                                onClick={() => setPayments(prev => prev.filter(x => x._id !== p._id))}
+                                style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>
+                                Already Granted
+                            </button>
+                        </div>
                     ]) : [["No stuck players 🎉", "", "", "", ""]]}
                 />
             </>) : (<>
