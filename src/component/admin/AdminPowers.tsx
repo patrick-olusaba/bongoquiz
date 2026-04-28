@@ -1,7 +1,8 @@
 // AdminPowers.tsx — Powers manager with images, edit & add
 import { useState, useRef, useEffect } from "react";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../firebase.ts";
 
 import BonusTime            from "../../assets/Items/BonusTime.png";
 import TimeTax              from "../../assets/Items/TimeTax.png";
@@ -70,23 +71,24 @@ const s: Record<string, React.CSSProperties> = {
     peff:    { fontSize: "0.78rem", color: "#666", lineHeight: 1.5 },
 };
 
-type ModalProps = { power: Power | null; onSave: (p: Power) => void; onClose: () => void; };
+type ModalProps = { power: Power | null; onSave: (p: Power, file?: File) => void; onClose: () => void; };
 
 function PowerModal({ power, onSave, onClose }: ModalProps) {
     const [form, setForm] = useState<Omit<Power, "id"> & { id?: number }>(power ?? BLANK);
+    const [file, setFile] = useState<File | undefined>();
+    const [preview, setPreview] = useState<string>(power?.img ?? "");
     const fileRef = useRef<HTMLInputElement>(null);
 
     const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => setForm(f => ({ ...f, img: ev.target?.result as string }));
-        reader.readAsDataURL(file);
+        const f = e.target.files?.[0];
+        if (!f) return;
+        setFile(f);
+        setPreview(URL.createObjectURL(f));
     };
 
     const save = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(form as Power);
+        onSave(form as Power, file);
     };
 
     return (
@@ -102,8 +104,8 @@ function PowerModal({ power, onSave, onClose }: ModalProps) {
                     <div style={s.row}>
                         <label style={s.label}>Image</label>
                         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                            {form.img
-                                ? <img src={form.img} style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 8, background: "#f0f0f8", border: "1px solid #e8eaf0" }} />
+                            {preview
+                                ? <img src={preview} style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 8, background: "#f0f0f8", border: "1px solid #e8eaf0" }} />
                                 : <div style={{ width: 72, height: 72, borderRadius: 8, background: "#f0f0f8", border: "1px dashed #ccc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "#aaa" }}>No image</div>
                             }
                             <div>
@@ -165,13 +167,20 @@ export function AdminPowers() {
             .catch(() => setLoading(false));
     }, []);
 
-    const save = async (p: Power) => {
+    const save = async (p: Power, file?: File) => {
+        let imgUrl = p.img;
+        if (file) {
+            const storageRef = ref(storage, `powers/${Date.now()}_${file.name}`);
+            await uploadBytes(storageRef, file);
+            imgUrl = await getDownloadURL(storageRef);
+        }
+        const data = { name: p.name, img: imgUrl, roundEffect: p.roundEffect, scoreModifier: p.scoreModifier, active: p.active };
         if (p.id) {
-            await updateDoc(doc(db, "powers", p.id), { name: p.name, img: p.img, roundEffect: p.roundEffect, scoreModifier: p.scoreModifier, active: p.active });
-            setPowers(prev => prev.map(x => x.id === p.id ? p : x));
+            await updateDoc(doc(db, "powers", p.id), data);
+            setPowers(prev => prev.map(x => x.id === p.id ? { ...p, img: imgUrl } : x));
         } else {
-            const docRef = await addDoc(collection(db, "powers"), { name: p.name, img: p.img, roundEffect: p.roundEffect, scoreModifier: p.scoreModifier, active: p.active });
-            setPowers(prev => [...prev, { ...p, id: docRef.id }]);
+            const docRef = await addDoc(collection(db, "powers"), data);
+            setPowers(prev => [...prev, { ...p, img: imgUrl, id: docRef.id }]);
         }
         setEditing(null);
         setAdding(false);

@@ -1,6 +1,6 @@
 // LeaderboardScreen.tsx
 import { type FC, useEffect, useState, useRef } from "react";
-import { collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import '../../styles/Leaderboardscreen.css';
 
@@ -27,20 +27,7 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
     const savedRef = useRef(false);
 
     useEffect(() => {
-        // Save this player's score first
-        if (!savedRef.current) {
-            savedRef.current = true;
-            const phone = localStorage.getItem("bongo_player_phone") ?? "";
-            const leaderboardKey = `lb_${phone}_${playerScore}`;
-            const lastSaved = sessionStorage.getItem("last_leaderboard_saved");
-            
-            if (lastSaved !== leaderboardKey && phone) {
-                sessionStorage.setItem("last_leaderboard_saved", leaderboardKey);
-                addDoc(collection(db, "leaderboard"), {
-                    name: playerName, phone, score: playerScore, playedAt: serverTimestamp(),
-                }).catch(() => {});
-            }
-        }
+        // Score is already saved by saveGameSession cloud function — no client write needed
         
         // Fetch from company API first, fall back to Firebase
         fetch("http://143.244.158.85:3535/api/leaderboard/public/top10")

@@ -15,16 +15,18 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Leaderboard — public read, authenticated admin can write
-    match /leaderboard/{id} {
-      allow read:  if true;
-      allow write: if request.auth != null;
+    // Leaderboard — public read, client can upsert own record (keyed by phone)
+    match /leaderboard/{phone} {
+      allow read:   if true;
+      allow create, update: if true;
+      allow delete: if request.auth != null;
     }
 
-    // Game sessions — public read (phone-filtered queries from client), authenticated admin can write
+    // Game sessions — public read, client can create (Admin SDK used by cloud fn, fallback allows direct write)
     match /gameSessions/{id} {
-      allow read:  if true;
-      allow write: if request.auth != null;
+      allow read:   if true;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
     }
 
     // Admins — no client access
