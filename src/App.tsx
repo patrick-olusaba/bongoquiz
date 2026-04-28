@@ -12,6 +12,7 @@ import { AdminLogin, KCSE_EMAIL } from "./component/admin/AdminLogin.tsx";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase.ts";
 
+
 function KCSEAdminRoute() {
     const [authed, setAuthed] = useState<boolean | null>(null);
     useEffect(() => {
