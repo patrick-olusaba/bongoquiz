@@ -408,6 +408,7 @@ function Payments() {
 function GameSessions() {
     const [rows,     setRows]     = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
+    const [dismissed, setDismissed] = useState<Set<string>>(new Set());
     const [search,   setSearch]   = useState("");
     const [tab,      setTab]      = useState<"sessions" | "stuck">("sessions");
     const [granting, setGranting] = useState<string | null>(null);
@@ -422,11 +423,15 @@ function GameSessions() {
         getDocs(collection(db, "payments"))
             .then(snap => setPayments(snap.docs.map(d => ({ _id: d.id, ...d.data() }))))
             .catch(() => {});
+        getDocs(collection(db, "dismissedPayments"))
+            .then(snap => setDismissed(new Set(snap.docs.map(d => d.id))))
+            .catch(() => {});
     }, []);
 
     // Players who paid but never got a session
     const stuckPlayers = payments.filter(p => {
         if (p.status !== "paid") return false;
+        if (dismissed.has(p._id)) return false;
         const paidAt: Date = p.createdAt?.toDate?.() ?? new Date(0);
         // Normalize phone: payments store 254..., sessions store 07...
         const phone07 = (p.phone ?? "").replace(/^254/, "0");
@@ -495,7 +500,10 @@ function GameSessions() {
                                 {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
                             </button>
                             <button
-                                onClick={() => setPayments(prev => prev.filter(x => x._id !== p._id))}
+                                onClick={() => {
+                                    setDoc(doc(db, "dismissedPayments", p._id), { dismissedAt: new Date() }).catch(() => {});
+                                    setDismissed(prev => new Set([...prev, p._id]));
+                                }}
                                 style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>
                                 Already Granted
                             </button>
