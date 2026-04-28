@@ -22,8 +22,8 @@ const s: Record<string, React.CSSProperties> = {
     input:  { padding: "8px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" as const },
     label:  { display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#555", marginBottom: 4 },
     row:    { marginBottom: 12 },
-    badge:  (ok: boolean) => ({ padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700, background: ok ? "#dcfce7" : "#fee2e2", color: ok ? "#166534" : "#991b1b" }),
 };
+const badge = (ok: boolean): React.CSSProperties => ({ padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700, background: ok ? "#dcfce7" : "#fee2e2", color: ok ? "#166534" : "#991b1b" });
 
 // ── Parse CSV text into questions ─────────────────────────────────────────────
 // Expected format: question,optionA,optionB,optionC,optionD,correctIndex(0-3),category
@@ -188,7 +188,7 @@ function BQQuestions() {
                                 <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
                                 <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
                                 <td style={s.td}>{q.category || "—"}</td>
-                                <td style={s.td}><span style={s.badge(q.active)}>{q.active ? "active" : "inactive"}</span></td>
+                                <td style={s.td}><span style={badge(q.active)}>{q.active ? "active" : "inactive"}</span></td>
                                 <td style={s.td}>
                                     <div style={{ display: "flex", gap: 6 }}>
                                         <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
