@@ -349,15 +349,18 @@ export const BongoMain: FC = () => {
     // ── Final ──────────────────────────────────────────────────────────────────
     if (screen === "final_result" && power) {
         const finalTotal = r1Score + r2Score + r3Bonus;
-        return <FinalResultScreen
-            power={power} r1Score={r1Score} r2Score={r2Score} r3Bonus={r3Bonus}
-            segment={null} total={finalTotal}
-            playerName={playerName}
-            r1TimeLeft={r1TimeLeft} r2Correct={r2Correct}
-            r2Total={r2Total}       maxStreak={r1MaxStreak}
-            onPlayAgain={() => setScreen("leaderboard")}
-            onViewSummary={() => setShowSummary(true)}
-        />;
+        return <>
+            <FinalResultScreen
+                power={power} r1Score={r1Score} r2Score={r2Score} r3Bonus={r3Bonus}
+                segment={null} total={finalTotal}
+                playerName={playerName}
+                r1TimeLeft={r1TimeLeft} r2Correct={r2Correct}
+                r2Total={r2Total}       maxStreak={r1MaxStreak}
+                onPlayAgain={() => setScreen("leaderboard")}
+                onViewSummary={() => setShowSummary(true)}
+            />
+            {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
+        </>;
     }
 
     if (screen === "leaderboard")
