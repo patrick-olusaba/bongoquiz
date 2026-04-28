@@ -7,8 +7,9 @@ import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
 import { AdminQuestions } from "./AdminQuestions.tsx";
 import { AdminPowers }    from "./AdminPowers.tsx";
 import { AdminKCSE }      from "./AdminKCSE.tsx";
+import { AdminBibleQuiz } from "./AdminBibleQuiz.tsx";
 
-type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse";
+type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz";
 
 const TABS: { id: AdminTab; label: string }[] = [
     { id: "dashboard",   label: "📊 Dashboard"      },
@@ -20,6 +21,7 @@ const TABS: { id: AdminTab; label: string }[] = [
     { id: "powers",      label: "⚡ Powers"          },
     { id: "achievements",label: "🏅 Achievements"    },
     { id: "kcse",        label: "📄 KCSE Papers"     },
+    { id: "biblequiz",   label: "✝️ Bible Quiz"      },
 ];
 
 const s: Record<string, React.CSSProperties> = {
@@ -733,10 +735,10 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 `;
 
 // ── Main export ────────────────────────────────────────────────────────────────
-export function AdminView() {
+export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
     const [authed, setAuthed] = useState(false);
     const [authChecked, setAuthChecked] = useState(false);
-    const [tab, setTab] = useState<AdminTab>("dashboard");
+    const [tab, setTab] = useState<AdminTab>(initialTab ?? "dashboard");
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     const changeTab = (t: AdminTab) => {
@@ -816,6 +818,7 @@ export function AdminView() {
                     {tab === "powers"       && <AdminPowers />}
                     {tab === "achievements" && <Achievements />}
                     {tab === "kcse"         && <AdminKCSE />}
+                    {tab === "biblequiz"    && <AdminBibleQuiz />}
                 </main>
             </div>
         </div>

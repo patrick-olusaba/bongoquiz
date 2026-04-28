@@ -114,9 +114,10 @@ function App() {
     }
 
     if (hash === "#/docs")       return <GameInfoDocs />;
-    if (hash === "#/admin-main")      return <AdminView />;
+    if (hash === "#/admin-main") return <AdminView />;
     if (hash === "#/kcse")       return <KCSEPastPapers onBack={() => { window.location.hash = "/"; }} />;
     if (hash === "#/kcse-admin") return <KCSEAdminRoute />;
+    if (hash === "#/bible-admin") return <AdminView initialTab="biblequiz" />;
     const summaryMatch = hash.match(/^#\/summary\/(.+)$/) || window.location.pathname.match(/^\/summary\/(.+)$/);
     if (summaryMatch) return <SummaryView summaryId={summaryMatch[1]} />;
     return <BongoMain />;
