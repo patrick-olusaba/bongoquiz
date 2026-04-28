@@ -72,56 +72,196 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard() {
-    const [stats, setStats] = useState({ players: 0, gamesPlayed: 0, avgScore: 0, revenueToday: 0, revenueWeek: 0, paymentSuccessRate: 0 });
+    const [data, setData] = useState<any>(null);
 
     useEffect(() => {
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+        const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime() / 1000;
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
 
         Promise.all([
             getDocs(collection(db, "players")),
             getDocs(collection(db, "gameSessions")),
             getDocs(collection(db, "payments")),
-        ]).then(([playersSnap, sessSnap, paySnap]) => {
+            getDocs(collection(db, "leaderboard")),
+            getDocs(collection(db, "grantedSessions")),
+        ]).then(([playersSnap, sessSnap, paySnap, lbSnap, grantSnap]) => {
             const sessions = sessSnap.docs.map(d => d.data());
             const payments = paySnap.docs.map(d => d.data());
+            const leaders  = lbSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            const uniquePlayers = playersSnap.size;
-            const gamesPlayed   = sessions.length;
-            const avgScore      = gamesPlayed ? Math.round(sessions.reduce((a, s) => a + (s.total ?? 0), 0) / gamesPlayed) : 0;
+            const paid    = payments.filter(p => p.status === "paid");
+            const pending = payments.filter(p => p.status === "pending");
+            const failed  = payments.filter(p => p.status === "failed");
 
-            const paid = payments.filter(p => p.status === "paid");
-            const revenueToday = paid
-                .filter(p => p.createdAt?.toDate?.()?.getTime?.() >= todayStart)
-                .reduce((a, p) => a + (p.amount ?? 0), 0);
-            const revenueWeek = paid
-                .filter(p => p.createdAt?.toDate?.()?.getTime?.() >= weekStart)
-                .reduce((a, p) => a + (p.amount ?? 0), 0);
-            const paymentSuccessRate = payments.length
-                ? Math.round((paid.length / payments.length) * 100) : 0;
+            const rev = (list: any[]) => list.reduce((a, p) => a + (p.amount ?? 0), 0);
+            const revenueTotal = rev(paid);
+            const revenueToday = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart));
+            const revenueWeek  = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart));
+            const revenueMonth = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= monthStart));
 
-            setStats({ players: uniquePlayers, gamesPlayed, avgScore, revenueToday, revenueWeek, paymentSuccessRate });
+            const gamesPlayed  = sessions.length;
+            const gamesToday   = sessions.filter(s => (s.playedAt?.seconds ?? 0) >= todayStart).length;
+            const gamesWeek    = sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length;
+            const avgScore     = gamesPlayed ? Math.round(sessions.reduce((a, s) => a + (s.total ?? 0), 0) / gamesPlayed) : 0;
+            const topScore     = sessions.reduce((a, s) => Math.max(a, s.total ?? 0), 0);
+
+            // Power usage breakdown
+            const powerCount: Record<string, number> = {};
+            sessions.forEach(s => { if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1; });
+            const topPowers = Object.entries(powerCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            // Revenue by day (last 7 days)
+            const dailyRev: Record<string, number> = {};
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now); d.setDate(d.getDate() - i);
+                dailyRev[d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" })] = 0;
+            }
+            paid.forEach(p => {
+                const d = p.createdAt?.toDate?.();
+                if (!d) return;
+                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
+                if (key in dailyRev) dailyRev[key] += p.amount ?? 0;
+            });
+
+            // Games by day (last 7 days)
+            const dailyGames: Record<string, number> = {};
+            Object.keys(dailyRev).forEach(k => dailyGames[k] = 0);
+            sessions.forEach(s => {
+                const d = s.playedAt?.toDate?.();
+                if (!d) return;
+                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
+                if (key in dailyGames) dailyGames[key]++;
+            });
+
+            // Top players — deduplicate by phone, keep highest score
+            const byPhone = new Map<string, any>();
+            leaders.forEach((p: any) => {
+                const phone = p.phone || p.id;
+                const existing = byPhone.get(phone);
+                if (!existing || (p.score ?? 0) > (existing.score ?? 0)) byPhone.set(phone, p);
+            });
+            const topPlayers = Array.from(byPhone.values())
+                .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
+                .slice(0, 10);
+
+            // Stuck players count
+            const stuckCount = grantSnap.size;
+
+            setData({
+                players: playersSnap.size,
+                gamesPlayed, gamesToday, gamesWeek, avgScore, topScore,
+                revenueTotal, revenueToday, revenueWeek, revenueMonth,
+                paid: paid.length, pending: pending.length, failed: failed.length,
+                paymentSuccessRate: payments.length ? Math.round((paid.length / payments.length) * 100) : 0,
+                topPowers, dailyRev, dailyGames, topPlayers, stuckCount,
+            });
         }).catch(() => {});
     }, []);
 
-    const rows = [
-        { n: stats.players.toLocaleString(),                  l: "Total Players"          },
-        { n: `KES ${stats.revenueToday.toLocaleString()}`,    l: "Revenue Today"           },
-        { n: `KES ${stats.revenueWeek.toLocaleString()}`,     l: "Revenue This Week"       },
-        { n: stats.gamesPlayed.toLocaleString(),              l: "Games Played"            },
-        { n: stats.avgScore.toLocaleString(),                 l: "Avg Score"               },
-        { n: `${stats.paymentSuccessRate}%`,                  l: "Payment Success Rate"    },
-    ];
+    if (!data) return <div style={s.card}><p style={s.p}>Loading analytics…</p></div>;
+
+    const maxRev   = Math.max(...Object.values(data.dailyRev as Record<string, number>), 1);
+    const maxGames = Math.max(...Object.values(data.dailyGames as Record<string, number>), 1);
+
+    const StatBox = ({ n, l, color, sub }: { n: string | number; l: string; color?: string; sub?: string }) => (
+        <div style={{ ...s.stat, flex: "1 1 140px" }}>
+            <div style={{ ...s.statN, color: color ?? "#4361ee" }}>{n}</div>
+            <div style={s.statL}>{l}</div>
+            {sub && <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: 2 }}>{sub}</div>}
+        </div>
+    );
+
+    const Bar = ({ val, max, color }: { val: number; max: number; color: string }) => (
+        <div style={{ background: "#f0f0f8", borderRadius: 4, height: 8, flex: 1 }}>
+            <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((val / max) * 100)}%`, transition: "width 0.6s" }} />
+        </div>
+    );
 
     return <>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
-            {rows.map(st => (
-                <div key={st.l} style={s.stat}>
-                    <div style={s.statN}>{st.n}</div>
-                    <div style={s.statL}>{st.l}</div>
+        {/* KPI row */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+            <StatBox n={data.players}                              l="Total Players"           color="#4361ee" />
+            <StatBox n={data.gamesPlayed}                         l="Total Games"             color="#7c3aed" sub={`${data.gamesToday} today · ${data.gamesWeek} this week`} />
+            <StatBox n={`KSh ${data.revenueTotal.toLocaleString()}`} l="Total Revenue"        color="#059669" />
+            <StatBox n={`KSh ${data.revenueToday.toLocaleString()}`} l="Revenue Today"        color="#0891b2" sub={`KSh ${data.revenueMonth.toLocaleString()} this month`} />
+            <StatBox n={`KSh ${data.revenueWeek.toLocaleString()}`}  l="Revenue This Week"   color="#0891b2" />
+            <StatBox n={data.avgScore.toLocaleString()}            l="Avg Score"              color="#d97706" sub={`Top: ${data.topScore.toLocaleString()}`} />
+            <StatBox n={`${data.paymentSuccessRate}%`}             l="Payment Success Rate"   color={data.paymentSuccessRate >= 70 ? "#059669" : "#dc2626"} />
+            <StatBox n={data.stuckCount}                           l="Stuck at Payment"       color={data.stuckCount > 0 ? "#dc2626" : "#059669"} sub="needs admin action" />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 20 }}>
+            {/* Revenue last 7 days */}
+            <div style={s.card}>
+                <h2 style={s.h2}>📈 Revenue — Last 7 Days</h2>
+                {Object.entries(data.dailyRev).map(([day, val]) => (
+                    <div key={day} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 70 }}>{day}</span>
+                        <Bar val={val as number} max={maxRev} color="#059669" />
+                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#059669", minWidth: 60, textAlign: "right" }}>KSh {(val as number).toLocaleString()}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Games last 7 days */}
+            <div style={s.card}>
+                <h2 style={s.h2}>🎮 Games Played — Last 7 Days</h2>
+                {Object.entries(data.dailyGames).map(([day, val]) => (
+                    <div key={day} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 70 }}>{day}</span>
+                        <Bar val={val as number} max={maxGames} color="#7c3aed" />
+                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#7c3aed", minWidth: 30, textAlign: "right" }}>{val as number}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Payment breakdown */}
+            <div style={s.card}>
+                <h2 style={s.h2}>💳 Payment Breakdown</h2>
+                {[
+                    { l: "Paid",    v: data.paid,    color: "#059669" },
+                    { l: "Pending", v: data.pending, color: "#d97706" },
+                    { l: "Failed",  v: data.failed,  color: "#dc2626" },
+                ].map(({ l, v, color }) => (
+                    <div key={l} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 60 }}>{l}</span>
+                        <Bar val={v} max={data.paid + data.pending + data.failed || 1} color={color} />
+                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color, minWidth: 30, textAlign: "right" }}>{v}</span>
+                    </div>
+                ))}
+                <div style={{ marginTop: 12, fontSize: "0.8rem", color: "#888" }}>
+                    Total transactions: <strong>{data.paid + data.pending + data.failed}</strong>
                 </div>
-            ))}
+            </div>
+
+            {/* Top powers */}
+            <div style={s.card}>
+                <h2 style={s.h2}>⚡ Most Used Powers</h2>
+                {data.topPowers.length ? data.topPowers.map(([name, count]: [string, number]) => (
+                    <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                        <Bar val={count} max={data.topPowers[0][1]} color="#4361ee" />
+                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#4361ee", minWidth: 24, textAlign: "right" }}>{count}</span>
+                    </div>
+                )) : <p style={s.p}>No data yet</p>}
+            </div>
+
+            {/* Top players */}
+            <div style={s.card}>
+                <h2 style={s.h2}>🏆 Top 10 Players</h2>
+                {data.topPlayers.length ? data.topPlayers.map((p: any, i: number) => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <span style={{ fontSize: "1rem" }}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][i]}</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a2e" }}>{p.name ?? "—"}</div>
+                            <div style={{ fontSize: "0.75rem", color: "#888" }}>{(p.phone ?? "").replace(/^254/, "0").replace(/(\d{4})\d{4}(\d{2})/, "$1****$2")}</div>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "#4361ee", fontSize: "0.9rem" }}>{(p.score ?? 0).toLocaleString()} pts</span>
+                    </div>
+                )) : <p style={s.p}>No data yet</p>}
+            </div>
         </div>
     </>;
 }
