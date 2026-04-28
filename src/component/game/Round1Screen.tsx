@@ -8,7 +8,7 @@ import '../../styles/game.css';
 
 interface Props {
     power: PrizeItem;
-    onComplete: (rawScore: number, correct: number, total: number, timeLeft: number, maxStreak: number) => void;
+    onComplete: (rawScore: number, correct: number, total: number, timeLeft: number, maxStreak: number, questions: import("../../types/sessionTypes.ts").QuestionRecord[]) => void;
 }
 
 const POINTS_CORRECT = 100;
@@ -57,12 +57,13 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     const correctRef   = useRef(0);
     const totalRef     = useRef(0);  // questions attempted
     const streakRef    = useRef(0);
+    const questionsRef = useRef<import("../../types/sessionTypes.ts").QuestionRecord[]>([]);
 
     const finishRound = () => {
         if (doneRef.current) return;
         doneRef.current = true;
         clearInterval(timerRef.current!);
-        onComplete(scoreRef.current, correctRef.current, totalRef.current, timeLeftRef.current, maxStreakRef.current);
+        onComplete(scoreRef.current, correctRef.current, totalRef.current, timeLeftRef.current, maxStreakRef.current, questionsRef.current);
     };
 
     useEffect(() => {
@@ -136,12 +137,30 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
             }
         }
 
+        questionsRef.current.push({
+            question: q.q,
+            options: q.options,
+            correctAnswer: q.options[q.answer],
+            userAnswer: q.options[idx],
+            isCorrect,
+            pointsEarned: isCorrect ? POINTS_CORRECT : (hasNoPenalty ? 0 : POINTS_WRONG),
+        });
+
         setScUsed(false);
         setTimeout(() => { setAnswered(null); nextQuestion(); }, 700);
     };
 
     const handlePass = () => {
         if (answered !== null || doneRef.current) return;
+        const q = questions[index];
+        questionsRef.current.push({
+            question: q.q,
+            options: q.options,
+            correctAnswer: q.options[q.answer],
+            userAnswer: null,
+            isCorrect: false,
+            pointsEarned: hasNoPenalty ? 0 : POINTS_PASS,
+        });
         if (!hasNoPenalty) {
             scoreRef.current += POINTS_PASS;
             setScore(scoreRef.current);

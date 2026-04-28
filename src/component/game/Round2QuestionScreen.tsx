@@ -8,7 +8,7 @@ import '../../styles/game.css';
 interface Props {
     power:   PrizeItem;
     r1Score: number;
-    onComplete: (rawScore: number, correct: number, total: number) => void;
+    onComplete: (rawScore: number, correct: number, total: number, questions: import("../../types/sessionTypes.ts").QuestionRecord[]) => void;
 }
 
 const POINTS_CORRECT = 500;
@@ -56,12 +56,13 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
     const correctRef = useRef(0);
     const totalRef   = useRef(0);
     const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+    const questionsRef = useRef<import("../../types/sessionTypes.ts").QuestionRecord[]>([]);
 
     const finishRound = () => {
         if (doneRef.current) return;
         doneRef.current = true;
         clearInterval(timerRef.current!);
-        onComplete(scoreRef.current, correctRef.current, totalRef.current);
+        onComplete(scoreRef.current, correctRef.current, totalRef.current, questionsRef.current);
     };
 
     // Single countdown for entire round (like R1)
@@ -120,11 +121,29 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
             setScore(scoreRef.current);
         }
 
+        questionsRef.current.push({
+            question: q.q,
+            options: q.options,
+            correctAnswer: q.options[q.answer],
+            userAnswer: q.options[idx],
+            isCorrect,
+            pointsEarned: isCorrect ? ptsCorrect : ptsWrong,
+        });
+
         setTimeout(() => nextQuestion(), 700);
     };
 
     const handlePass = () => {
         if (answered !== null || doneRef.current) return;
+        const q = questions[index];
+        questionsRef.current.push({
+            question: q.q,
+            options: q.options,
+            correctAnswer: q.options[q.answer],
+            userAnswer: null,
+            isCorrect: false,
+            pointsEarned: ptsPass,
+        });
         scoreRef.current += ptsPass;
         totalRef.current += 1;
         setScore(scoreRef.current);

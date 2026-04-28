@@ -142,6 +142,7 @@ export const BongoMain: FC = () => {
 
     // Session tracking
     const [sessionRounds,    setSessionRounds]    = useState<RoundRecord[]>([]);
+    const [lastSessionRounds, setLastSessionRounds] = useState<RoundRecord[]>([]);
     const [showSummary,      setShowSummary]      = useState(false);
     const [showHistory,      setShowHistory]      = useState(false);
 
@@ -194,16 +195,21 @@ export const BongoMain: FC = () => {
     };
 
     if (screen === "home")
-        return <HomeScreen
-            hasPaidSession={hasPaidSession}
-            onStart={(name: string) => {
-                setPlayerName(name);
-                setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
-                setScreen("box_select");
-            }}
-            onLeaderboard={() => setScreen("leaderboard")}
-            onHistory={() => setShowHistory(true)}
-        />;
+        return <>
+            <HomeScreen
+                hasPaidSession={hasPaidSession}
+                onStart={(name: string) => {
+                    setPlayerName(name);
+                    setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
+                    setScreen("box_select");
+                }}
+                onLeaderboard={() => setScreen("leaderboard")}
+                onHistory={() => setShowHistory(true)}
+                onReviewSession={lastSessionRounds.length > 0 ? () => setShowSummary(true) : undefined}
+            />
+            {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
+            {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
+        </>;
 
     if (screen === "box_select")
         return <BoxSelectScreen onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />;
@@ -284,15 +290,11 @@ export const BongoMain: FC = () => {
     if (screen === "round1" && power)
         return <Round1Screen
             power={power}
-            onComplete={(rawScore, correct, total, timeLeft, maxStreak) => {
+            onComplete={(rawScore, correct, total, timeLeft, maxStreak, questions) => {
                 const final = applyR1Power(rawScore, correct, total, power);
                 setR1Score(final); setR1TimeLeft(timeLeft);
                 setR1MaxStreak(maxStreak); setR1Correct(correct); setR1Total(total);
-                setSessionRounds(prev => [...prev, {
-                    roundNumber: 1,
-                    questions: [],
-                    score: final,
-                }]);
+                setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: final }]);
                 setScreen("round1_result");
             }}
         />;
@@ -309,15 +311,10 @@ export const BongoMain: FC = () => {
         return <Round2QuestionScreen
             power={power}
             r1Score={r1Score}
-            onComplete={(rawScore, correct, total) => {
+            onComplete={(rawScore, correct, total, questions) => {
                 const final = applyR2Power(rawScore, correct, total, power);
                 setR2Score(final); setR2Correct(correct); setR2Total(total);
-                setSessionRounds(prev => [...prev, {
-                    roundNumber: 2,
-                    questions: [],
-                    score: final,
-                    category: r2Category,
-                }]);
+                setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: final, category: r2Category }]);
                 setScreen("round2_result");
             }}
         />;
@@ -336,11 +333,10 @@ export const BongoMain: FC = () => {
             currentScore={r1Score + r2Score}
             onComplete={r3Score => {
                 setR3Bonus(r3Score);
-                setSessionRounds(prev => [...prev, {
-                    roundNumber: 3,
-                    questions: [],
-                    score: r3Score,
-                }]);
+                const r3Record: RoundRecord = { roundNumber: 3, questions: [], score: r3Score };
+                const allRounds = [...sessionRounds, r3Record];
+                setSessionRounds(allRounds);
+                setLastSessionRounds(allRounds); // persist through reset
                 saveSession(r1Score, r2Score, r3Score, power?.name ?? "");
                 setScreen("final_result");
             }}
@@ -359,7 +355,7 @@ export const BongoMain: FC = () => {
                 onPlayAgain={() => setScreen("leaderboard")}
                 onViewSummary={() => setShowSummary(true)}
             />
-            {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
+            {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
         </>;
     }
 

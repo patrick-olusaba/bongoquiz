@@ -11,10 +11,11 @@ interface Props {
     onStart: (playerName: string) => void;
     onLeaderboard: () => void;
     onHistory?: () => void;
+    onReviewSession?: () => void;
     hasPaidSession?: boolean;
 }
 
-export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, hasPaidSession = false}) => {
+export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onReviewSession, hasPaidSession = false}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showNameModal, setShowNameModal] = useState(false);
     const [showHTP, setShowHTP] = useState(false);
@@ -182,7 +183,20 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, hasPai
                             <div><div className="menu-item-label">Game History</div><div className="menu-item-sub">View your past sessions</div></div>
                         </button>
                     )}
-                    <button className="menu-item" onClick={() => { navigator.share?.({ title: 'Bongo Quiz', url: window.location.href }); }}>
+                    {onReviewSession && (
+                        <button className="menu-item" onClick={() => { setMenuOpen(false); onReviewSession(); }}>
+                            <span className="menu-item-icon">📋</span>
+                            <div><div className="menu-item-label">Review Last Game</div><div className="menu-item-sub">See questions & answers</div></div>
+                        </button>
+                    )}
+                    <button className="menu-item" onClick={() => {
+                        const text = `🎯 Play Bongo Quiz — 3 rounds of trivia, hidden powers & a prize wheel!\n${window.location.href}`;
+                        if (navigator.share) {
+                            navigator.share({ title: 'Bongo Quiz', text, url: window.location.href }).catch(() => {});
+                        } else {
+                            navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!')).catch(() => {});
+                        }
+                    }}>
                         <span className="menu-item-icon">🔗</span>
                         <div><div className="menu-item-label">Share</div><div className="menu-item-sub">Invite friends to play</div></div>
                     </button>
