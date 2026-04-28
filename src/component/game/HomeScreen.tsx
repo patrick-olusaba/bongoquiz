@@ -10,9 +10,10 @@ import '../../styles/HomeScreen.css';
 interface Props {
     onStart: (playerName: string) => void;
     onLeaderboard: () => void;
+    hasPaidSession?: boolean;
 }
 
-export const HomeScreen: FC<Props> = ({onStart, onLeaderboard}) => {
+export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, hasPaidSession = false}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showNameModal, setShowNameModal] = useState(false);
     const [showHTP, setShowHTP] = useState(false);
@@ -269,7 +270,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard}) => {
                 <div className="home-cta-wrap">
                     <button className="home-btn" onClick={handlePlay}>
                         <span className="home-btn-shine"/>
-                        🎯 &nbsp;PLAY NOW
+                        {hasPaidSession ? "▶️ \u00a0Continue Where You Left Off" : "🎯 \u00a0PLAY NOW"}
                     </button>
                     {/*<div className="home-secondary-btns">*/}
                     {/*    <button className="home-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>*/}

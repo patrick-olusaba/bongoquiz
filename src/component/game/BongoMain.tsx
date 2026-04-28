@@ -1,6 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
-import { type FC, useState } from "react";
+import { type FC, useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFirestore, collection, query, where, limit, getDocs } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 
@@ -62,6 +63,53 @@ export const BongoMain: FC = () => {
     const [playerName,  setPlayerName]  = useState(() => localStorage.getItem("bongo_player_name") ?? "Player");
     const [playerPhone, setPlayerPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
     const [power,       setPower]       = useState<PrizeItem | null>(null);
+    const [hasPaidSession, setHasPaidSession] = useState(false);
+    const hasPaidSessionRef = useRef(false);
+
+    // Check on mount if this phone has a paid R1R2 session that was never played
+    useEffect(() => {
+        const phone = localStorage.getItem("bongo_player_phone");
+        if (!phone || !/^07\d{8}$/.test(phone)) return;
+        const phone254 = phone.replace(/^0/, "254");
+        const db = getFirestore();
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        getDocs(
+            query(
+                collection(db, "payments"),
+                where("phone", "==", phone254),
+                where("status", "==", "paid"),
+                where("amount", "==", 20),
+                limit(5)
+            )
+        ).then(async snap => {
+            if (snap.empty) return;
+
+            const sorted = snap.docs
+                .map(d => ({ ...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0) }))
+                .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime());
+
+            const paidAt: Date = sorted[0]._paidAt;
+            if (paidAt < since) return;
+
+            // Confirm no game session was already played after this payment
+            const sessionSnap = await getDocs(
+                query(
+                    collection(db, "gameSessions"),
+                    where("phone", "==", phone),
+                    limit(10)
+                )
+            );
+            const alreadyPlayed = sessionSnap.docs.some(d => {
+                const playedAt: Date = d.data().playedAt?.toDate?.() ?? new Date(0);
+                return playedAt > paidAt;
+            });
+            if (!alreadyPlayed) {
+                hasPaidSessionRef.current = true;
+                setHasPaidSession(true);
+            }
+        }).catch((e) => { console.error("hasPaidSession check failed:", e); });
+    }, []);
 
     // R1
     const [r1Score,     setR1Score]     = useState(0);
@@ -108,7 +156,12 @@ export const BongoMain: FC = () => {
 
     if (screen === "home")
         return <HomeScreen
-            onStart={(name: string) => { setPlayerName(name); setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? ""); setScreen("box_select"); }}
+            hasPaidSession={hasPaidSession}
+            onStart={(name: string) => {
+                setPlayerName(name);
+                setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
+                setScreen("box_select");
+            }}
             onLeaderboard={() => setScreen("leaderboard")}
         />;
 
@@ -116,7 +169,15 @@ export const BongoMain: FC = () => {
         return <BoxSelectScreen onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />;
 
     if (screen === "power_reveal" && power)
-        return <PowerRevealScreen power={power} onContinue={() => setScreen("deduct_r1r2")} />;
+        return <PowerRevealScreen power={power} onContinue={() => {
+            if (hasPaidSessionRef.current) {
+                hasPaidSessionRef.current = false;
+                setHasPaidSession(false);
+                setScreen("transition_r1");
+            } else {
+                setScreen("deduct_r1r2");
+            }
+        }} />;
 
     // ── Deduction confirmations ────────────────────────────────────────────────
     if (screen === "deduct_r1r2")
@@ -248,6 +309,7 @@ export const BongoMain: FC = () => {
         />;
 
     return <HomeScreen
+        hasPaidSession={hasPaidSession}
         onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
         onLeaderboard={() => setScreen("leaderboard")}
     />;
