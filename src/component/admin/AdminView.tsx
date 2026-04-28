@@ -8,8 +8,10 @@ import { AdminQuestions } from "./AdminQuestions.tsx";
 import { AdminPowers }    from "./AdminPowers.tsx";
 import { AdminKCSE }      from "./AdminKCSE.tsx";
 import { AdminBibleQuiz } from "./AdminBibleQuiz.tsx";
+import { AdminMathQuiz }  from "./AdminMathQuiz.tsx";
+import { AdminBioQuiz }   from "./AdminBioQuiz.tsx";
 
-type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz";
+type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz" | "mathquiz" | "bioquiz";
 
 const TABS: { id: AdminTab; label: string }[] = [
     { id: "dashboard",   label: "📊 Dashboard"      },
@@ -22,6 +24,8 @@ const TABS: { id: AdminTab; label: string }[] = [
     { id: "achievements",label: "🏅 Achievements"    },
     { id: "kcse",        label: "📄 KCSE Papers"     },
     { id: "biblequiz",   label: "✝️ Bible Quiz"      },
+    { id: "mathquiz",    label: "➗ Math Quiz"       },
+    { id: "bioquiz",     label: "🧬 Biology Quiz"    },
 ];
 
 const s: Record<string, React.CSSProperties> = {
@@ -82,165 +86,186 @@ function Dashboard() {
         const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime() / 1000;
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
 
+        const buildGameStats = (sessions: any[], payments: any[]) => {
+            const paid    = payments.filter(p => p.status === "paid");
+            const pending = payments.filter(p => p.status === "pending");
+            const failed  = payments.filter(p => p.status === "failed");
+            const rev = (list: any[]) => list.reduce((a, p) => a + (p.amount ?? 0), 0);
+            const dailyRev: Record<string, number> = {};
+            const dailyGames: Record<string, number> = {};
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now); d.setDate(d.getDate() - i);
+                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
+                dailyRev[key] = 0; dailyGames[key] = 0;
+            }
+            paid.forEach(p => { const d = p.createdAt?.toDate?.(); if (!d) return; const k = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" }); if (k in dailyRev) dailyRev[k] += p.amount ?? 0; });
+            sessions.forEach(s => { const d = s.playedAt?.toDate?.(); if (!d) return; const k = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" }); if (k in dailyGames) dailyGames[k]++; });
+            return {
+                sessions: sessions.length,
+                sessionsToday: sessions.filter(s => (s.playedAt?.seconds ?? 0) >= todayStart).length,
+                sessionsWeek:  sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length,
+                avgScore: sessions.length ? Math.round(sessions.reduce((a, s) => a + (s.score ?? s.total ?? 0), 0) / sessions.length) : 0,
+                revenueTotal: rev(paid),
+                revenueToday: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart)),
+                revenueWeek:  rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart)),
+                revenueMonth: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= monthStart)),
+                paid: paid.length, pending: pending.length, failed: failed.length,
+                successRate: payments.length ? Math.round((paid.length / payments.length) * 100) : 0,
+                dailyRev, dailyGames,
+            };
+        };
+
         Promise.all([
             getDocs(collection(db, "players")),
             getDocs(collection(db, "gameSessions")),
             getDocs(collection(db, "payments")),
             getDocs(collection(db, "leaderboard")),
             getDocs(collection(db, "grantedSessions")),
-        ]).then(([playersSnap, sessSnap, paySnap, lbSnap, grantSnap]) => {
-            const sessions = sessSnap.docs.map(d => d.data());
-            const payments = paySnap.docs.map(d => d.data());
-            const leaders  = lbSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            getDocs(collection(db, "bibleQuizSessions")),
+            getDocs(collection(db, "bibleQuizPayments")),
+            getDocs(collection(db, "mathQuizSessions")),
+            getDocs(collection(db, "mathQuizPayments")),
+            getDocs(collection(db, "bioQuizSessions")),
+            getDocs(collection(db, "bioQuizPayments")),
+        ]).then(([playersSnap, sessSnap, paySnap, lbSnap, grantSnap, bqSessSnap, bqPaySnap, mqSessSnap, mqPaySnap, bioSessSnap, bioPaySnap]) => {
+            const bongoSessions  = sessSnap.docs.map(d => d.data());
+            const bongoPayments  = paySnap.docs.map(d => d.data());
+            const bibleSessions  = bqSessSnap.docs.map(d => d.data());
+            const biblePayments  = bqPaySnap.docs.map(d => d.data());
+            const mathSessions   = mqSessSnap.docs.map(d => d.data());
+            const mathPayments   = mqPaySnap.docs.map(d => d.data());
+            const bioSessions    = bioSessSnap.docs.map(d => d.data());
+            const bioPayments    = bioPaySnap.docs.map(d => d.data());
+            const leaders        = lbSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            const paid    = payments.filter(p => p.status === "paid");
-            const pending = payments.filter(p => p.status === "pending");
-            const failed  = payments.filter(p => p.status === "failed");
-
-            const rev = (list: any[]) => list.reduce((a, p) => a + (p.amount ?? 0), 0);
-            const revenueTotal = rev(paid);
-            const revenueToday = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart));
-            const revenueWeek  = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart));
-            const revenueMonth = rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= monthStart));
-
-            const gamesPlayed  = sessions.length;
-            const gamesToday   = sessions.filter(s => (s.playedAt?.seconds ?? 0) >= todayStart).length;
-            const gamesWeek    = sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length;
-            const avgScore     = gamesPlayed ? Math.round(sessions.reduce((a, s) => a + (s.total ?? 0), 0) / gamesPlayed) : 0;
-            const topScore     = sessions.reduce((a, s) => Math.max(a, s.total ?? 0), 0);
-
-            // Power usage breakdown
+            // Power usage
             const powerCount: Record<string, number> = {};
-            sessions.forEach(s => { if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1; });
+            bongoSessions.forEach(s => { if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1; });
             const topPowers = Object.entries(powerCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-            // Revenue by day (last 7 days)
-            const dailyRev: Record<string, number> = {};
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(now); d.setDate(d.getDate() - i);
-                dailyRev[d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" })] = 0;
-            }
-            paid.forEach(p => {
-                const d = p.createdAt?.toDate?.();
-                if (!d) return;
-                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
-                if (key in dailyRev) dailyRev[key] += p.amount ?? 0;
-            });
-
-            // Games by day (last 7 days)
-            const dailyGames: Record<string, number> = {};
-            Object.keys(dailyRev).forEach(k => dailyGames[k] = 0);
-            sessions.forEach(s => {
-                const d = s.playedAt?.toDate?.();
-                if (!d) return;
-                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
-                if (key in dailyGames) dailyGames[key]++;
-            });
-
-            // Top players — deduplicate by phone, keep highest score
+            // Top players deduped
             const byPhone = new Map<string, any>();
-            leaders.forEach((p: any) => {
-                const phone = p.phone || p.id;
-                const existing = byPhone.get(phone);
-                if (!existing || (p.score ?? 0) > (existing.score ?? 0)) byPhone.set(phone, p);
-            });
-            const topPlayers = Array.from(byPhone.values())
-                .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
-                .slice(0, 10);
+            leaders.forEach((p: any) => { const ph = p.phone || p.id; const ex = byPhone.get(ph); if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, p); });
+            const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10);
 
-            // Stuck players count
-            const stuckCount = grantSnap.size;
+            // All revenue combined
+            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments].filter(p => p.status === "paid");
+            const totalRevenue = allPaid.reduce((a, p) => a + (p.amount ?? 0), 0);
+            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length;
 
             setData({
                 players: playersSnap.size,
-                gamesPlayed, gamesToday, gamesWeek, avgScore, topScore,
-                revenueTotal, revenueToday, revenueWeek, revenueMonth,
-                paid: paid.length, pending: pending.length, failed: failed.length,
-                paymentSuccessRate: payments.length ? Math.round((paid.length / payments.length) * 100) : 0,
-                topPowers, dailyRev, dailyGames, topPlayers, stuckCount,
+                stuckCount: grantSnap.size,
+                totalRevenue, totalSessions,
+                topPowers, topPlayers,
+                bongo: buildGameStats(bongoSessions, bongoPayments),
+                bible: buildGameStats(bibleSessions, biblePayments),
+                math:  buildGameStats(mathSessions,  mathPayments),
+                bio:   buildGameStats(bioSessions,   bioPayments),
             });
         }).catch(() => {});
     }, []);
 
     if (!data) return <div style={s.card}><p style={s.p}>Loading analytics…</p></div>;
 
-    const maxRev   = Math.max(...Object.values(data.dailyRev as Record<string, number>), 1);
-    const maxGames = Math.max(...Object.values(data.dailyGames as Record<string, number>), 1);
-
-    const StatBox = ({ n, l, color, sub }: { n: string | number; l: string; color?: string; sub?: string }) => (
-        <div style={{ ...s.stat, flex: "1 1 140px" }}>
-            <div style={{ ...s.statN, color: color ?? "#4361ee" }}>{n}</div>
-            <div style={s.statL}>{l}</div>
-            {sub && <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: 2 }}>{sub}</div>}
-        </div>
-    );
-
     const Bar = ({ val, max, color }: { val: number; max: number; color: string }) => (
         <div style={{ background: "#f0f0f8", borderRadius: 4, height: 8, flex: 1 }}>
-            <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((val / max) * 100)}%`, transition: "width 0.6s" }} />
+            <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((val / Math.max(max, 1)) * 100)}%`, transition: "width 0.6s" }} />
         </div>
     );
 
-    return <>
-        {/* KPI row */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
-            <StatBox n={data.players}                              l="Total Players"           color="#4361ee" />
-            <StatBox n={data.gamesPlayed}                         l="Total Games"             color="#7c3aed" sub={`${data.gamesToday} today · ${data.gamesWeek} this week`} />
-            <StatBox n={`KSh ${data.revenueTotal.toLocaleString()}`} l="Total Revenue"        color="#059669" />
-            <StatBox n={`KSh ${data.revenueToday.toLocaleString()}`} l="Revenue Today"        color="#0891b2" sub={`KSh ${data.revenueMonth.toLocaleString()} this month`} />
-            <StatBox n={`KSh ${data.revenueWeek.toLocaleString()}`}  l="Revenue This Week"   color="#0891b2" />
-            <StatBox n={data.avgScore.toLocaleString()}            l="Avg Score"              color="#d97706" sub={`Top: ${data.topScore.toLocaleString()}`} />
-            <StatBox n={`${data.paymentSuccessRate}%`}             l="Payment Success Rate"   color={data.paymentSuccessRate >= 70 ? "#059669" : "#dc2626"} />
-            <StatBox n={data.stuckCount}                           l="Stuck at Payment"       color={data.stuckCount > 0 ? "#dc2626" : "#059669"} sub="needs admin action" />
+    const StatBox = ({ n, l, color, sub }: { n: string | number; l: string; color?: string; sub?: string }) => (
+        <div style={{ ...s.stat, flex: "1 1 130px" }}>
+            <div style={{ ...s.statN, color: color ?? "#4361ee" }}>{n}</div>
+            <div style={s.statL}>{l}</div>
+            {sub && <div style={{ fontSize: "0.7rem", color: "#aaa", marginTop: 2 }}>{sub}</div>}
         </div>
+    );
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 20 }}>
-            {/* Revenue last 7 days */}
-            <div style={s.card}>
-                <h2 style={s.h2}>📈 Revenue — Last 7 Days</h2>
-                {Object.entries(data.dailyRev).map(([day, val]) => (
-                    <div key={day} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 70 }}>{day}</span>
-                        <Bar val={val as number} max={maxRev} color="#059669" />
-                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#059669", minWidth: 60, textAlign: "right" }}>KSh {(val as number).toLocaleString()}</span>
-                    </div>
-                ))}
-            </div>
-
-            {/* Games last 7 days */}
-            <div style={s.card}>
-                <h2 style={s.h2}>🎮 Games Played — Last 7 Days</h2>
-                {Object.entries(data.dailyGames).map(([day, val]) => (
-                    <div key={day} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 70 }}>{day}</span>
-                        <Bar val={val as number} max={maxGames} color="#7c3aed" />
-                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#7c3aed", minWidth: 30, textAlign: "right" }}>{val as number}</span>
-                    </div>
-                ))}
-            </div>
-
-            {/* Payment breakdown */}
-            <div style={s.card}>
-                <h2 style={s.h2}>💳 Payment Breakdown</h2>
-                {[
-                    { l: "Paid",    v: data.paid,    color: "#059669" },
-                    { l: "Pending", v: data.pending, color: "#d97706" },
-                    { l: "Failed",  v: data.failed,  color: "#dc2626" },
-                ].map(({ l, v, color }) => (
-                    <div key={l} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 60 }}>{l}</span>
-                        <Bar val={v} max={data.paid + data.pending + data.failed || 1} color={color} />
-                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color, minWidth: 30, textAlign: "right" }}>{v}</span>
-                    </div>
-                ))}
-                <div style={{ marginTop: 12, fontSize: "0.8rem", color: "#888" }}>
-                    Total transactions: <strong>{data.paid + data.pending + data.failed}</strong>
+    const GameCard = ({ label, icon, color, g }: { label: string; icon: string; color: string; g: any }) => {
+        const maxRev   = Math.max(...Object.values(g.dailyRev as Record<string, number>), 1);
+        const maxGames = Math.max(...Object.values(g.dailyGames as Record<string, number>), 1);
+        return (
+            <div style={{ ...s.card, borderTop: `3px solid ${color}` }}>
+                <h2 style={{ ...s.h2, color }}>{icon} {label}</h2>
+                {/* Mini KPIs */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+                    {[
+                        { l: "Sessions",    v: g.sessions,                              c: color },
+                        { l: "Today",       v: g.sessionsToday,                         c: "#666" },
+                        { l: "Revenue",     v: `KSh ${g.revenueTotal.toLocaleString()}`,c: "#059669" },
+                        { l: "This Week",   v: `KSh ${g.revenueWeek.toLocaleString()}`, c: "#0891b2" },
+                        { l: "Avg Score",   v: g.avgScore.toLocaleString(),             c: "#d97706" },
+                        { l: "Success Rate",v: `${g.successRate}%`,                     c: g.successRate >= 70 ? "#059669" : "#dc2626" },
+                    ].map(({ l, v, c }) => (
+                        <div key={l} style={{ background: "#f8f9ff", borderRadius: 8, padding: "10px 14px", flex: "1 1 90px", border: "1px solid #eef0ff" }}>
+                            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: c }}>{v}</div>
+                            <div style={{ fontSize: "0.7rem", color: "#888", marginTop: 2 }}>{l}</div>
+                        </div>
+                    ))}
+                </div>
+                {/* Payment breakdown */}
+                <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>PAYMENTS</div>
+                    {[{ l: "Paid", v: g.paid, c: "#059669" }, { l: "Pending", v: g.pending, c: "#d97706" }, { l: "Failed", v: g.failed, c: "#dc2626" }].map(({ l, v, c }) => (
+                        <div key={l} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: "0.75rem", color: "#666", minWidth: 52 }}>{l}</span>
+                            <Bar val={v} max={g.paid + g.pending + g.failed || 1} color={c} />
+                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: c, minWidth: 24, textAlign: "right" }}>{v}</span>
+                        </div>
+                    ))}
+                </div>
+                {/* Revenue last 7 days */}
+                <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>REVENUE — LAST 7 DAYS</div>
+                    {Object.entries(g.dailyRev).map(([day, val]) => (
+                        <div key={day} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                            <span style={{ fontSize: "0.72rem", color: "#666", minWidth: 60 }}>{day}</span>
+                            <Bar val={val as number} max={maxRev} color={color} />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 600, color, minWidth: 52, textAlign: "right" }}>KSh {(val as number).toLocaleString()}</span>
+                        </div>
+                    ))}
+                </div>
+                {/* Games last 7 days */}
+                <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>GAMES — LAST 7 DAYS</div>
+                    {Object.entries(g.dailyGames).map(([day, val]) => (
+                        <div key={day} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                            <span style={{ fontSize: "0.72rem", color: "#666", minWidth: 60 }}>{day}</span>
+                            <Bar val={val as number} max={maxGames} color={color} />
+                            <span style={{ fontSize: "0.72rem", fontWeight: 600, color, minWidth: 20, textAlign: "right" }}>{val as number}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
+        );
+    };
 
-            {/* Top powers */}
+    return <>
+        {/* ── Platform KPIs ── */}
+        <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "#aaa", marginBottom: 10 }}>Platform Overview</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+                <StatBox n={data.players}                                  l="Total Players"      color="#4361ee" />
+                <StatBox n={data.totalSessions}                            l="Total Games (All)"  color="#7c3aed" />
+                <StatBox n={`KSh ${data.totalRevenue.toLocaleString()}`}   l="Total Revenue (All)"color="#059669" />
+                <StatBox n={data.stuckCount}                               l="Stuck at Payment"   color={data.stuckCount > 0 ? "#dc2626" : "#059669"} sub="needs admin action" />
+            </div>
+        </div>
+
+        {/* ── Per-game analytics ── */}
+        <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "#aaa", marginBottom: 10 }}>Per-Game Analytics</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, marginBottom: 20 }}>
+            <GameCard label="Bongo Quiz"    icon="🎯" color="#4361ee" g={data.bongo} />
+            <GameCard label="Bible Quiz"    icon="✝️" color="#059669" g={data.bible} />
+            <GameCard label="Math Quiz"     icon="➗" color="#d97706" g={data.math}  />
+            <GameCard label="Biology Quiz"  icon="🧬" color="#7c3aed" g={data.bio}   />
+        </div>
+
+        {/* ── Shared leaderboard + powers ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
             <div style={s.card}>
-                <h2 style={s.h2}>⚡ Most Used Powers</h2>
+                <h2 style={s.h2}>⚡ Most Used Powers (Bongo Quiz)</h2>
                 {data.topPowers.length ? data.topPowers.map(([name, count]: [string, number]) => (
                     <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                         <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
@@ -249,18 +274,16 @@ function Dashboard() {
                     </div>
                 )) : <p style={s.p}>No data yet</p>}
             </div>
-
-            {/* Top players */}
             <div style={s.card}>
-                <h2 style={s.h2}>🏆 Top 10 Players</h2>
+                <h2 style={s.h2}>🏆 Top 10 Players (Bongo Quiz)</h2>
                 {data.topPlayers.length ? data.topPlayers.map((p: any, i: number) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "1rem" }}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][i]}</span>
+                        <span style={{ fontSize: "1rem", minWidth: 24 }}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][i]}</span>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a2e" }}>{p.name ?? "—"}</div>
-                            <div style={{ fontSize: "0.75rem", color: "#888" }}>{(p.phone ?? "").replace(/^254/, "0").replace(/(\d{4})\d{4}(\d{2})/, "$1****$2")}</div>
+                            <div style={{ fontSize: "0.72rem", color: "#aaa" }}>{(p.phone ?? "").replace(/^254/, "0").slice(0, 3) + "*******"}</div>
                         </div>
-                        <span style={{ fontWeight: 700, color: "#4361ee", fontSize: "0.9rem" }}>{(p.score ?? 0).toLocaleString()} pts</span>
+                        <span style={{ fontWeight: 700, color: "#4361ee", fontSize: "0.88rem" }}>{(p.score ?? 0).toLocaleString()} pts</span>
                     </div>
                 )) : <p style={s.p}>No data yet</p>}
             </div>
@@ -646,57 +669,81 @@ const CSS = `
 html, body { height: 100%; display: block !important; place-items: unset !important; overflow: hidden; }
 
 .adm-root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f4f5fb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f0f2f8;
   color: #1a1a2e;
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
+/* ── Topbar ── */
 .adm-topbar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 60%, #24243e 100%);
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-  min-height: 56px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.4);
+  min-height: 58px;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.adm-topbar h1 { color: #ffd200; font-size: 1.1rem; font-weight: 800; }
-.adm-topbar a  { color: #aaa; font-size: 0.8rem; text-decoration: none; }
+.adm-topbar h1 {
+  color: #ffd200;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+.adm-topbar a { color: #8899aa; font-size: 0.8rem; text-decoration: none; transition: color 0.15s; }
 .adm-topbar a:hover { color: #fff; }
 
+/* ── Layout ── */
 .adm-layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ── */
 .adm-sidebar {
-  width: 210px; min-width: 210px;
+  width: 220px; min-width: 220px;
   background: #fff;
-  border-right: 1px solid #e8eaf0;
-  padding: 20px 12px;
+  border-right: 1px solid #e4e6f0;
+  padding: 16px 10px 20px;
   overflow-y: auto;
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 2px;
   flex-shrink: 0;
 }
 .adm-sidebar-label {
-  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.2px; color: #aaa; padding: 0 10px 10px;
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.4px; color: #b0b8cc; padding: 10px 10px 6px;
+}
+.adm-sidebar-divider {
+  height: 1px; background: #f0f2f8; margin: 8px 6px;
 }
 .adm-tab {
-  display: flex; align-items: center; gap: 8px; padding: 9px 12px;
-  border-radius: 8px; border: none; background: transparent; color: #666;
-  cursor: pointer; font-size: 0.85rem; text-align: left; width: 100%;
-  transition: all 0.15s; font-family: inherit;
+  display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+  border-radius: 8px; border: none; background: transparent; color: #5a6480;
+  cursor: pointer; font-size: 0.84rem; text-align: left; width: 100%;
+  transition: all 0.15s; font-family: inherit; font-weight: 500;
 }
 .adm-tab:hover { background: #f4f5fb; color: #1a1a2e; }
-.adm-tab.active { background: #eef0ff; color: #4361ee; font-weight: 600; }
-.adm-tab.active .adm-dot { background: #4361ee; }
-.adm-dot { width: 6px; height: 6px; border-radius: 50%; background: #ddd; flex-shrink: 0; }
+.adm-tab.active {
+  background: linear-gradient(135deg, #eef0ff 0%, #e8ecff 100%);
+  color: #4361ee; font-weight: 700;
+  box-shadow: inset 3px 0 0 #4361ee;
+}
+.adm-tab.active .adm-dot { background: #4361ee; box-shadow: 0 0 6px rgba(67,97,238,0.5); }
+.adm-dot { width: 7px; height: 7px; border-radius: 50%; background: #d8dce8; flex-shrink: 0; transition: all 0.15s; }
 
+/* ── Content ── */
 .adm-content { flex: 1; overflow-y: auto; padding: 28px 28px 60px; min-width: 0; }
 
-/* Mobile hamburger drawer */
+/* ── Cards ── */
+.adm-content > div > div[style] h2 {
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Mobile ── */
 .adm-hamburger {
   display: none; background: none; border: none; cursor: pointer;
   flex-direction: column; gap: 5px; padding: 6px; border-radius: 6px;
@@ -705,29 +752,27 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 .adm-hamburger:hover { background: rgba(255,255,255,0.08); }
 
 .adm-drawer-backdrop {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50;
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 50;
+  backdrop-filter: blur(2px);
 }
 .adm-drawer {
   position: fixed; top: 0; left: 0; height: 100vh; width: 240px;
   background: #fff; z-index: 51; transform: translateX(-100%);
   transition: transform 0.25s ease; display: flex; flex-direction: column;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+  box-shadow: 6px 0 30px rgba(0,0,0,0.25);
 }
 .adm-drawer.open { transform: translateX(0); }
 .adm-drawer-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 100%);
   padding: 16px 16px 14px; display: flex; align-items: center; justify-content: space-between;
 }
 .adm-drawer-header span { color: #ffd200; font-weight: 800; font-size: 0.95rem; }
-.adm-drawer-close {
-  background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-}
+.adm-drawer-close { background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .adm-drawer-close:hover { color: #fff; }
-.adm-drawer-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+.adm-drawer-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
 
 @media (max-width: 720px) {
   .adm-sidebar        { display: none; }
-  .adm-mobile-tabs    { display: none; }
   .adm-hamburger      { display: flex; }
   .adm-drawer-backdrop.open { display: block; }
   .adm-content        { padding: 16px 14px 60px; }
@@ -775,7 +820,7 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                 <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <a href="#/">← Back to Game</a>
                     <button onClick={handleLogout}
-                        style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#fee2e2", color: "#991b1b", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit" }}>
+                        style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.3)", background: "rgba(255,80,80,0.12)", color: "#ff8080", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit", transition: "all 0.15s" }}>
                         Logout
                     </button>
                 </div>
@@ -789,7 +834,15 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                     <button className="adm-drawer-close" onClick={() => setDrawerOpen(false)}>✕</button>
                 </div>
                 <div className="adm-drawer-nav">
-                    {TABS.map(t => (
+                    <div className="adm-sidebar-label">Bongo Quiz</div>
+                    {TABS.filter(t => ["dashboard","players","payments","games","leaderboard","questions","powers","achievements"].includes(t.id)).map(t => (
+                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
+                            <span className="adm-dot" />{t.label}
+                        </button>
+                    ))}
+                    <div className="adm-sidebar-divider" />
+                    <div className="adm-sidebar-label">Other Games</div>
+                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz"].includes(t.id)).map(t => (
                         <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
                             <span className="adm-dot" />{t.label}
                         </button>
@@ -799,11 +852,17 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
 
             <div className="adm-layout">
                 <nav className="adm-sidebar">
-                    <div className="adm-sidebar-label">Admin Navigation</div>
-                    {TABS.map(t => (
+                    <div className="adm-sidebar-label">Bongo Quiz</div>
+                    {TABS.filter(t => ["dashboard","players","payments","games","leaderboard","questions","powers","achievements"].includes(t.id)).map(t => (
                         <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot" />
-                            {t.label}
+                            <span className="adm-dot" />{t.label}
+                        </button>
+                    ))}
+                    <div className="adm-sidebar-divider" />
+                    <div className="adm-sidebar-label">Other Games</div>
+                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz"].includes(t.id)).map(t => (
+                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
+                            <span className="adm-dot" />{t.label}
                         </button>
                     ))}
                 </nav>
@@ -819,6 +878,8 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                     {tab === "achievements" && <Achievements />}
                     {tab === "kcse"         && <AdminKCSE />}
                     {tab === "biblequiz"    && <AdminBibleQuiz />}
+                    {tab === "mathquiz"     && <AdminMathQuiz />}
+                    {tab === "bioquiz"      && <AdminBioQuiz />}
                 </main>
             </div>
         </div>
