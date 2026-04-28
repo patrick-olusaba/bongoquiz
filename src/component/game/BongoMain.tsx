@@ -1,7 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
 import { type FC, useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getFirestore, collection, query, where, limit, getDocs } from "firebase/firestore";
+import { getFirestore, collection, query, where, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 
@@ -109,6 +109,16 @@ export const BongoMain: FC = () => {
                 setHasPaidSession(true);
             }
         }).catch((e) => { console.error("hasPaidSession check failed:", e); });
+
+        // Also check if admin manually granted a session
+        getDocs(
+            query(collection(db, "grantedSessions"), where("phone", "==", phone), limit(1))
+        ).then(snap => {
+            if (!snap.empty) {
+                hasPaidSessionRef.current = true;
+                setHasPaidSession(true);
+            }
+        }).catch(() => {});
     }, []);
 
     // R1
@@ -186,6 +196,9 @@ export const BongoMain: FC = () => {
             if (hasPaidSessionRef.current) {
                 hasPaidSessionRef.current = false;
                 setHasPaidSession(false);
+                // Clean up granted session doc if it exists
+                const phone = localStorage.getItem("bongo_player_phone") ?? "";
+                if (phone) deleteDoc(doc(getFirestore(), "grantedSessions", phone)).catch(() => {});
                 setScreen("transition_r1");
             } else {
                 setScreen("deduct_r1r2");

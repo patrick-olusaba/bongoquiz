@@ -139,12 +139,12 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, hasPaidSession = 
         },
     ];
 
-    const moreApps = [
-        { icon: "📄", label: "KCSE Past Papers", color: "#7B61FF" },
-        { icon: "✝️",  label: "Bible Quiz",       color: "#FF6B6B" },
-        { icon: "➗",  label: "Math Quiz",         color: "#FFD93D" },
-        { icon: "🇰🇪", label: "Kiswahili Quiz",   color: "#4ECDC4" },
-    ];
+    // const moreApps = [
+    //     { icon: "📄", label: "KCSE Past Papers", color: "#7B61FF" },
+    //     { icon: "✝️",  label: "Bible Quiz",       color: "#FF6B6B" },
+    //     { icon: "➗",  label: "Math Quiz",         color: "#FFD93D" },
+    //     { icon: "🇰🇪", label: "Kiswahili Quiz",   color: "#4ECDC4" },
+    // ];
 
     return (
         <div className="home-root">
@@ -190,20 +190,20 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, hasPaidSession = 
                 )}
             </div>
 
-            <div className="more-section">
-                <p className="more-section-title">Browse</p>
-                <div className="more-scroll">
-                    {moreApps.map((app, i) => (
-                        <div key={app.label}
-                            className={`more-pill${i === 0 ? ' more-pill--active' : ''}`}
-                            onClick={() => { if (i === 0) window.location.hash = "/kcse"; }}
-                            style={{ cursor: i === 0 ? "pointer" : "default" }}>
-                            <span className="more-pill-icon">{app.icon}</span>
-                            <span className="more-pill-label">{app.label}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            {/*<div className="more-section">*/}
+            {/*    <p className="more-section-title">Browse</p>*/}
+            {/*    <div className="more-scroll">*/}
+            {/*        {moreApps.map((app, i) => (*/}
+            {/*            <div key={app.label}*/}
+            {/*                className={`more-pill${i === 0 ? ' more-pill--active' : ''}`}*/}
+            {/*                onClick={() => { if (i === 0) window.location.hash = "/kcse"; }}*/}
+            {/*                style={{ cursor: i === 0 ? "pointer" : "default" }}>*/}
+            {/*                <span className="more-pill-icon">{app.icon}</span>*/}
+            {/*                <span className="more-pill-label">{app.label}</span>*/}
+            {/*            </div>*/}
+            {/*        ))}*/}
+            {/*    </div>*/}
+            {/*</div>*/}
             <canvas ref={canvasRef} className="home-canvas"/>
             <img src={logoBg} alt="" className="home-logo-bg"/>
             <div className="home-orbs">

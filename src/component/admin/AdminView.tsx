@@ -1,6 +1,6 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
@@ -266,9 +266,12 @@ function Payments() {
 
 // ── Game Sessions ──────────────────────────────────────────────────────────────
 function GameSessions() {
-    const [rows,   setRows]   = useState<any[]>([]);
-    const [search, setSearch] = useState("");
-    const [page,   setPage]   = useState(1);
+    const [rows,     setRows]     = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [search,   setSearch]   = useState("");
+    const [tab,      setTab]      = useState<"sessions" | "stuck">("sessions");
+    const [granting, setGranting] = useState<string | null>(null);
+    const [page,     setPage]     = useState(1);
     const PAGE_SIZE = 20;
 
     useEffect(() => {
@@ -276,7 +279,40 @@ function GameSessions() {
             .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
                 .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))))
             .catch(() => {});
+        getDocs(collection(db, "payments"))
+            .then(snap => setPayments(snap.docs.map(d => ({ _id: d.id, ...d.data() }))))
+            .catch(() => {});
     }, []);
+
+    // Players who paid but never got a session
+    const stuckPlayers = payments.filter(p => {
+        if (p.status !== "paid") return false;
+        const paidAt: Date = p.createdAt?.toDate?.() ?? new Date(0);
+        // Normalize phone: payments store 254..., sessions store 07...
+        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        const played = rows.some(s => {
+            const sPhone = s.phone ?? "";
+            return (sPhone === phone07 || sPhone === p.phone) &&
+                (s.playedAt?.toDate?.() ?? new Date(0)) > paidAt;
+        });
+        return !played;
+    });
+
+    const grantSession = async (p: any) => {
+        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        setGranting(phone07);
+        try {
+            await setDoc(doc(db, "grantedSessions", phone07), {
+                phone: phone07, name: p.name ?? "", grantedAt: new Date(),
+                grantedBy: "admin", paymentId: p._id,
+            });
+            // Remove from stuck list optimistically
+            setPayments(prev => prev.filter(x => x._id !== p._id));
+        } catch (e) {
+            alert("Failed to grant session: " + e);
+        }
+        setGranting(null);
+    };
 
     const filtered   = rows.filter(r => {
         if (!search) return true;
@@ -288,38 +324,67 @@ function GameSessions() {
 
     return <>
         <Card title="Game Sessions">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-                <span style={{ fontSize: "0.85rem", color: "#666" }}>
-                    Total: <strong>{filtered.length}</strong> session{filtered.length !== 1 ? "s" : ""}
-                </span>
-                <input
-                    type="text"
-                    placeholder="Search by name or phone..."
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setPage(1); }}
-                    style={{ ...s.input, width: "auto", minWidth: 220 }}
-                />
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <button onClick={() => setTab("sessions")}
+                    style={{ ...s.btn, background: tab === "sessions" ? "#4361ee" : "#f0f0f8", color: tab === "sessions" ? "#fff" : "#444" }}>
+                    🎮 All Sessions ({rows.length})
+                </button>
+                <button onClick={() => setTab("stuck")}
+                    style={{ ...s.btn, background: tab === "stuck" ? "#e53e3e" : "#f0f0f8", color: tab === "stuck" ? "#fff" : "#444" }}>
+                    ⚠️ Stuck at Payment ({stuckPlayers.length})
+                </button>
             </div>
-            <Table
-                heads={["Player", "Phone", "Power Used", "R1", "R2", "R3", "Total", "Date"]}
-                rows={paginated.length ? paginated.map(r => [
-                    r.name ?? "—", r.phone ?? "—", r.power ?? "—",
-                    (r.r1Score ?? 0).toLocaleString(),
-                    (r.r2Score ?? 0).toLocaleString(),
-                    (r.r3Bonus ?? 0).toLocaleString(),
-                    (r.total   ?? 0).toLocaleString(),
-                    r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
-                ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
-            />
-            {totalPages > 1 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-                    <span style={{ fontSize: "0.82rem", color: "#888" }}>Page {page} of {totalPages}</span>
-                    <button style={{ ...s.btn, background: page === 1 ? "#eee" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}
-                        disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                    <button style={{ ...s.btn, background: page === totalPages ? "#eee" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}
-                        disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+
+            {tab === "stuck" ? (<>
+                <div style={{ ...s.warn, marginBottom: 12 }}>
+                    These players paid but never started a game session. Click <strong>Grant Session</strong> to restore their access.
                 </div>
-            )}
+                <Table
+                    heads={["Name", "Phone", "Amount", "Paid At", "Action"]}
+                    rows={stuckPlayers.length ? stuckPlayers.map(p => [
+                        p.name  ?? "—",
+                        (p.phone ?? "—").replace(/^254/, "0"),
+                        p.amount != null ? `KSh ${p.amount}` : "—",
+                        p.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                        <button
+                            disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
+                            onClick={() => grantSession(p)}
+                            style={{ ...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1 }}>
+                            {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
+                        </button>
+                    ]) : [["No stuck players 🎉", "", "", "", ""]]}
+                />
+            </>) : (<>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+                    <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                        Total: <strong>{filtered.length}</strong> session{filtered.length !== 1 ? "s" : ""}
+                    </span>
+                    <input type="text" placeholder="Search by name or phone..."
+                        value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                        style={{ ...s.input, width: "auto", minWidth: 220 }} />
+                </div>
+                <Table
+                    heads={["Player", "Phone", "Power Used", "R1", "R2", "R3", "Total", "Date"]}
+                    rows={paginated.length ? paginated.map(r => [
+                        r.name ?? "—", r.phone ?? "—", r.power ?? "—",
+                        (r.r1Score ?? 0).toLocaleString(),
+                        (r.r2Score ?? 0).toLocaleString(),
+                        (r.r3Bonus ?? 0).toLocaleString(),
+                        (r.total   ?? 0).toLocaleString(),
+                        r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                    ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
+                />
+                {totalPages > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                        <span style={{ fontSize: "0.82rem", color: "#888" }}>Page {page} of {totalPages}</span>
+                        <button style={{ ...s.btn, background: page === 1 ? "#eee" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}
+                            disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                        <button style={{ ...s.btn, background: page === totalPages ? "#eee" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}
+                            disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                    </div>
+                )}
+            </>)}
         </Card>
     </>;
 }
