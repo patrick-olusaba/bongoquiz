@@ -159,37 +159,107 @@ function Players() {
 
 // ── Payments ───────────────────────────────────────────────────────────────────
 function Payments() {
-    const [rows, setRows] = useState<any[]>([]);
+    const [rows,   setRows]   = useState<any[]>([]);
     const [filter, setFilter] = useState("all");
+    const [search, setSearch] = useState("");
+    const [page,   setPage]   = useState(1);
+    const PAGE_SIZE = 20;
 
     useEffect(() => {
         getDocs(collection(db, "payments"))
-            .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .then(snap => setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() }))
                 .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))))
             .catch(() => {});
     }, []);
 
-    const filtered = filter === "all" ? rows : rows.filter(r => r.status === filter);
+    const term = search.toLowerCase();
+    const filtered = rows.filter(r => {
+        const matchFilter = filter === "all" || r.status === filter;
+        const matchSearch = !term ||
+            (r.phone ?? "").includes(term) ||
+            (r.name ?? "").toLowerCase().includes(term) ||
+            (r.trans_id ?? "").toLowerCase().includes(term) ||
+            (r.receipt ?? "").toLowerCase().includes(term) ||
+            (r._id ?? "").toLowerCase().includes(term);
+        return matchFilter && matchSearch;
+    });
+
+    const totalPaid = rows.filter(r => r.status === "paid").reduce((a, r) => a + (r.amount ?? 0), 0);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    const counts: Record<string, number> = { all: rows.length };
+    rows.forEach(r => { counts[r.status] = (counts[r.status] ?? 0) + 1; });
 
     return <>
         <Card title="Payments">
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                {["all", "paid", "pending", "failed"].map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
-                        style={{ ...s.btn, background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#444" }}>
-                        {f.charAt(0).toUpperCase() + f.slice(1)}
-                    </button>
+            {/* Summary */}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                {[
+                    { l: "Total Payments", v: rows.length },
+                    { l: "Paid",           v: counts.paid    ?? 0, color: "#166534" },
+                    { l: "Pending",        v: counts.pending ?? 0, color: "#92400e" },
+                    { l: "Failed",         v: counts.failed  ?? 0, color: "#9f1239" },
+                    { l: "Total Revenue",  v: `KSh ${totalPaid.toLocaleString()}`, color: "#4361ee" },
+                ].map(({ l, v, color }) => (
+                    <div key={l} style={{ ...s.stat, minWidth: 110, flex: "1 1 110px" }}>
+                        <div style={{ ...s.statN, color: color ?? "#1a1a2e" }}>{v}</div>
+                        <div style={s.statL}>{l}</div>
+                    </div>
                 ))}
             </div>
+
+            {/* Search + filter */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+                <input style={{ ...s.input, maxWidth: 260 }} placeholder="Search phone, name, receipt…"
+                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {["all", "paid", "pending", "failed"].map(f => (
+                        <button key={f} onClick={() => { setFilter(f); setPage(1); }}
+                            style={{ ...s.btn, background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#444" }}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f] ?? 0})
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: 8 }}>
+                Showing {paginated.length} of {filtered.length} records
+            </div>
+
             <Table
-                heads={["Checkout ID", "Phone", "Amount (KES)", "Round", "Status", "M-Pesa Receipt", "Date"]}
-                rows={filtered.length ? filtered.map(r => [
-                    r.checkoutId ?? "—", r.phone ?? "—", r.amount ?? "—", r.round ?? "—",
+                heads={["#", "Name", "Phone", "Amount (KES)", "Trigger", "Status", "Trans ID", "Receipt", "Date"]}
+                rows={paginated.length ? paginated.map((r, i) => [
+                    (page - 1) * PAGE_SIZE + i + 1,
+                    r.name    ?? "—",
+                    r.phone   ?? "—",
+                    r.amount  != null ? `KSh ${r.amount}` : "—",
+                    r.trigger ?? r.round ?? "—",
                     <StatusBadge status={r.status ?? "pending"} />,
-                    r.receipt ?? "—",
+                    r.trans_id ?? r.checkoutRequestId ?? "—",
+                    r.receipt  ?? r.trans_id ?? "—",
                     r.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
-                ]) : [["No payments yet", "", "", "", "", "", ""]]}
+                ]) : [["—", "No payments found", "", "", "", "", "", "", ""]]}
             />
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                        .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                            if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
+                            acc.push(p); return acc;
+                        }, [])
+                        .map((p, i) => p === "…"
+                            ? <span key={`e${i}`} style={{ padding: "6px 4px", color: "#aaa" }}>…</span>
+                            : <button key={p} onClick={() => setPage(p as number)}
+                                style={{ ...s.btn, background: page === p ? "#4361ee" : "#f0f0f8", color: page === p ? "#fff" : "#444", minWidth: 34 }}>{p}</button>
+                        )}
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+            )}
         </Card>
     </>;
 }
