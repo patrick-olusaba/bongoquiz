@@ -211,6 +211,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, hasPai
             {/*        ))}*/}
             {/*    </div>*/}
             {/*</div>*/}
+
             <canvas ref={canvasRef} className="home-canvas"/>
             <img src={logoBg} alt="" className="home-logo-bg"/>
             <div className="home-orbs">
