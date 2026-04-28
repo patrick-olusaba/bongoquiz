@@ -21,9 +21,9 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Game sessions — authenticated admin only
+    // Game sessions — public read (phone-filtered queries from client), authenticated admin can write
     match /gameSessions/{id} {
-      allow read:  if request.auth != null;
+      allow read:  if true;
       allow write: if request.auth != null;
     }
 
@@ -33,9 +33,9 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Payments — authenticated admin can read, server writes via Admin SDK
+    // Payments — public read (phone-filtered queries from client), server writes via Admin SDK
     match /payments/{id} {
-      allow read:  if request.auth != null;
+      allow read:  if true;
       allow write: if false;
     }
 
