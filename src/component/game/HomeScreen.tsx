@@ -10,10 +10,11 @@ import '../../styles/HomeScreen.css';
 interface Props {
     onStart: (playerName: string) => void;
     onLeaderboard: () => void;
+    onHistory?: () => void;
     hasPaidSession?: boolean;
 }
 
-export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, hasPaidSession = false}) => {
+export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, hasPaidSession = false}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [showNameModal, setShowNameModal] = useState(false);
     const [showHTP, setShowHTP] = useState(false);
@@ -175,6 +176,12 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, hasPaidSession = 
                         <span className="menu-item-icon">👤</span>
                         <div><div className="menu-item-label">Edit Profile</div><div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div></div>
                     </button>
+                    {onHistory && (
+                        <button className="menu-item" onClick={() => { setMenuOpen(false); onHistory(); }}>
+                            <span className="menu-item-icon">📜</span>
+                            <div><div className="menu-item-label">Game History</div><div className="menu-item-sub">View your past sessions</div></div>
+                        </button>
+                    )}
                     <button className="menu-item" onClick={() => { navigator.share?.({ title: 'Bongo Quiz', url: window.location.href }); }}>
                         <span className="menu-item-icon">🔗</span>
                         <div><div className="menu-item-label">Share</div><div className="menu-item-sub">Invite friends to play</div></div>

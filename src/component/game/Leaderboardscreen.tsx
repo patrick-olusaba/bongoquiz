@@ -1,6 +1,6 @@
 // LeaderboardScreen.tsx
 import { type FC, useEffect, useState, useRef } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import '../../styles/Leaderboardscreen.css';
 
@@ -28,47 +28,62 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
 
     useEffect(() => {
         // Score is already saved by saveGameSession cloud function — no client write needed
-        
-        // Fetch from company API first, fall back to Firebase
-        fetch("http://143.244.158.85:3535/api/leaderboard/public/top10")
+
+        // Fetch from both sources and merge
+        const sqlFetch = fetch("http://142.93.47.187:2027/api/lifetime-leaderboard")
             .then(r => r.json())
-            .then(json => {
-                const apiData: any[] = json.data ?? [];
-                if (apiData.length > 0) {
-                    setDbLeaders(apiData.map((d, i) => ({
-                        rank: d.rank ?? i + 1,
-                        name: d.playerName ?? d.name,
-                        phone: d.phone ?? "",
-                        score: d.score,
-                        badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
-                    })));
-                    return;
-                }
-                throw new Error("empty");
-            })
-            .catch(() => {
-                // Fallback: Firebase
-                getDocs(collection(db, "leaderboard")).then(snap => {
-                    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    const byPhone = new Map<string, any>();
-                    all.forEach(entry => {
-                        const phone = entry.phone || entry.id;
-                        const existing = byPhone.get(phone);
-                        if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) byPhone.set(phone, entry);
-                    });
-                    const sorted = Array.from(byPhone.values())
-                        .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
-                        .slice(0, 10)
-                        .map((d, i) => ({
-                            rank: i + 1,
-                            name: d.name as string,
-                            phone: d.phone as string,
-                            score: d.score as number,
-                            badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
-                        }));
-                    setDbLeaders(sorted);
-                }).catch(() => {});
+            .catch(() => []);
+
+        const fbFetch = getDocs(collection(db, "leaderboard"))
+            .then(snap => snap.docs.map(d => ({ ...d.data(), id: d.id })))
+            .catch(() => []);
+
+        Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
+            const byPhone = new Map<string, { name: string; phone: string; score: number }>();
+
+            // SQL data — msisdn is 254..., no name — mask as player label
+            (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
+                const phone = String(d.msisdn ?? "");
+                const score = d.score ?? 0;
+                const phone07 = phone.replace(/^254/, "0");
+                const maskedName = phone07.slice(0, 3) + "*******";
+                const existing = byPhone.get(phone);
+                if (!existing || score > existing.score)
+                    byPhone.set(phone, { name: maskedName, phone, score });
             });
+
+            // Firebase data — may have name, phone stored as 07... or 254...
+            // Firebase name takes priority over masked SQL name
+            (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
+                const phone254 = (d.phone || d.id || "").replace(/^0/, "254");
+                const score    = d.score ?? 0;
+                const existing = byPhone.get(phone254);
+                const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name ?? d.name;
+                if (!existing || score > existing.score)
+                    byPhone.set(phone254, { name, phone: phone254, score });
+                else if (existing && name && !/^\d/.test(name))
+                    byPhone.set(phone254, { ...existing, name }); // update name even if score not higher
+            });
+
+            // Sync merged results back to Firebase (upsert highest score per phone)
+            byPhone.forEach(({ name, phone, score }) => {
+                const phone07 = phone.replace(/^254/, "0");
+                setDoc(doc(db, "leaderboard", phone07), { name, phone: phone07, score, updatedAt: serverTimestamp() }, { merge: true })
+                    .catch(() => {});
+            });
+
+            const sorted = Array.from(byPhone.values())
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10)
+                .map((d, i) => ({
+                    rank: i + 1,
+                    name: d.name,
+                    phone: d.phone,
+                    score: d.score,
+                    badge: i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : "⭐",
+                }));
+            setDbLeaders(sorted);
+        });
     }, [playerScore, playerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Mark current player in the fetched list
@@ -150,9 +165,10 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
                 {/* Full table */}
                 <div className="lb-table">
                     {entries.map((entry, i) => {
-                        const maskedPhone = entry.phone 
-                            ? entry.phone.slice(0, 4) + "******" 
+                        const maskedPhone = entry.phone
+                            ? entry.phone.replace(/^254/, "0").slice(0, 3) + "*******"
                             : "";
+                        const showPhone = maskedPhone && !/^\d{3}\*+$/.test(entry.name);
                         
                         return (
                             <div
@@ -176,7 +192,7 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
                                 <div className="lb-row-name">
                                     {entry.name}
                                     {entry.isCurrentPlayer && <span className="lb-you-tag">YOU</span>}
-                                    {maskedPhone && <div style={{ fontSize: "0.75rem", color: "#888", marginTop: 2 }}>{maskedPhone}</div>}
+                                    {showPhone && <div style={{ fontSize: "0.75rem", color: "#888", marginTop: 2 }}>{maskedPhone}</div>}
                                 </div>
                                 <div className="lb-row-score">
                                     {entry.score.toLocaleString()}

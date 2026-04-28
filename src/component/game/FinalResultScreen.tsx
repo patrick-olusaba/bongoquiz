@@ -22,11 +22,12 @@ interface Props {
     r2Total:     number;
     maxStreak:   number;
     onPlayAgain: () => void;
+    onViewSummary?: () => void;
 }
 
 export const FinalResultScreen: FC<Props> = ({
                                                  power, r1Score, r2Score, r3Bonus, segment, total,
-                                                 playerName, r1TimeLeft, r2Correct, r2Total, maxStreak, onPlayAgain
+                                                 playerName, r1TimeLeft, r2Correct, r2Total, maxStreak, onPlayAgain, onViewSummary
                                              }) => {
     const [isNewBest,    setIsNewBest]    = useState(false);
     const [prevBest,     setPrevBest]     = useState(0);
@@ -189,6 +190,9 @@ export const FinalResultScreen: FC<Props> = ({
                     <button className="fr-btn fr-btn--share" onClick={handleShare}>
                         {copied ? "✅ Copied!" : "📤 Share"}
                     </button>
+                    {onViewSummary && (
+                        <button className="fr-btn fr-btn--summary" onClick={onViewSummary}>📋 Review Questions</button>
+                    )}
                 </div>
             </div>
         </div>

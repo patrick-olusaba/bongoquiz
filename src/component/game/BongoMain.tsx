@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { getFirestore, collection, query, where, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
+import type { RoundRecord } from "../../types/sessionTypes.ts";
 
 import { HomeScreen }              from "./HomeScreen.tsx";
 import { BoxSelectScreen }         from "./BoxSelectScreen.tsx";
@@ -17,6 +18,8 @@ import { Round3SpinScreen }        from "./Round3SpinScreen.tsx";
 import { FinalResultScreen }       from "./FinalResultScreen.tsx";
 import { LeaderboardScreen }       from "./Leaderboardscreen.tsx";
 import { DeductionModal }          from "./DeductionModal.tsx";
+import { SessionSummary }          from "./SessionSummary.tsx";
+import { GameHistory }             from "./GameHistory.tsx";
 
 // ─── R1 score modifier ────────────────────────────────────────────────────────
 function applyR1Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
@@ -137,15 +140,28 @@ export const BongoMain: FC = () => {
     // R3
     const [r3Bonus,     setR3Bonus]     = useState(0);
 
+    // Session tracking
+    const [sessionRounds,    setSessionRounds]    = useState<RoundRecord[]>([]);
+    const [showSummary,      setShowSummary]      = useState(false);
+    const [showHistory,      setShowHistory]      = useState(false);
+
     const saveSession = async (r1: number, r2: number, r3: number, powerName: string) => {
         const phone = localStorage.getItem("bongo_player_phone") ?? "";
         const total = r1 + r2 + r3;
+        const msisdn = phone.replace(/^0/, "254");
+
+        // POST to SQL leaderboard
+        fetch("http://142.93.47.187:2027/api/savewebscore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ msisdn, score: total }),
+        }).catch(() => {});
+
         try {
             const save = httpsCallable(getFunctions(), "saveGameSession");
             await save({ name: playerName, phone, power: powerName, r1Score: r1, r2Score: r2, r3Bonus: r3 });
         } catch (e) {
             console.error("saveGameSession failed, writing directly:", e);
-            // Fallback: write directly to Firestore
             try {
                 const { getFirestore, collection, addDoc, serverTimestamp, doc, setDoc, getDoc } = await import("firebase/firestore");
                 const db = getFirestore();
@@ -154,7 +170,6 @@ export const BongoMain: FC = () => {
                     r1Score: r1, r2Score: r2, r3Bonus: r3, total,
                     playedAt: serverTimestamp(),
                 });
-                // Upsert leaderboard — keep highest score
                 const lbRef = doc(db, "leaderboard", phone);
                 const lbSnap = await getDoc(lbRef);
                 if (!lbSnap.exists() || (lbSnap.data()?.score ?? 0) < total) {
@@ -174,6 +189,7 @@ export const BongoMain: FC = () => {
         setR1Score(0); setR1TimeLeft(0); setR1MaxStreak(0); setR1Correct(0); setR1Total(0);
         setR2Category("Sport"); setR2Score(0); setR2Correct(0); setR2Total(0);
         setR3Bonus(0);
+        setSessionRounds([]);
         setScreen("home");
     };
 
@@ -186,6 +202,7 @@ export const BongoMain: FC = () => {
                 setScreen("box_select");
             }}
             onLeaderboard={() => setScreen("leaderboard")}
+            onHistory={() => setShowHistory(true)}
         />;
 
     if (screen === "box_select")
@@ -271,6 +288,11 @@ export const BongoMain: FC = () => {
                 const final = applyR1Power(rawScore, correct, total, power);
                 setR1Score(final); setR1TimeLeft(timeLeft);
                 setR1MaxStreak(maxStreak); setR1Correct(correct); setR1Total(total);
+                setSessionRounds(prev => [...prev, {
+                    roundNumber: 1,
+                    questions: [],
+                    score: final,
+                }]);
                 setScreen("round1_result");
             }}
         />;
@@ -290,6 +312,12 @@ export const BongoMain: FC = () => {
             onComplete={(rawScore, correct, total) => {
                 const final = applyR2Power(rawScore, correct, total, power);
                 setR2Score(final); setR2Correct(correct); setR2Total(total);
+                setSessionRounds(prev => [...prev, {
+                    roundNumber: 2,
+                    questions: [],
+                    score: final,
+                    category: r2Category,
+                }]);
                 setScreen("round2_result");
             }}
         />;
@@ -308,6 +336,11 @@ export const BongoMain: FC = () => {
             currentScore={r1Score + r2Score}
             onComplete={r3Score => {
                 setR3Bonus(r3Score);
+                setSessionRounds(prev => [...prev, {
+                    roundNumber: 3,
+                    questions: [],
+                    score: r3Score,
+                }]);
                 saveSession(r1Score, r2Score, r3Score, power?.name ?? "");
                 setScreen("final_result");
             }}
@@ -323,6 +356,7 @@ export const BongoMain: FC = () => {
             r1TimeLeft={r1TimeLeft} r2Correct={r2Correct}
             r2Total={r2Total}       maxStreak={r1MaxStreak}
             onPlayAgain={() => setScreen("leaderboard")}
+            onViewSummary={() => setShowSummary(true)}
         />;
     }
 
@@ -334,9 +368,14 @@ export const BongoMain: FC = () => {
             onClose={resetGame}
         />;
 
-    return <HomeScreen
-        hasPaidSession={hasPaidSession}
-        onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
-        onLeaderboard={() => setScreen("leaderboard")}
-    />;
+    return <>
+        <HomeScreen
+            hasPaidSession={hasPaidSession}
+            onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
+            onLeaderboard={() => setScreen("leaderboard")}
+            onHistory={() => setShowHistory(true)}
+        />
+        {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
+        {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
+    </>;
 };
