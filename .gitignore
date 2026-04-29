@@ -1,5 +1,6 @@
 # env — never commit secrets
 .env
+serviceAccountKey.json
 .env.local
 .env.*.local
 

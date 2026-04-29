@@ -162,23 +162,7 @@ export const BongoMain: FC = () => {
             const save = httpsCallable(getFunctions(), "saveGameSession");
             await save({ name: playerName, phone, power: powerName, r1Score: r1, r2Score: r2, r3Bonus: r3 });
         } catch (e) {
-            console.error("saveGameSession failed, writing directly:", e);
-            try {
-                const { getFirestore, collection, addDoc, serverTimestamp, doc, setDoc, getDoc } = await import("firebase/firestore");
-                const db = getFirestore();
-                await addDoc(collection(db, "gameSessions"), {
-                    name: playerName, phone, power: powerName,
-                    r1Score: r1, r2Score: r2, r3Bonus: r3, total,
-                    playedAt: serverTimestamp(),
-                });
-                const lbRef = doc(db, "leaderboard", phone);
-                const lbSnap = await getDoc(lbRef);
-                if (!lbSnap.exists() || (lbSnap.data()?.score ?? 0) < total) {
-                    await setDoc(lbRef, { name: playerName, phone, score: total, playedAt: serverTimestamp() });
-                }
-            } catch (e2) {
-                console.error("Fallback save also failed:", e2);
-            }
+            console.error("saveGameSession failed:", e);
         }
     };
 
