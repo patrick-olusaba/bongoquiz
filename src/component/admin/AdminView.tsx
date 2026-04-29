@@ -303,17 +303,17 @@ function Players() {
 
     useEffect(() => {
         Promise.all([
-            getDocs(collection(db, "players")),
-            getDocs(collection(db, "gameSessions")),
-            getDocs(collection(db, "payments")),
-            getDocs(collection(db, "bannedPlayers")),
+            getDocs(collection(db, "players")).catch(() => null),
+            getDocs(collection(db, "gameSessions")).catch(() => null),
+            getDocs(collection(db, "payments")).catch(() => null),
+            getDocs(collection(db, "bannedPlayers")).catch(() => null),
         ]).then(([pSnap, sSnap, paySnap, banSnap]) => {
-            setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            if (pSnap)   setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() }))
                 .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0)));
-            setSessions(sSnap.docs.map(d => d.data()));
-            setPayments(paySnap.docs.map(d => d.data()));
-            setBanned(new Set(banSnap.docs.map(d => d.id)));
-        }).catch(() => {});
+            if (sSnap)   setSessions(sSnap.docs.map(d => d.data()));
+            if (paySnap) setPayments(paySnap.docs.map(d => d.data()));
+            if (banSnap) setBanned(new Set(banSnap.docs.map(d => d.id)));
+        });
     }, []);
 
     const norm = (p: string) => String(p ?? "").replace(/^\+?254|^0/, "").slice(-9);
