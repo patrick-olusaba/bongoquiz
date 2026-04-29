@@ -322,27 +322,31 @@ function Players() {
     }, []);
 
     // Enrich each player with stats
+    // Normalize any phone to last 9 digits for matching across formats (07..., 254..., 7...)
+    const norm = (p: string) => String(p ?? "").replace(/^\+?254|^0/, "").slice(-9);
+
     const enriched = players.map(p => {
-        const phone07  = (p.phone ?? "").replace(/^254/, "0");
-        const phone254 = (p.phone ?? "").replace(/^0/, "254");
-        const pSessions = sessions.filter(s => s.phone === phone07 || s.phone === p.phone);
-        const pPayments = payments.filter(pay => pay.phone === phone07 || pay.phone === phone254 || pay.phone === p.phone);
+        const pNorm     = norm(p.phone);
+        const phone07   = pNorm ? "0" + pNorm : (p.phone ?? "");
+        const pSessions = sessions.filter(s => norm(s.phone) === pNorm);
+        const pPayments = payments.filter(pay => norm(pay.phone) === pNorm);
         const paidAmt   = pPayments.filter(pay => pay.status === "paid").reduce((a, pay) => a + (pay.amount ?? 0), 0);
-        const lastSess  = pSessions.sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
-        const lbEntry   = leaders.find(l => l.id === phone07 || l.id === p.phone || l.phone === phone07);
+        const lastSess  = [...pSessions].sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
+        const lbEntry   = leaders.find(l => norm(l.phone ?? l.id) === pNorm);
         return {
             ...p,
+            phone07,
             games:      pSessions.length,
             spent:      paidAmt,
             lastPlayed: lastSess?.playedAt?.toDate?.() ?? null,
             bestScore:  lbEntry?.score ?? 0,
-            lastPayStatus: pPayments[0]?.status ?? null,
+            lastPayStatus: pPayments.sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))[0]?.status ?? null,
             isBanned:   banned.has(phone07) || banned.has(p.phone ?? ""),
         };
     });
 
     const toggleBan = async (p: any) => {
-        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        const phone07 = p.phone07 ?? (p.phone ?? "").replace(/^254/, "0");
         const action  = p.isBanned ? "Unban" : "Ban";
         if (!confirm(`${action} ${p.name ?? p.phone}?`)) return;
         if (p.isBanned) {
