@@ -98,6 +98,7 @@ function BQQuestions() {
     const [editing,   setEditing]   = useState<BQQuestion | null>(null);
     const [adding,    setAdding]    = useState(false);
     const [search,    setSearch]    = useState("");
+    const [qTab,      setQTab]      = useState<"all"|"duplicates">("all");
     const [importing, setImporting] = useState(false);
     const [msg,       setMsg]       = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
@@ -108,6 +109,16 @@ function BQQuestions() {
                 .sort((a, b) => a.question.localeCompare(b.question))))
             .catch(() => {});
     }, []);
+
+    const dupGroups: BQQuestion[][] = (() => {
+        const map = new Map<string, BQQuestion[]>();
+        questions.forEach(q => {
+            const key = q.question.trim().toLowerCase().replace(/\s+/g, " ");
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(q);
+        });
+        return Array.from(map.values()).filter(g => g.length > 1);
+    })();
 
     const save = async (q: BQQuestion) => {
         if (q.id) {
@@ -153,59 +164,108 @@ function BQQuestions() {
         !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase())
     );
 
+    const extraCount = dupGroups.reduce((a, g) => a + g.length - 1, 0);
+
     return <>
         {(editing || adding) && <QuestionModal q={editing} onSave={save} onClose={() => { setEditing(null); setAdding(false); }} />}
         <div style={s.card}>
             <h2 style={s.h2}>Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({questions.length} total)</span></h2>
 
-            {/* Toolbar */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-                <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
-                <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
-                <button onClick={() => fileRef.current?.click()} disabled={importing}
-                    style={{ ...s.btn, background: "#059669", color: "#fff" }}>
-                    {importing ? "Importing…" : "📥 Import CSV"}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <button onClick={() => setQTab("all")}
+                    style={{ ...s.btn, background: qTab === "all" ? "#4361ee" : "#f0f0f8", color: qTab === "all" ? "#fff" : "#444" }}>
+                    ❓ All Questions
                 </button>
-                <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFile} />
-                <a href="data:text/plain,question,optionA,optionB,optionC,optionD,correctIndex(0-3),category%0AWhat is the first book of the Bible?,Genesis,Exodus,Leviticus,Numbers,0,Old Testament"
-                    download="bible_quiz_template.csv"
-                    style={{ ...s.btn, background: "#f0f0f8", color: "#444", textDecoration: "none", display: "inline-block" }}>
-                    📄 CSV Template
-                </a>
-            </div>
-            {msg && <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: msg.startsWith("✅") ? "#dcfce7" : "#fee2e2", color: msg.startsWith("✅") ? "#166534" : "#991b1b", fontSize: "0.85rem" }}>{msg}</div>}
-
-            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
-                <table style={s.table}>
-                    <thead><tr>
-                        {["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                        {filtered.map((q, i) => (
-                            <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
-                                <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
-                                <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
-                                <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
-                                <td style={s.td}>{q.category || "—"}</td>
-                                <td style={s.td}><span style={badge(q.active)}>{q.active ? "active" : "inactive"}</span></td>
-                                <td style={s.td}>
-                                    <div style={{ display: "flex", gap: 6 }}>
-                                        <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
-                                        <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Del</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions yet</td></tr>}
-                    </tbody>
-                </table>
+                <button onClick={() => setQTab("duplicates")}
+                    style={{ ...s.btn, background: qTab === "duplicates" ? "#dc2626" : "#f0f0f8", color: qTab === "duplicates" ? "#fff" : "#444" }}>
+                    ⚠️ Duplicates {extraCount > 0 && `(${extraCount} extra)`}
+                </button>
             </div>
 
+            {qTab === "duplicates" ? (
+                dupGroups.length === 0 ? (
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "20px", textAlign: "center", color: "#166534", fontWeight: 600 }}>
+                        ✅ No duplicate questions found!
+                    </div>
+                ) : <>
+                    <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", marginBottom: 16, color: "#9f1239", fontSize: "0.85rem" }}>
+                        Found <strong>{dupGroups.length}</strong> group{dupGroups.length > 1 ? "s" : ""} of duplicates. Keep one and delete or edit the rest.
+                    </div>
+                    {dupGroups.map((group, gi) => (
+                        <div key={gi} style={{ border: "1px solid #fecdd3", borderRadius: 8, marginBottom: 16, overflow: "hidden" }}>
+                            <div style={{ background: "#fff1f2", padding: "8px 14px", fontSize: "0.78rem", fontWeight: 700, color: "#9f1239" }}>
+                                Group {gi + 1} — {group.length} duplicates
+                            </div>
+                            <table style={s.table}>
+                                <thead><tr>{["Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                                <tbody>
+                                    {group.map((q, i) => (
+                                        <tr key={q.id} style={{ background: i === 0 ? "#f0fdf4" : "#fff" }}>
+                                            <td style={{ ...s.td, maxWidth: 240 }}>
+                                                {i === 0 && <span style={{ fontSize: "0.7rem", background: "#dcfce7", color: "#166534", borderRadius: 4, padding: "1px 6px", fontWeight: 700, marginRight: 6 }}>KEEP</span>}
+                                                {q.question}
+                                            </td>
+                                            <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
+                                            <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
+                                            <td style={s.td}>{q.category || "—"}</td>
+                                            <td style={s.td}><span style={badge(q.active)}>{q.active ? "active" : "inactive"}</span></td>
+                                            <td style={s.td}>
+                                                <div style={{ display: "flex", gap: 6 }}>
+                                                    <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
+                                                    {i !== 0 && <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                </>
+            ) : <>
+                <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
+                    <button onClick={() => fileRef.current?.click()} disabled={importing}
+                        style={{ ...s.btn, background: "#059669", color: "#fff" }}>
+                        {importing ? "Importing…" : "📥 Import CSV"}
+                    </button>
+                    <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFile} />
+                    <a href="data:text/plain,question,optionA,optionB,optionC,optionD,correctIndex(0-3),category%0AWhat is the first book of the Bible?,Genesis,Exodus,Leviticus,Numbers,0,Old Testament"
+                        download="bible_quiz_template.csv"
+                        style={{ ...s.btn, background: "#f0f0f8", color: "#444", textDecoration: "none", display: "inline-block" }}>
+                        📄 CSV Template
+                    </a>
+                </div>
+                {msg && <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: msg.startsWith("✅") ? "#dcfce7" : "#fee2e2", color: msg.startsWith("✅") ? "#166534" : "#991b1b", fontSize: "0.85rem" }}>{msg}</div>}
+                <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                    <table style={s.table}>
+                        <thead><tr>{["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                            {filtered.map((q, i) => (
+                                <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                    <td style={s.td}>{i + 1}</td>
+                                    <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
+                                    <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
+                                    <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
+                                    <td style={s.td}>{q.category || "—"}</td>
+                                    <td style={s.td}><span style={badge(q.active)}>{q.active ? "active" : "inactive"}</span></td>
+                                    <td style={s.td}>
+                                        <div style={{ display: "flex", gap: 6 }}>
+                                            <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
+                                            <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Del</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions yet</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </>}
         </div>
     </>;
 }
-
 // ── Payments Tab ──────────────────────────────────────────────────────────────
 function BQPayments() {
     const [rows,   setRows]   = useState<any[]>([]);
