@@ -30,9 +30,9 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
         // Score is already saved by saveGameSession cloud function — no client write needed
 
         // Fetch from both sources and merge
-        const sqlFetch = fetch("https://142.93.47.187:2027/api/lifetime-leaderboard")
+        const sqlFetch = fetch("http://142.93.47.187:2027/api/lifetime-leaderboard")
             .then(r => r.json())
-            .catch(() => []);
+            .catch(() => []); // Fallback for HTTPS mixed content blocking
 
         const fbFetch = getDocs(collection(db, "leaderboard"))
             .then(snap => snap.docs.map(d => ({ ...d.data(), id: d.id })))

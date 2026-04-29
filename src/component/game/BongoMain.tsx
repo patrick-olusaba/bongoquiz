@@ -155,7 +155,7 @@ export const BongoMain: FC = () => {
         const msisdn = phone.replace(/^0/, "254");
 
         // POST to SQL leaderboard
-        fetch("https://142.93.47.187:2027/api/savewebscore", {
+        fetch("http://142.93.47.187:2027/api/savewebscore", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ msisdn, score: total }),
