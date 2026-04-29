@@ -1,7 +1,5 @@
 // FinalResultScreen.tsx
 import { type FC, useEffect, useState, useRef } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase.ts";
 import type { PrizeItem } from "../../types/bongotypes.ts";
 import type { WheelSegment } from "../../types/gametypes.ts";
 import { checkAchievements, unlockAchievements, type Achievement } from "../../utils/achievements.ts";
@@ -61,28 +59,8 @@ export const FinalResultScreen: FC<Props> = ({
 
         recordPlayToday();
 
-        // Save game session (only once)
-        const sessionKey = `session_${Date.now()}_${total}`;
-        const lastSaved = localStorage.getItem("last_session_saved");
-
-        if (lastSaved !== sessionKey) {
-            localStorage.setItem("last_session_saved", sessionKey);
-            const phone = localStorage.getItem("bongo_player_phone") ?? "";
-
-            // Firebase
-            addDoc(collection(db, "gameSessions"), {
-                name: playerName, phone, power: power.name,
-                r1Score, r2Score, r3Bonus, total,
-                playedAt: serverTimestamp(),
-            }).catch(() => {});
-
-            // Company API
-            fetch("http://143.244.158.85:3535/api/game/complete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone, r1Score, r2Score, r3Bonus }),
-            }).catch(() => {});
-        }
+        // Note: Game session is already saved by BongoMain.tsx using the saveGameSession cloud function
+        // which properly handles both session saving and leaderboard updates
     }, [total, r2Correct, r2Total, r1TimeLeft, r1Score, maxStreak, playerName, power.name, r1Score, r2Score, r3Bonus]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const rating =

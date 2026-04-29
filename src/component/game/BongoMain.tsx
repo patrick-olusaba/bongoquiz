@@ -1,7 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
 import { type FC, useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getFirestore, collection, query, where, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { getFirestore, collection, query, where, limit, getDocs, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 import type { RoundRecord } from "../../types/sessionTypes.ts";
@@ -113,15 +113,18 @@ export const BongoMain: FC = () => {
             }
         }).catch((e) => { console.error("hasPaidSession check failed:", e); });
 
-        // Also check if admin manually granted a session
-        getDocs(
-            query(collection(db, "grantedSessions"), where("phone", "==", phone), limit(1))
-        ).then(snap => {
-            if (!snap.empty) {
-                hasPaidSessionRef.current = true;
-                setHasPaidSession(true);
-            }
-        }).catch(() => {});
+        // Listen in real-time — fires immediately and whenever admin grants a session
+        const unsub = onSnapshot(
+            query(collection(db, "grantedSessions"), where("phone", "==", phone), limit(1)),
+            snap => {
+                if (!snap.empty && !hasPaidSessionRef.current) {
+                    hasPaidSessionRef.current = true;
+                    setHasPaidSession(true);
+                }
+            },
+            () => {}
+        );
+        return unsub;
     }, []);
 
     // R1
