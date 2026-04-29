@@ -472,7 +472,7 @@ export function AdminQuestions() {
             {tab === "categories" ? (
                 <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                     <table style={s.table}>
-                        <thead><tr>{["Category","R1","R2","R3","Total"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                        <thead><tr>{["Category","R1","R2","R3","Total",""].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
                             {categoryCounts.map((c, i) => (
                                 <tr key={c.category} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
@@ -481,11 +481,25 @@ export function AdminQuestions() {
                                     <td style={{ ...s.td, color: c.r2 < 3 ? "#dc2626" : "#166534", fontWeight: 600 }}>{c.r2}</td>
                                     <td style={{ ...s.td, color: c.r3 < 3 ? "#dc2626" : "#166534", fontWeight: 600 }}>{c.r3}</td>
                                     <td style={{ ...s.td, fontWeight: 700 }}>{c.total}</td>
+                                    <td style={s.td}>
+                                        <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}
+                                            onClick={async () => {
+                                                const newName = prompt(`Rename "${c.category}" to:`, c.category);
+                                                if (!newName || newName.trim() === c.category) return;
+                                                const toRename = qs.filter(q => q.category === c.category);
+                                                const batch = writeBatch(db);
+                                                toRename.forEach(q => batch.update(doc(db, "questions", q.id!), { category: newName.trim() }));
+                                                await batch.commit();
+                                                setQs(prev => prev.map(q => q.category === c.category ? { ...q, category: newName.trim() } : q));
+                                            }}>
+                                            ✏️ Rename
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    <div style={{ padding: "8px 14px", fontSize: "0.75rem", color: "#dc2626" }}>🔴 Red = fewer than 3 questions in that round for this category</div>
+                    <div style={{ padding: "8px 14px", fontSize: "0.75rem", color: "#dc2626" }}>🔴 Red = fewer than 3 questions in that round for this category · Use Rename to merge similar categories</div>
                 </div>
             ) : tab === "duplicates" ? (
                 loading ? <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>Loading…</p>
