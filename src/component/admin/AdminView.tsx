@@ -656,59 +656,96 @@ function GameSessions() {
 
 // ── Leaderboard ────────────────────────────────────────────────────────────────
 function AdminLeaderboard() {
-    const [rows, setRows] = useState<any[]>([]);
+    const [rows,   setRows]   = useState<any[]>([]);
     const [search, setSearch] = useState("");
+    const [page,   setPage]   = useState(1);
+    const PAGE_SIZE = 20;
+    const NEW_THRESHOLD_DAYS = 3; // badge players who joined leaderboard within last 3 days
 
     useEffect(() => {
         getDocs(collection(db, "leaderboard"))
             .then(snap => {
                 const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                // Group by phone and keep only highest score per phone
                 const byPhone = new Map<string, any>();
                 all.forEach(entry => {
                     const phone = entry.phone || entry.id;
                     const existing = byPhone.get(phone);
-                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0)) {
+                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0))
                         byPhone.set(phone, entry);
-                    }
                 });
-                
                 const sorted = Array.from(byPhone.values())
                     .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
-                    .slice(0, 50)
                     .map((d, i) => ({ ...d, rank: i + 1 }));
                 setRows(sorted);
             })
             .catch(() => {});
     }, []);
 
-    const filtered = rows.filter(r => {
-        if (!search) return true;
-        const term = search.toLowerCase();
-        return (r.name ?? "").toLowerCase().includes(term) || 
-               (r.phone ?? "").includes(term);
-    });
+    const exportCSV = () => {
+        const header = "Rank,Name,Phone,Score,Date";
+        const csv = rows.map(r => [
+            r.rank, r.name ?? "", r.phone ?? "",
+            r.score ?? 0,
+            r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "",
+        ].join(",")).join("\n");
+        const blob = new Blob([header + "\n" + csv], { type: "text/csv" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+        a.download = "leaderboard.csv"; a.click();
+    };
+
+    const cutoff = Date.now() - NEW_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+    const isNew  = (r: any) => (r.playedAt?.toDate?.()?.getTime() ?? 0) > cutoff;
+
+    const filtered   = rows.filter(r => !search ||
+        (r.name ?? "").toLowerCase().includes(search.toLowerCase()) || (r.phone ?? "").includes(search)
+    );
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Leaderboard">
-            <div style={{ marginBottom: 16 }}>
-                <input 
-                    type="text" 
-                    placeholder="Search by name or phone..." 
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    style={s.input}
-                />
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+                <input type="text" placeholder="Search by name or phone..."
+                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                    style={{ ...s.input, maxWidth: 260 }} />
+                <span style={{ fontSize: "0.8rem", color: "#888" }}>{filtered.length} player{filtered.length !== 1 ? "s" : ""}</span>
+                <button onClick={exportCSV} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", marginLeft: "auto" }}>
+                    📥 Export CSV
+                </button>
             </div>
-            <Table
-                heads={["Rank", "Player", "Phone", "Score", "Date"]}
-                rows={filtered.length ? filtered.map(r => [
-                    String(r.rank), r.name ?? "—", r.phone ?? "—",
-                    (r.score ?? 0).toLocaleString(),
-                    r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
-                ]) : [["No entries found", "", "", "", ""]]}
-            />
+            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                <table style={s.table}>
+                    <thead><tr>
+                        {["Rank","Player","Phone","Score","Date",""].map(h => <th key={h} style={s.th}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                        {paginated.length ? paginated.map((r, i) => (
+                            <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                <td style={{ ...s.td, fontWeight: 700 }}>{r.rank <= 3 ? ["🥇","🥈","🥉"][r.rank-1] : r.rank}</td>
+                                <td style={s.td}>
+                                    {r.name ?? "—"}
+                                    {isNew(r) && <span style={{ marginLeft: 6, background: "#fef9c3", color: "#854d0e", fontSize: "0.68rem", fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>NEW</span>}
+                                </td>
+                                <td style={s.td}>{r.phone ?? "—"}</td>
+                                <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()}</td>
+                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
+                                <td style={s.td}>
+                                    {isNew(r) && <span style={{ background: "#dcfce7", color: "#166534", fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>🆕 Recent</span>}
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No entries found</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            {totalPages > 1 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                    <span style={{ fontSize: "0.85rem", color: "#555", padding: "6px 8px" }}>Page {page} of {totalPages}</span>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+            )}
         </Card>
     </>;
 }
