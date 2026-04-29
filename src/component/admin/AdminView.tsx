@@ -677,8 +677,8 @@ function AdminLeaderboard() {
         const toKey = (p: string) => String(p).replace(/^0/, "254");
 
         const sqlFetch = fetch("http://142.93.47.187:2027/api/lifetime-leaderboard")
+            .then(r => r.json())
             .catch(() => []); // Fallback for HTTPS mixed content blocking
-            .then(r => r.json()).catch(() => []);
         const fbFetch = getDocs(collection(db, "leaderboard"))
             .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() }))).catch(() => []);
 
