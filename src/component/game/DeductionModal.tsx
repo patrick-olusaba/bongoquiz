@@ -12,14 +12,15 @@ interface Props {
     onDecline:   () => void;
 }
 
+const TIMEOUT_S = 60;
+
 export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerName, onAccept, onDecline }) => {
-    const [loading,  setLoading]  = useState(false);
-    const [timedOut, setTimedOut] = useState(false);
-    const [elapsed,  setElapsed]  = useState(0);
-    const unsubRef   = useRef<(() => void) | null>(null);
+    const [loading,   setLoading]   = useState(false);
+    const [timedOut,  setTimedOut]  = useState(false);
+    const [elapsed,   setElapsed]   = useState(0);
+    const unsubRef    = useRef<(() => void) | null>(null);
     const acceptedRef = useRef(false);
 
-    // Keep listening even after timeout — if payment arrives, still proceed
     const handleConfirmed = () => {
         if (acceptedRef.current) return;
         acceptedRef.current = true;
@@ -27,7 +28,6 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
         onAccept();
     };
 
-    // Elapsed counter while loading
     useEffect(() => {
         if (!loading) return;
         const t = setInterval(() => setElapsed(s => s + 1), 1000);
@@ -60,74 +60,81 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
             const result = fbResponse.value;
             if (!result.paymentId) throw new Error(result.error || "");
 
-            // Listen indefinitely — unsubscribe only on confirmation
             const db = getFirestore();
-            const paymentRef = doc(db, "payments", result.paymentId);
-            unsubRef.current = onSnapshot(paymentRef, (snapshot) => {
-                if (snapshot.data()?.trans_id) handleConfirmed();
+            unsubRef.current = onSnapshot(doc(db, "payments", result.paymentId), (snap) => {
+                if (snap.data()?.trans_id) handleConfirmed();
             }, () => {});
 
-            // After 60s show "still waiting" UI but keep the listener alive
             setTimeout(() => {
-                if (!acceptedRef.current) {
-                    setTimedOut(true);
-                    setLoading(false);
-                }
-            }, 60000);
+                if (!acceptedRef.current) { setTimedOut(true); setLoading(false); }
+            }, TIMEOUT_S * 1000);
 
         } catch {
             setLoading(false);
         }
     };
 
-    const statusMsg = timedOut
-        ? "Still waiting for M-Pesa confirmation…"
+    const isWaiting  = loading || timedOut;
+    const progress   = Math.min((elapsed / TIMEOUT_S) * 100, 100);
+    const statusMsg  = timedOut
+        ? "Still waiting — you'll enter automatically once confirmed."
         : elapsed > 10
-            ? "This is taking a moment — please check your phone…"
-            : "Waiting for payment confirmation…";
-
-    const isWaiting = loading || timedOut;
+            ? "Check your phone for the M-Pesa prompt…"
+            : "Waiting for M-Pesa confirmation…";
 
     return (
         <div className="ded-overlay">
             <div className="ded-modal">
-                <div className="ded-icon">💸</div>
-                <div className="ded-badge">Entry Fee</div>
-                <h2 className="ded-title">KSh {amount} Deduction</h2>
-                <p className="ded-desc">
-                    Playing <strong>{roundLabel}</strong> requires an entry fee of{" "}
-                    <strong className="ded-amount">KSh {amount}</strong>.
-                </p>
-                {phone && (
-                    <p style={{ fontSize: "0.85rem", color: "#888", margin: "0 0 12px", textAlign: "center" }}>
-                        📱 M-Pesa prompt will be sent to <strong style={{ color: "#1a1a2e" }}>{phone}</strong>
-                    </p>
-                )}
-                <div className="ded-divider" />
-                <div className="ded-actions">
-                    <button className="ded-btn ded-btn--decline" onClick={onDecline} disabled={isWaiting}>
-                        ✕ Decline
-                    </button>
-                    <button className="ded-btn ded-btn--accept" onClick={handleAccept} disabled={isWaiting}>
-                        ✓ Accept &amp; Play
-                    </button>
+
+                <div className="ded-icon-wrap">
+                    <span className="ded-icon">💸</span>
+                    <span className="ded-coin">🪙</span>
+                    <span className="ded-coin">🪙</span>
+                    <span className="ded-coin">🪙</span>
+                    <span className="ded-coin">🪙</span>
                 </div>
 
-                {isWaiting && (
-                    <div style={{ textAlign: "center", marginTop: 12 }}>
-                        <div style={{ display: "inline-block", width: 20, height: 20, border: "3px solid #f3f3f3", borderTop: "3px solid #7B61FF", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                        <p style={{ fontSize: "0.85rem", color: timedOut ? "#e67e22" : "#666", marginTop: 8, fontWeight: timedOut ? 600 : 400 }}>
-                            {statusMsg}
-                        </p>
-                        {timedOut && (
-                            <p style={{ fontSize: "0.78rem", color: "#888", marginTop: 4 }}>
-                                You'll be taken to the game automatically once confirmed.
-                            </p>
-                        )}
+                <div className="ded-badge">💳 Entry Fee</div>
+                <h2 className="ded-title">KSh {amount}</h2>
+                <p className="ded-desc">
+                    Playing <strong>{roundLabel}</strong> requires an entry fee of <strong>KSh {amount}</strong>.
+                </p>
+
+                {phone && (
+                    <div className="ded-phone-row">
+                        📱 M-Pesa prompt will be sent to <strong>&nbsp;{phone}</strong>
                     </div>
                 )}
 
-                <p className="ded-note">⚠️ By accepting you agree to the deduction</p>
+                <div className="ded-divider" />
+
+                {!isWaiting ? (
+                    <div className="ded-actions">
+                        <button className="ded-btn ded-btn--decline" onClick={onDecline}>✕ Decline</button>
+                        <button className="ded-btn ded-btn--accept" onClick={handleAccept}>🎯 Pay &amp; Play</button>
+                    </div>
+                ) : (
+                    <div className="ded-waiting">
+                        <div className="ded-spinner">
+                            <svg viewBox="0 0 40 40" className="ded-spinner-svg">
+                                <circle cx="20" cy="20" r="17" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3"/>
+                                <circle cx="20" cy="20" r="17" fill="none" stroke="#38ef7d" strokeWidth="3"
+                                    strokeDasharray={`${progress * 1.068} 106.8`}
+                                    strokeLinecap="round"
+                                    transform="rotate(-90 20 20)"
+                                    style={{ transition: "stroke-dasharray 1s linear" }}
+                                />
+                            </svg>
+                            <div className="ded-spinner-inner">
+                                <span className="ded-spinner-icon">📱</span>
+                                <span className="ded-spinner-secs">{TIMEOUT_S - elapsed}s</span>
+                            </div>
+                        </div>
+                        <p className={`ded-status-msg${timedOut ? " ded-status-msg--warn" : ""}`}>{statusMsg}</p>
+                    </div>
+                )}
+
+                <p className="ded-note">⚠️ By accepting you agree to the KSh {amount} deduction</p>
             </div>
         </div>
     );

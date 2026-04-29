@@ -5,6 +5,15 @@ import * as http from "http";
 admin.initializeApp();
 const db = admin.firestore();
 
+// Secret shared with the payment backend — set this in Firebase config:
+// firebase functions:config:set callback.secret="YOUR_SECRET_HERE"
+const CALLBACK_SECRET = (functions.config().callback?.secret ?? "") as string;
+
+function isValidCallback(req: functions.https.Request): boolean {
+    if (!CALLBACK_SECRET) return true; // not configured yet — allow (remove this once secret is set)
+    return req.headers["x-callback-secret"] === CALLBACK_SECRET;
+}
+
 interface SaveSessionData {
     name: string;
     phone: string;
@@ -19,6 +28,20 @@ interface SaveSessionData {
  * Validates inputs server-side before writing to Firestore,
  * so clients cannot write arbitrary scores directly.
  */
+/**
+ * consumeGrantedSession — callable. Deletes a granted session after it's been used.
+ * Prevents clients from deleting other users' sessions.
+ */
+export const consumeGrantedSession = functions.https.onCall(
+    async (request: functions.https.CallableRequest<{ phone: string }>) => {
+        const { phone } = request.data;
+        if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
+            throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+        await db.collection("grantedSessions").doc(phone).delete();
+        return { success: true };
+    }
+);
+
 export const saveGameSession = functions.https.onCall(
     async (request: functions.https.CallableRequest<SaveSessionData>) => {
         const data = request.data;
@@ -103,6 +126,7 @@ export const deposit = functions.https.onRequest(async (req, res) => {
 
         // Check if this is a callback (has trans_id) or initiation request
         if (body.trans_id) {
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
             // This is a callback from the backend with payment result
             const { name, phone, amount, trigger, trans_id, trans_time, business_shortcode } = body;
 
@@ -284,6 +308,7 @@ export const bibleQuizDeposit = functions.https.onRequest(async (req, res) => {
 
         // Callback from payment provider
         if (body.trans_id) {
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
             const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
             const existing = await db.collection("bibleQuizPayments")
                 .where("phone", "==", phone)
@@ -418,6 +443,7 @@ export const mathQuizDeposit = functions.https.onRequest(async (req, res) => {
 
         if (body.trans_id) {
             const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
             const existing = await db.collection("mathQuizPayments")
                 .where("phone", "==", phone).where("status", "==", "pending")
                 .orderBy("createdAt", "desc").limit(1).get();
@@ -496,6 +522,7 @@ export const bioQuizDeposit = functions.https.onRequest(async (req, res) => {
         const body = req.body;
         if (body.trans_id) {
             const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
             const existing = await db.collection("bioQuizPayments")
                 .where("phone", "==", phone).where("status", "==", "pending")
                 .orderBy("createdAt", "desc").limit(1).get();
@@ -569,6 +596,7 @@ export const genQuizDeposit = functions.https.onRequest(async (req, res) => {
 
         if (body.trans_id) {
             const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
             const existing = await db.collection("genQuizPayments")
                 .where("phone", "==", phone).where("status", "==", "pending")
                 .orderBy("createdAt", "desc").limit(1).get();

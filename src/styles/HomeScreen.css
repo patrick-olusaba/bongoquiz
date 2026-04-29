@@ -523,6 +523,21 @@
     transform: scale(1.03);
 }
 .home-player-edit { font-size: 0.75rem; opacity: 0.5; }
+.home-phone-warning {
+    background: rgba(255, 180, 0, 0.12);
+    border: 1px solid rgba(255, 180, 0, 0.5);
+    border-radius: 100px;
+    color: #ffcc44;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 7px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    animation: streakPulse 2s ease-in-out infinite;
+    transition: background 0.2s;
+}
+.home-phone-warning:hover { background: rgba(255, 180, 0, 0.22); }
+
 .home-best-score {
     background: rgba(255,215,0,0.12);
     border: 1px solid rgba(255,215,0,0.4);

@@ -5,6 +5,8 @@ import mainLogo from "../../assets/background.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 import {getStreakInfo} from "../../utils/streakDays.ts";
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import '../../styles/HomeScreen.css';
 
 interface Props {
@@ -26,14 +28,30 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
         localStorage.getItem("bongo_player_phone") ?? ""
     );
     const [menuOpen, setMenuOpen] = useState(false);
-    // const [soundOn, setSoundOn] = useState(() => localStorage.getItem("bongo_sound") !== "off");
+    const [personalBest, setPersonalBest] = useState(() =>
+        parseInt(localStorage.getItem("bongo_best_score") ?? "0")
+    );
 
-    // const toggleSound = () => {
+    // Fetch real personal best from Firestore when phone is known
+    useEffect(() => {
+        if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) return;
+        getDocs(query(
+            collection(db, "gameSessions"),
+            where("phone", "==", playerPhone),
+            orderBy("total", "desc"),
+            limit(1)
+        )).then(snap => {
+            if (!snap.empty) {
+                const best = snap.docs[0].data().total ?? 0;
+                setPersonalBest(best);
+                localStorage.setItem("bongo_best_score", String(best));
+            }
+        }).catch(() => {});
+    }, [playerPhone]);
     //     const next = !soundOn;
     //     setSoundOn(next);
     //     localStorage.setItem("bongo_sound", next ? "on" : "off");
     // };
-    const personalBest = parseInt(localStorage.getItem("bongo_best_score") ?? "0");
     const streakInfo = getStreakInfo();
 
     const saveProfile = (name: string, phone: string) => {
@@ -48,7 +66,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
         const lastActivity = localStorage.getItem("bongo_last_activity");
         if (lastActivity) {
             const hoursSinceActivity = (Date.now() - parseInt(lastActivity)) / (1000 * 60 * 60);
-            if (hoursSinceActivity >= 4) {
+            if (hoursSinceActivity >= 24) {
                 // Clear cache after 4 hours of inactivity
                 ["bongo_player_name", "bongo_player_phone", "bongo_best_score",
                     "bongo_session_score", "bongo_achievements", "bongo_streak", "bongo_last_activity"].forEach(k => localStorage.removeItem(k));
@@ -240,7 +258,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             <div className="home-content">
                 <div className="home-badge">
                     <span className="home-badge-dot"/>
-                    <span className="home-badge-text">Live Trivia · Season 1</span>
+                    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
                 </div>
 
                 <div className="home-title-wrap">
@@ -260,7 +278,11 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                             className="home-player-edit">✏️</span>
                         </button>
                     </div>
-                    {(personalBest > 0 || streakInfo.current > 0) && (
+                    {!playerPhone || !/^07\d{8}$/.test(playerPhone) ? (
+                        <button className="home-phone-warning" onClick={() => setShowNameModal(true)}>
+                            ⚠️ Set your phone number to play
+                        </button>
+                    ) : (personalBest > 0 || streakInfo.current > 0) && (
                         <div className="home-player-bar-row">
                             {personalBest > 0 && (
                                 <div className="home-best-score">
@@ -300,7 +322,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     {/*</div>*/}
                 </div>
 
-                <p className="home-hint">Test Yourself</p>
+                <p className="home-hint">Rounds 1 &amp; 2: KES 20 · Spin round: KES 10</p>
             </div>
 
             {showNameModal && (

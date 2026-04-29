@@ -674,22 +674,42 @@ function AdminLeaderboard() {
     const NEW_THRESHOLD_DAYS = 3; // badge players who joined leaderboard within last 3 days
 
     useEffect(() => {
-        getDocs(collection(db, "leaderboard"))
-            .then(snap => {
-                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                const byPhone = new Map<string, any>();
-                all.forEach(entry => {
-                    const phone = entry.phone || entry.id;
-                    const existing = byPhone.get(phone);
-                    if (!existing || (entry.score ?? 0) > (existing.score ?? 0))
-                        byPhone.set(phone, entry);
-                });
-                const sorted = Array.from(byPhone.values())
-                    .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
-                    .map((d, i) => ({ ...d, rank: i + 1 }));
-                setRows(sorted);
-            })
-            .catch(() => {});
+        const toKey = (p: string) => String(p).replace(/^0/, "254");
+
+        const sqlFetch = fetch("http://142.93.47.187:2027/api/lifetime-leaderboard")
+            .then(r => r.json()).catch(() => []);
+        const fbFetch = getDocs(collection(db, "leaderboard"))
+            .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() }))).catch(() => []);
+
+        Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
+            const byPhone = new Map<string, any>();
+
+            (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
+                const phone = toKey(String(d.msisdn ?? ""));
+                const score = d.score ?? 0;
+                const phone07 = phone.replace(/^254/, "0");
+                const existing = byPhone.get(phone);
+                if (!existing || score > existing.score)
+                    byPhone.set(phone, { phone: phone07, name: phone07.slice(0, 3) + "*******", score, playedAt: null });
+            });
+
+            (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
+                const phone = toKey(d.phone || d.id || "");
+                const score = d.score ?? 0;
+                const phone07 = phone.replace(/^254/, "0");
+                const existing = byPhone.get(phone);
+                const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name;
+                if (!existing || score > existing.score)
+                    byPhone.set(phone, { phone: phone07, name: name ?? phone07, score, playedAt: d.playedAt ?? null });
+                else if (existing && name)
+                    byPhone.set(phone, { ...existing, name });
+            });
+
+            const sorted = Array.from(byPhone.values())
+                .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+                .map((d, i) => ({ ...d, rank: i + 1 }));
+            setRows(sorted);
+        }).catch(() => {});
     }, []);
 
     const exportCSV = () => {

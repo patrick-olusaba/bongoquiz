@@ -203,9 +203,9 @@ export const BongoMain: FC = () => {
             if (hasPaidSessionRef.current) {
                 hasPaidSessionRef.current = false;
                 setHasPaidSession(false);
-                // Clean up granted session doc if it exists
+                // Clean up granted session doc via Cloud Function
                 const phone = localStorage.getItem("bongo_player_phone") ?? "";
-                if (phone) deleteDoc(doc(getFirestore(), "grantedSessions", phone)).catch(() => {});
+                if (phone) httpsCallable(getFunctions(), "consumeGrantedSession")({ phone }).catch(() => {});
                 setScreen("transition_r1");
             } else {
                 setScreen("deduct_r1r2");
@@ -265,7 +265,7 @@ export const BongoMain: FC = () => {
     if (screen === "transition_r3")
         return <RoundTransitionScreen
             roundNum={3} title="Risk Spins" icon="🎡"
-            subtitle="3 spins · answer to bank · wrong = lose all"
+            subtitle="5 spins · answer to bank · wrong = lose all"
             color="#FFD700"
             onDone={() => setScreen("round3_spin")}
         />;

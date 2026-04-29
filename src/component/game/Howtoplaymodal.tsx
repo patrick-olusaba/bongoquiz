@@ -20,7 +20,7 @@ const ROUNDS = [
     {
         num: "03", cls: "htp-round--3", color: "#FFD700",
         icon: "🎡", title: "Risk Spins",
-        points: "Up to 3 spins · bank or risk",
+        points: "Up to 5 spins · bank or risk",
         desc: "Spin the wheel to land a prize. Answer correctly to bank it. Choose to stop safely or risk your banked points for another spin — wrong answer loses everything.",
     },
 ];
