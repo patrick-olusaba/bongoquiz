@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.saveGameSession = void 0;
+exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.saveGameSession = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const http = __importStar(require("http"));
@@ -574,6 +574,98 @@ exports.saveBioQuizSession = functions.https.onCall(async (request) => {
     });
     await db.collection("bioQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
     const lbRef = db.collection("bioQuizLeaderboard").doc(data.phone);
+    const lbSnap = await lbRef.get();
+    if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < data.score) {
+        await lbRef.set({ name, phone: data.phone, score: data.score, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+    return { success: true };
+});
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERAL KNOWLEDGE QUIZ BACKEND
+// ─────────────────────────────────────────────────────────────────────────────
+exports.genQuizDeposit = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+    if (req.method !== "POST") {
+        res.status(405).json({ error: "Method not allowed" });
+        return;
+    }
+    try {
+        const body = req.body;
+        if (body.trans_id) {
+            const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            const existing = await db.collection("genQuizPayments")
+                .where("phone", "==", phone).where("status", "==", "pending")
+                .orderBy("createdAt", "desc").limit(1).get();
+            if (!existing.empty) {
+                await existing.docs[0].ref.update({ status: "paid", trans_id, trans_time, business_shortcode, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+            }
+            else {
+                await db.collection("genQuizPayments").add({ name, phone, amount, trans_id, trans_time, business_shortcode, status: "paid", createdAt: admin.firestore.FieldValue.serverTimestamp() });
+            }
+            res.status(200).json({ success: true });
+            return;
+        }
+        const { name, phone, amount } = body;
+        if (typeof name !== "string" || !name.trim()) {
+            res.status(400).json({ error: "Invalid name" });
+            return;
+        }
+        if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) {
+            res.status(400).json({ error: "Invalid phone" });
+            return;
+        }
+        if (typeof amount !== "number" || amount <= 0) {
+            res.status(400).json({ error: "Invalid amount" });
+            return;
+        }
+        const trigger = "GENQUIZ";
+        const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
+        const result = await new Promise((resolve, reject) => {
+            const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
+            const request = http.request(options, (response) => { let data = ""; response.on("data", c => { data += c; }); response.on("end", () => { try {
+                resolve(JSON.parse(data));
+            }
+            catch {
+                resolve({ raw: data });
+            } }); });
+            request.on("error", reject);
+            request.write(payload);
+            request.end();
+        });
+        const docRef = await db.collection("genQuizPayments").add({ name: name.trim(), phone, amount, trigger, status: "pending", checkoutRequestId: result?.CheckoutRequestID ?? null, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+        res.status(200).json({ success: true, paymentId: docRef.id, result });
+    }
+    catch (error) {
+        console.error("genQuizDeposit error:", error);
+        res.status(500).json({ error: "Internal error" });
+    }
+});
+exports.saveGenQuizSession = functions.https.onCall(async (request) => {
+    const data = request.data;
+    if (typeof data.name !== "string" || !data.name.trim())
+        throw new functions.https.HttpsError("invalid-argument", "Invalid name");
+    if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))
+        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    if (typeof data.score !== "number")
+        throw new functions.https.HttpsError("invalid-argument", "Invalid score");
+    const name = data.name.trim().slice(0, 20);
+    const msisdn = data.phone.replace(/^0/, "254");
+    const payload = JSON.stringify({ msisdn, score: data.score });
+    await new Promise((resolve) => {
+        const options = { hostname: "142.93.47.187", port: 2027, path: "/api/savewebscore", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
+        const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
+        req.on("error", () => resolve());
+        req.write(payload);
+        req.end();
+    });
+    await db.collection("genQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const lbRef = db.collection("genQuizLeaderboard").doc(data.phone);
     const lbSnap = await lbRef.get();
     if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < data.score) {
         await lbRef.set({ name, phone: data.phone, score: data.score, playedAt: admin.firestore.FieldValue.serverTimestamp() });

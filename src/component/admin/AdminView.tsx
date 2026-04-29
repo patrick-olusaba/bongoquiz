@@ -10,8 +10,9 @@ import { AdminKCSE }      from "./AdminKCSE.tsx";
 import { AdminBibleQuiz } from "./AdminBibleQuiz.tsx";
 import { AdminMathQuiz }  from "./AdminMathQuiz.tsx";
 import { AdminBioQuiz }   from "./AdminBioQuiz.tsx";
+import { AdminGenQuiz }   from "./AdminGenQuiz.tsx";
 
-type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz" | "mathquiz" | "bioquiz";
+type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz" | "mathquiz" | "bioquiz" | "genquiz";
 
 const TABS: { id: AdminTab; label: string }[] = [
     { id: "dashboard",   label: "📊 Dashboard"      },
@@ -26,6 +27,7 @@ const TABS: { id: AdminTab; label: string }[] = [
     { id: "biblequiz",   label: "✝️ Bible Quiz"      },
     { id: "mathquiz",    label: "➗ Math Quiz"       },
     { id: "bioquiz",     label: "🧬 Biology Quiz"    },
+    { id: "genquiz",     label: "🌍 General Knowledge" },
 ];
 
 const s: Record<string, React.CSSProperties> = {
@@ -115,7 +117,8 @@ function Dashboard() {
             };
         };
 
-        Promise.all([
+        const snap = (r: PromiseSettledResult<any>) => r.status === "fulfilled" ? r.value.docs : [];
+        Promise.allSettled([
             getDocs(collection(db, "players")),
             getDocs(collection(db, "gameSessions")),
             getDocs(collection(db, "payments")),
@@ -127,16 +130,22 @@ function Dashboard() {
             getDocs(collection(db, "mathQuizPayments")),
             getDocs(collection(db, "bioQuizSessions")),
             getDocs(collection(db, "bioQuizPayments")),
-        ]).then(([playersSnap, sessSnap, paySnap, lbSnap, grantSnap, bqSessSnap, bqPaySnap, mqSessSnap, mqPaySnap, bioSessSnap, bioPaySnap]) => {
-            const bongoSessions  = sessSnap.docs.map(d => d.data());
-            const bongoPayments  = paySnap.docs.map(d => d.data());
-            const bibleSessions  = bqSessSnap.docs.map(d => d.data());
-            const biblePayments  = bqPaySnap.docs.map(d => d.data());
-            const mathSessions   = mqSessSnap.docs.map(d => d.data());
-            const mathPayments   = mqPaySnap.docs.map(d => d.data());
-            const bioSessions    = bioSessSnap.docs.map(d => d.data());
-            const bioPayments    = bioPaySnap.docs.map(d => d.data());
-            const leaders        = lbSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            getDocs(collection(db, "genQuizSessions")),
+            getDocs(collection(db, "genQuizPayments")),
+        ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR]) => {
+            const bongoSessions  = snap(sessR).map((d: any) => d.data());
+            const bongoPayments  = snap(payR).map((d: any) => d.data());
+            const bibleSessions  = snap(bqSessR).map((d: any) => d.data());
+            const biblePayments  = snap(bqPayR).map((d: any) => d.data());
+            const mathSessions   = snap(mqSessR).map((d: any) => d.data());
+            const mathPayments   = snap(mqPayR).map((d: any) => d.data());
+            const bioSessions    = snap(bioSessR).map((d: any) => d.data());
+            const bioPayments    = snap(bioPayR).map((d: any) => d.data());
+            const genSessions    = snap(genSessR).map((d: any) => d.data());
+            const genPayments    = snap(genPayR).map((d: any) => d.data());
+            const leaders        = snap(lbR).map((d: any) => ({ id: d.id, ...d.data() }));
+            const playersSize    = playersR.status === "fulfilled" ? playersR.value.size : 0;
+            const grantSize      = grantR.status === "fulfilled" ? grantR.value.size : 0;
 
             // Power usage
             const powerCount: Record<string, number> = {};
@@ -149,19 +158,20 @@ function Dashboard() {
             const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10);
 
             // All revenue combined
-            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments].filter(p => p.status === "paid");
+            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments].filter(p => p.status === "paid");
             const totalRevenue = allPaid.reduce((a, p) => a + (p.amount ?? 0), 0);
-            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length;
+            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length + genSessions.length;
 
             setData({
-                players: playersSnap.size,
-                stuckCount: grantSnap.size,
+                players: playersSize,
+                stuckCount: grantSize,
                 totalRevenue, totalSessions,
                 topPowers, topPlayers,
                 bongo: buildGameStats(bongoSessions, bongoPayments),
                 bible: buildGameStats(bibleSessions, biblePayments),
                 math:  buildGameStats(mathSessions,  mathPayments),
                 bio:   buildGameStats(bioSessions,   bioPayments),
+                gen:   buildGameStats(genSessions,   genPayments),
             });
         }).catch(() => {});
     }, []);
@@ -259,7 +269,8 @@ function Dashboard() {
             <GameCard label="Bongo Quiz"    icon="🎯" color="#4361ee" g={data.bongo} />
             <GameCard label="Bible Quiz"    icon="✝️" color="#059669" g={data.bible} />
             <GameCard label="Math Quiz"     icon="➗" color="#d97706" g={data.math}  />
-            <GameCard label="Biology Quiz"  icon="🧬" color="#7c3aed" g={data.bio}   />
+            <GameCard label="Biology Quiz"    icon="🧬" color="#7c3aed" g={data.bio}   />
+            <GameCard label="General Knowledge" icon="🌍" color="#0891b2" g={data.gen} />
         </div>
 
         {/* ── Shared leaderboard + powers ── */}
@@ -964,7 +975,7 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                     ))}
                     <div className="adm-sidebar-divider" />
                     <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz"].includes(t.id)).map(t => (
+                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz","genquiz"].includes(t.id)).map(t => (
                         <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
                             <span className="adm-dot" />{t.label}
                         </button>
@@ -982,7 +993,7 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                     ))}
                     <div className="adm-sidebar-divider" />
                     <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz"].includes(t.id)).map(t => (
+                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz","genquiz"].includes(t.id)).map(t => (
                         <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
                             <span className="adm-dot" />{t.label}
                         </button>
@@ -1002,6 +1013,7 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                     {tab === "biblequiz"    && <AdminBibleQuiz />}
                     {tab === "mathquiz"     && <AdminMathQuiz />}
                     {tab === "bioquiz"      && <AdminBioQuiz />}
+                    {tab === "genquiz"      && <AdminGenQuiz />}
                 </main>
             </div>
         </div>
