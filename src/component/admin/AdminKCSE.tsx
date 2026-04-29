@@ -162,7 +162,7 @@ export function AdminKCSE() {
                                             View PDF ↗
                                         </a>
                                     </td>
-                                    <td style={s.td}>{p.uploadedAt?.toDate?.()?.toLocaleDateString?.() ?? "—"}</td>
+                                    <td style={s.td}>{p.uploadedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
                                     <td style={s.td}>
                                         <button style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}
                                             onClick={() => del(p)}>Delete</button>

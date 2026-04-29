@@ -369,7 +369,7 @@ function Players() {
                                 <td style={s.td}>{p.phone ?? "—"}</td>
                                 <td style={{ ...s.td, fontWeight: 600 }}>{p.games}</td>
                                 <td style={{ ...s.td, color: "#059669", fontWeight: 600 }}>KSh {p.spent.toLocaleString()}</td>
-                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{p.lastPlayed?.toLocaleDateString() ?? "—"}</td>
+                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{p.lastPlayed?.toLocaleDateString('en-GB') ?? "—"}</td>
                                 <td style={s.td}>
                                     <span style={{ background: p.isBanned ? "#fee2e2" : "#dcfce7", color: p.isBanned ? "#991b1b" : "#166534", padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700 }}>
                                         {p.isBanned ? "banned" : "active"}
@@ -480,7 +480,7 @@ function Payments() {
                     <StatusBadge status={r.status ?? "pending"} />,
                     r.trans_id ?? r.checkoutRequestId ?? "—",
                     r.receipt  ?? r.trans_id ?? "—",
-                    r.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                    r.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                 ]) : [["—", "No payments found", "", "", "", "", "", "", ""]]}
             />
 
@@ -601,7 +601,7 @@ function GameSessions() {
                         p.name  ?? "—",
                         (p.phone ?? "—").replace(/^254/, "0"),
                         p.amount != null ? `KSh ${p.amount}` : "—",
-                        p.createdAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                        p.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                         <div style={{ display: "flex", gap: 6 }}>
                             <button
                                 disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
@@ -637,7 +637,7 @@ function GameSessions() {
                         (r.r2Score ?? 0).toLocaleString(),
                         (r.r3Bonus ?? 0).toLocaleString(),
                         (r.total   ?? 0).toLocaleString(),
-                        r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                        r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                     ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
                 />
                 {totalPages > 1 && (
@@ -706,7 +706,7 @@ function AdminLeaderboard() {
                 rows={filtered.length ? filtered.map(r => [
                     String(r.rank), r.name ?? "—", r.phone ?? "—",
                     (r.score ?? 0).toLocaleString(),
-                    r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—",
+                    r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                 ]) : [["No entries found", "", "", "", ""]]}
             />
         </Card>

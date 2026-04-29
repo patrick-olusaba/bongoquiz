@@ -335,7 +335,7 @@ function BQPayments() {
                                 <td style={s.td}>{r.amount != null ? `KSh ${r.amount}` : "—"}</td>
                                 <td style={s.td}><StatusBadge status={r.status ?? "pending"} /></td>
                                 <td style={s.td}>{r.trans_id ?? "—"}</td>
-                                <td style={s.td}>{r.createdAt?.toDate?.()?.toLocaleString?.() ?? "—"}</td>
+                                <td style={s.td}>{r.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
                             </tr>
                         ))}
                         {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No payments</td></tr>}
@@ -378,7 +378,7 @@ function BQSessions() {
                                 <td style={s.td}>{r.correct ?? 0}</td>
                                 <td style={s.td}>{r.wrong ?? 0}</td>
                                 <td style={s.td}>{r.passed ?? 0}</td>
-                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleString?.() ?? "—"}</td>
+                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
                             </tr>
                         ))}
                         {!filtered.length && <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No sessions</td></tr>}
@@ -413,7 +413,7 @@ function BQLeaderboard() {
                                 <td style={s.td}><strong>{r.name ?? "—"}</strong></td>
                                 <td style={s.td}>{(r.phone ?? "").slice(0, 4) + "****"}</td>
                                 <td style={s.td}><strong style={{ color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()} pts</strong></td>
-                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString?.() ?? "—"}</td>
+                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
                             </tr>
                         ))}
                         {!rows.length && <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No data yet</td></tr>}
