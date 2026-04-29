@@ -39,14 +39,11 @@ export const saveGameSession = functions.https.onCall(
         const total = data.r1Score + data.r2Score + data.r3Bonus;
         const name  = data.name.trim().slice(0, 20);
 
-        // Idempotency: reject if an identical session was saved in the last 2 minutes
-        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+        // Idempotency: check if session with same phone already saved in last 5 minutes
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const recent = await db.collection("gameSessions")
-            .where("phone",   "==", data.phone)
-            .where("r1Score", "==", data.r1Score)
-            .where("r2Score", "==", data.r2Score)
-            .where("r3Bonus", "==", data.r3Bonus)
-            .where("playedAt", ">=", twoMinutesAgo)
+            .where("phone", "==", data.phone)
+            .where("playedAt", ">=", fiveMinutesAgo)
             .limit(1)
             .get();
         if (!recent.empty) return { sessionId: recent.docs[0].id, total };
