@@ -40,10 +40,12 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
 
         Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
             const byPhone = new Map<string, { name: string; phone: string; score: number }>();
+            // Normalize all phones to 254... as the canonical map key
+            const toKey = (p: string) => String(p).replace(/^0/, "254");
 
             // SQL data — msisdn is 254..., no name — mask as player label
             (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
-                const phone = String(d.msisdn ?? "");
+                const phone = toKey(String(d.msisdn ?? ""));
                 const score = d.score ?? 0;
                 const phone07 = phone.replace(/^254/, "0");
                 const maskedName = phone07.slice(0, 3) + "*******";
@@ -55,14 +57,14 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
             // Firebase data — may have name, phone stored as 07... or 254...
             // Firebase name takes priority over masked SQL name
             (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
-                const phone254 = (d.phone || d.id || "").replace(/^0/, "254");
-                const score    = d.score ?? 0;
-                const existing = byPhone.get(phone254);
+                const phone = toKey(d.phone || d.id || "");
+                const score = d.score ?? 0;
+                const existing = byPhone.get(phone);
                 const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name ?? d.name;
                 if (!existing || score > existing.score)
-                    byPhone.set(phone254, { name, phone: phone254, score });
+                    byPhone.set(phone, { name, phone, score });
                 else if (existing && name && !/^\d/.test(name))
-                    byPhone.set(phone254, { ...existing, name }); // update name even if score not higher
+                    byPhone.set(phone, { ...existing, name }); // update name even if score not higher
             });
 
             // Sync merged results back to Firebase (upsert highest score per phone)
