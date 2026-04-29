@@ -307,6 +307,8 @@ export function AdminQuestions() {
     const [editing,  setEditing]  = useState<Question | null>(null);
     const [adding,   setAdding]   = useState(false);
     const [preview,  setPreview]  = useState<Question | null>(null);
+    const [renaming, setRenaming] = useState<string | null>(null); // current category being renamed
+    const [renameVal,setRenameVal]= useState("");
     const [csvOpen,  setCsvOpen]  = useState(false);
     const [pasteOpen,setPasteOpen]= useState(false);
     const [search,   setSearch]   = useState("");
@@ -388,6 +390,16 @@ export function AdminQuestions() {
         setSelected(new Set());
     };
 
+    const doRename = async () => {
+        if (!renaming || !renameVal.trim() || renameVal.trim() === renaming) return;
+        const toRename = qs.filter(q => q.category === renaming);
+        const batch = writeBatch(db);
+        toRename.forEach(q => batch.update(doc(db, "questions", q.id!), { category: renameVal.trim() }));
+        await batch.commit();
+        setQs(prev => prev.map(q => q.category === renaming ? { ...q, category: renameVal.trim() } : q));
+        setRenaming(null);
+    };
+
     const exportCSV = () => {
         const header = "round,category,question,optionA,optionB,optionC,optionD,correct,active";
         const csv = qs.map(q => [
@@ -433,7 +445,26 @@ export function AdminQuestions() {
         {csvOpen    && <CsvUploadModal onImport={importCSV} onClose={() => setCsvOpen(false)} />}
         {pasteOpen  && <PasteModal defaultRound={round} onImport={importCSV} onClose={() => setPasteOpen(false)} />}
 
-        {/* Preview modal */}
+        {/* Rename category modal */}
+        {renaming !== null && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+                onClick={e => e.target === e.currentTarget && setRenaming(null)}>
+                <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: "100%", maxWidth: 400 }}>
+                    <h3 style={{ margin: "0 0 16px", color: "#1a1a2e", fontSize: "1rem" }}>Rename Category</h3>
+                    <p style={{ fontSize: "0.85rem", color: "#666", marginBottom: 12 }}>
+                        Renaming <strong>"{renaming}"</strong> will update all {qs.filter(q => q.category === renaming).length} questions.
+                    </p>
+                    <input style={s.input} value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                        placeholder="New category name" autoFocus
+                        onKeyDown={async e => { if (e.key === "Enter") { await doRename(); } if (e.key === "Escape") setRenaming(null); }} />
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+                        <button onClick={() => setRenaming(null)} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
+                        <button onClick={doRename} disabled={!renameVal.trim() || renameVal.trim() === renaming}
+                            style={{ ...s.btn, background: "#4361ee", color: "#fff", padding: "8px 20px" }}>Rename</button>
+                    </div>
+                </div>
+            </div>
+        )}
         {preview && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
                 onClick={e => e.target === e.currentTarget && setPreview(null)}>
@@ -483,15 +514,7 @@ export function AdminQuestions() {
                                     <td style={{ ...s.td, fontWeight: 700 }}>{c.total}</td>
                                     <td style={s.td}>
                                         <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}
-                                            onClick={async () => {
-                                                const newName = prompt(`Rename "${c.category}" to:`, c.category);
-                                                if (!newName || newName.trim() === c.category) return;
-                                                const toRename = qs.filter(q => q.category === c.category);
-                                                const batch = writeBatch(db);
-                                                toRename.forEach(q => batch.update(doc(db, "questions", q.id!), { category: newName.trim() }));
-                                                await batch.commit();
-                                                setQs(prev => prev.map(q => q.category === c.category ? { ...q, category: newName.trim() } : q));
-                                            }}>
+                                            onClick={() => { setRenaming(c.category); setRenameVal(c.category); }}>
                                             ✏️ Rename
                                         </button>
                                     </td>
