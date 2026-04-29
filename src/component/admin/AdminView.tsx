@@ -1,6 +1,6 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
@@ -293,39 +293,209 @@ function Dashboard() {
 
 // ── Players ────────────────────────────────────────────────────────────────────
 function Players() {
-    const [search, setSearch] = useState("");
-    const [players, setPlayers] = useState<any[]>([]);
-    const [page,    setPage]    = useState(1);
+    const [search,   setSearch]   = useState("");
+    const [players,  setPlayers]  = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [leaders,  setLeaders]  = useState<any[]>([]);
+    const [banned,   setBanned]   = useState<Set<string>>(new Set());
+    const [page,     setPage]     = useState(1);
+    const [sortBy,   setSortBy]   = useState<"joined"|"games"|"spent"|"score"|"lastPlayed">("joined");
+    const [sortDir,  setSortDir]  = useState<"desc"|"asc">("desc");
+    const [detail,   setDetail]   = useState<any | null>(null);
     const PAGE_SIZE = 20;
 
     useEffect(() => {
-        getDocs(collection(db, "players"))
-            .then(snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))))
-            .catch(() => {});
+        Promise.all([
+            getDocs(collection(db, "players")),
+            getDocs(collection(db, "gameSessions")),
+            getDocs(collection(db, "payments")),
+            getDocs(collection(db, "leaderboard")),
+            getDocs(collection(db, "bannedPlayers")),
+        ]).then(([pSnap, sSnap, paySnap, lbSnap, banSnap]) => {
+            setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setSessions(sSnap.docs.map(d => d.data()));
+            setPayments(paySnap.docs.map(d => d.data()));
+            setLeaders(lbSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setBanned(new Set(banSnap.docs.map(d => d.id)));
+        }).catch(() => {});
     }, []);
 
-    const filtered   = players.filter(p =>
+    // Enrich each player with stats
+    const enriched = players.map(p => {
+        const phone07  = (p.phone ?? "").replace(/^254/, "0");
+        const phone254 = (p.phone ?? "").replace(/^0/, "254");
+        const pSessions = sessions.filter(s => s.phone === phone07 || s.phone === p.phone);
+        const pPayments = payments.filter(pay => pay.phone === phone07 || pay.phone === phone254 || pay.phone === p.phone);
+        const paidAmt   = pPayments.filter(pay => pay.status === "paid").reduce((a, pay) => a + (pay.amount ?? 0), 0);
+        const lastSess  = pSessions.sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
+        const lbEntry   = leaders.find(l => l.id === phone07 || l.id === p.phone || l.phone === phone07);
+        return {
+            ...p,
+            games:      pSessions.length,
+            spent:      paidAmt,
+            lastPlayed: lastSess?.playedAt?.toDate?.() ?? null,
+            bestScore:  lbEntry?.score ?? 0,
+            lastPayStatus: pPayments[0]?.status ?? null,
+            isBanned:   banned.has(phone07) || banned.has(p.phone ?? ""),
+        };
+    });
+
+    const toggleBan = async (p: any) => {
+        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        const action  = p.isBanned ? "Unban" : "Ban";
+        if (!confirm(`${action} ${p.name ?? p.phone}?`)) return;
+        if (p.isBanned) {
+            await deleteDoc(doc(db, "bannedPlayers", phone07)).catch(() => {});
+            setBanned(prev => { const n = new Set(prev); n.delete(phone07); return n; });
+        } else {
+            await setDoc(doc(db, "bannedPlayers", phone07), { phone: phone07, bannedAt: new Date() }).catch(() => {});
+            setBanned(prev => new Set([...prev, phone07]));
+        }
+    };
+
+    const sortFn = (a: any, b: any) => {
+        const dir = sortDir === "desc" ? -1 : 1;
+        switch (sortBy) {
+            case "games":      return dir * (a.games - b.games);
+            case "spent":      return dir * (a.spent - b.spent);
+            case "score":      return dir * (a.bestScore - b.bestScore);
+            case "lastPlayed": return dir * ((a.lastPlayed?.getTime() ?? 0) - (b.lastPlayed?.getTime() ?? 0));
+            default:           return dir * ((b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0)) * -1;
+        }
+    };
+
+    const toggleSort = (col: typeof sortBy) => {
+        if (sortBy === col) setSortDir(d => d === "desc" ? "asc" : "desc");
+        else { setSortBy(col); setSortDir("desc"); }
+        setPage(1);
+    };
+
+    const filtered   = enriched.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search)
-    );
+    ).sort(sortFn);
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+    const exportCSV = () => {
+        const header = "Name,Phone,Games,Spent (KSh),Best Score,Last Played,Joined,Status";
+        const rows   = filtered.map(p => [
+            p.name ?? "", p.phone ?? "", p.games, p.spent,
+            p.bestScore,
+            p.lastPlayed?.toLocaleDateString() ?? "",
+            p.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "",
+            p.isBanned ? "banned" : "active",
+        ].join(",")).join("\n");
+        const blob = new Blob([header + "\n" + rows], { type: "text/csv" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+        a.download = "players.csv"; a.click();
+    };
+
+    const SortBtn = ({ col, label }: { col: typeof sortBy; label: string }) => (
+        <span style={{ cursor: "pointer", userSelect: "none" as const }} onClick={() => toggleSort(col)}>
+            {label} {sortBy === col ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
+        </span>
+    );
+
+    const payBadge = (status: string | null) => {
+        if (!status) return null;
+        const c: Record<string, string> = { paid: "#dcfce7", pending: "#fef9c3", failed: "#fee2e2" };
+        const t: Record<string, string> = { paid: "#166534", pending: "#854d0e", failed: "#991b1b" };
+        return <span style={{ background: c[status] ?? "#f0f0f0", color: t[status] ?? "#555", padding: "1px 6px", borderRadius: 4, fontSize: "0.72rem", fontWeight: 700 }}>{status}</span>;
+    };
+
     return <>
+        {/* Detail modal */}
+        {detail && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+                onClick={e => e.target === e.currentTarget && setDetail(null)}>
+                <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                        <h3 style={{ margin: 0, color: "#1a1a2e" }}>{detail.name ?? "Player"}</h3>
+                        <button onClick={() => setDetail(null)} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>✕</button>
+                    </div>
+                    {[
+                        ["Phone",       detail.phone ?? "—"],
+                        ["Games Played",detail.games],
+                        ["Total Spent", `KSh ${detail.spent.toLocaleString()}`],
+                        ["Best Score",  detail.bestScore.toLocaleString() + " pts"],
+                        ["Last Played", detail.lastPlayed?.toLocaleString() ?? "—"],
+                        ["Joined",      detail.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "—"],
+                        ["Status",      detail.isBanned ? "🚫 Banned" : "✅ Active"],
+                    ].map(([k, v]) => (
+                        <div key={k as string} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8", fontSize: "0.88rem" }}>
+                            <span style={{ color: "#888" }}>{k}</span>
+                            <span style={{ fontWeight: 600, color: "#1a1a2e" }}>{v}</span>
+                        </div>
+                    ))}
+                    <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+                        <button onClick={() => { toggleBan(detail); setDetail(null); }}
+                            style={{ ...s.btn, background: detail.isBanned ? "#dcfce7" : "#fee2e2", color: detail.isBanned ? "#166534" : "#991b1b", flex: 1 }}>
+                            {detail.isBanned ? "✅ Unban Player" : "🚫 Ban Player"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <Card title="Players">
-            <input style={{ ...s.input, marginBottom: 14 }} placeholder="Search by name or phone…"
-                value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+                <input style={{ ...s.input, maxWidth: 260 }} placeholder="Search by name or phone…"
+                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+                <button onClick={exportCSV} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", marginLeft: "auto" }}>
+                    📥 Export CSV
+                </button>
+            </div>
             <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: 8 }}>
                 Showing {paginated.length} of {filtered.length} players
             </div>
-            <Table
-                heads={["#", "Name", "Phone", "Joined"]}
-                rows={paginated.length ? paginated.map((p, i) => [
-                    (page - 1) * PAGE_SIZE + i + 1,
-                    p.name ?? "—", p.phone ?? "—",
-                    p.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "—",
-                ]) : [["—", "No players yet", "", ""]]}
-            />
+            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                <table style={s.table}>
+                    <thead><tr>
+                        {[
+                            <th key="#"  style={s.th}>#</th>,
+                            <th key="n"  style={s.th}>Name</th>,
+                            <th key="ph" style={s.th}>Phone</th>,
+                            <th key="g"  style={s.th}><SortBtn col="games"      label="Games" /></th>,
+                            <th key="sp" style={s.th}><SortBtn col="spent"      label="Spent" /></th>,
+                            <th key="sc" style={s.th}><SortBtn col="score"      label="Best Score" /></th>,
+                            <th key="lp" style={s.th}><SortBtn col="lastPlayed" label="Last Played" /></th>,
+                            <th key="ps" style={s.th}>Last Pay</th>,
+                            <th key="st" style={s.th}>Status</th>,
+                            <th key="ac" style={s.th}>Actions</th>,
+                        ]}
+                    </tr></thead>
+                    <tbody>
+                        {paginated.length ? paginated.map((p, i) => (
+                            <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem" }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                                <td style={s.td}>{p.name ?? "—"}</td>
+                                <td style={s.td}>{p.phone ?? "—"}</td>
+                                <td style={{ ...s.td, fontWeight: 600 }}>{p.games}</td>
+                                <td style={{ ...s.td, color: "#059669", fontWeight: 600 }}>KSh {p.spent.toLocaleString()}</td>
+                                <td style={{ ...s.td, color: "#4361ee", fontWeight: 600 }}>{p.bestScore.toLocaleString()}</td>
+                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{p.lastPlayed?.toLocaleDateString() ?? "—"}</td>
+                                <td style={s.td}>{payBadge(p.lastPayStatus)}</td>
+                                <td style={s.td}>
+                                    <span style={{ background: p.isBanned ? "#fee2e2" : "#dcfce7", color: p.isBanned ? "#991b1b" : "#166534", padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700 }}>
+                                        {p.isBanned ? "banned" : "active"}
+                                    </span>
+                                </td>
+                                <td style={s.td}>
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                        <button onClick={() => setDetail(p)} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>View</button>
+                                        <button onClick={() => toggleBan(p)} style={{ ...s.btn, background: p.isBanned ? "#dcfce7" : "#fee2e2", color: p.isBanned ? "#166534" : "#991b1b" }}>
+                                            {p.isBanned ? "Unban" : "Ban"}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan={10} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No players yet</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
             {totalPages > 1 && (
                 <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
                     <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
