@@ -1,6 +1,6 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
@@ -293,31 +293,108 @@ function Dashboard() {
 
 // ── Players ────────────────────────────────────────────────────────────────────
 function Players() {
-    const [search, setSearch] = useState("");
-    const [players, setPlayers] = useState<any[]>([]);
+    const [search,   setSearch]   = useState("");
+    const [players,  setPlayers]  = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [banned,   setBanned]   = useState<Set<string>>(new Set());
+    const [page,     setPage]     = useState(1);
+    const PAGE_SIZE = 20;
 
     useEffect(() => {
-        getDocs(collection(db, "players"))
-            .then(snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0))))
-            .catch(() => {});
+        Promise.all([
+            getDocs(collection(db, "players")),
+            getDocs(collection(db, "gameSessions")),
+            getDocs(collection(db, "payments")),
+            getDocs(collection(db, "bannedPlayers")),
+        ]).then(([pSnap, sSnap, paySnap, banSnap]) => {
+            setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0)));
+            setSessions(sSnap.docs.map(d => d.data()));
+            setPayments(paySnap.docs.map(d => d.data()));
+            setBanned(new Set(banSnap.docs.map(d => d.id)));
+        }).catch(() => {});
     }, []);
 
-    const filtered = players.filter(p =>
+    const norm = (p: string) => String(p ?? "").replace(/^\+?254|^0/, "").slice(-9);
+
+    const enriched = players.map(p => {
+        const pNorm      = norm(p.phone);
+        const phone07    = pNorm ? "0" + pNorm : (p.phone ?? "");
+        const pSessions  = sessions.filter(s => norm(s.phone) === pNorm);
+        const paidAmt    = payments.filter(pay => norm(pay.phone) === pNorm && pay.status === "paid")
+                                   .reduce((a, pay) => a + (pay.amount ?? 0), 0);
+        const lastSess   = [...pSessions].sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
+        return { ...p, phone07, games: pSessions.length, spent: paidAmt,
+            lastPlayed: lastSess?.playedAt?.toDate?.() ?? null,
+            isBanned: banned.has(phone07) || banned.has(p.phone ?? "") };
+    });
+
+    const toggleBan = async (p: any) => {
+        if (!confirm(`${p.isBanned ? "Unban" : "Ban"} ${p.name ?? p.phone}?`)) return;
+        if (p.isBanned) {
+            await deleteDoc(doc(db, "bannedPlayers", p.phone07)).catch(() => {});
+            setBanned(prev => { const n = new Set(prev); n.delete(p.phone07); return n; });
+        } else {
+            await setDoc(doc(db, "bannedPlayers", p.phone07), { phone: p.phone07, bannedAt: new Date() }).catch(() => {});
+            setBanned(prev => new Set([...prev, p.phone07]));
+        }
+    };
+
+    const filtered   = enriched.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search)
     );
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Players">
-            <input style={{ ...s.input, marginBottom: 14 }} placeholder="Search by name or phone…"
-                value={search} onChange={e => setSearch(e.target.value)} />
-            <Table
-                heads={["Name", "Phone", "Joined"]}
-                rows={filtered.length ? filtered.map(p => [
-                    p.name ?? "—", p.phone ?? "—",
-                    p.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "—",
-                ]) : [["No players yet", "", ""]]}
-            />
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+                <input style={{ ...s.input, maxWidth: 260 }} placeholder="Search by name or phone…"
+                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+                <span style={{ fontSize: "0.8rem", color: "#888", marginLeft: "auto" }}>
+                    {filtered.length} player{filtered.length !== 1 ? "s" : ""}
+                </span>
+            </div>
+            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                <table style={s.table}>
+                    <thead><tr>
+                        {["#","Name","Phone","Games","Spent","Last Played","Status","Action"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                        {paginated.length ? paginated.map((p, i) => (
+                            <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem" }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                                <td style={s.td}>{p.name ?? "—"}</td>
+                                <td style={s.td}>{p.phone ?? "—"}</td>
+                                <td style={{ ...s.td, fontWeight: 600 }}>{p.games}</td>
+                                <td style={{ ...s.td, color: "#059669", fontWeight: 600 }}>KSh {p.spent.toLocaleString()}</td>
+                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{p.lastPlayed?.toLocaleDateString() ?? "—"}</td>
+                                <td style={s.td}>
+                                    <span style={{ background: p.isBanned ? "#fee2e2" : "#dcfce7", color: p.isBanned ? "#991b1b" : "#166534", padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700 }}>
+                                        {p.isBanned ? "banned" : "active"}
+                                    </span>
+                                </td>
+                                <td style={s.td}>
+                                    <button onClick={() => toggleBan(p)}
+                                        style={{ ...s.btn, background: p.isBanned ? "#dcfce7" : "#fee2e2", color: p.isBanned ? "#166534" : "#991b1b" }}>
+                                        {p.isBanned ? "Unban" : "Ban"}
+                                    </button>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No players yet</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            {totalPages > 1 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                    <span style={{ fontSize: "0.85rem", color: "#555", padding: "6px 8px" }}>Page {page} of {totalPages}</span>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+            )}
         </Card>
     </>;
 }
