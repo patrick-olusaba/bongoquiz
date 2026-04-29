@@ -301,6 +301,7 @@ function CsvUploadModal({ onImport, onClose }: { onImport: (qs: Omit<Question,"i
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AdminQuestions() {
     const [round,   setRound]   = useState<"r1"|"r2"|"r3">("r1");
+    const [tab,     setTab]     = useState<"questions"|"duplicates">("questions");
     const [qs,      setQs]      = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<Question | null>(null);
@@ -319,6 +320,17 @@ export function AdminQuestions() {
 
     useEffect(() => { load(); }, []);
     useEffect(() => { setPage(1); }, [round]);
+
+    // Find duplicate groups: questions with identical normalised text
+    const duplicateGroups: Question[][] = (() => {
+        const groups = new Map<string, Question[]>();
+        qs.forEach(q => {
+            const key = q.question.trim().toLowerCase().replace(/\s+/g, " ");
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(q);
+        });
+        return Array.from(groups.values()).filter(g => g.length > 1);
+    })();
 
     const isDuplicate = (q: Question, existing: Question[]) =>
         existing.some(e => e.id !== q.id && e.question.trim().toLowerCase() === q.question.trim().toLowerCase());
@@ -359,7 +371,6 @@ export function AdminQuestions() {
         const batch = writeBatch(db);
         unique.forEach(q => batch.set(doc(collection(db, "questions")), q));
         await batch.commit();
-        // Bulk import to company API
         fetch(`${API}/api/admin/questions/bulk-import`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ questions: unique.map(toApiShape) }),
@@ -385,67 +396,140 @@ export function AdminQuestions() {
 
         <div style={s.card}>
             <h2 style={s.h2}>Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({qs.length} total)</span></h2>
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                {(["r1","r2","r3"] as const).map(r => (
-                    <button key={r} onClick={() => setRound(r)}
-                        style={{ ...s.btn, background: round === r ? "#4361ee" : "#f0f0f8", color: round === r ? "#fff" : "#444" }}>
-                        {r === "r1" ? `Round 1 (${qs.filter(q=>q.round==="r1").length})` : r === "r2" ? `Round 2 (${qs.filter(q=>q.round==="r2").length})` : `Round 3 (${qs.filter(q=>q.round==="r3").length})`}
-                    </button>
-                ))}
-                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                    <button onClick={() => { clearQuestionsCache(); alert("Question cache cleared. Players will get fresh questions on next game."); }}
-                        style={{ ...s.btn, background: "#f0f0f8", color: "#666", border: "1px solid #ddd" }}>🔄 Clear Cache</button>
-                    <button onClick={() => setPasteOpen(true)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a" }}>📋 Paste</button>
-                    <button onClick={() => setCsvOpen(true)}   style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
-                    <button onClick={() => setAdding(true)}  style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
-                </div>
+
+            {/* Top-level tabs */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <button onClick={() => setTab("questions")}
+                    style={{ ...s.btn, background: tab === "questions" ? "#4361ee" : "#f0f0f8", color: tab === "questions" ? "#fff" : "#444" }}>
+                    ❓ All Questions
+                </button>
+                <button onClick={() => setTab("duplicates")}
+                    style={{ ...s.btn, background: tab === "duplicates" ? "#dc2626" : "#f0f0f8", color: tab === "duplicates" ? "#fff" : "#444" }}>
+                    ⚠️ Duplicate Questions {duplicateGroups.length > 0 && `(${duplicateGroups.reduce((a, g) => a + g.length - 1, 0)} extra)`}
+                </button>
             </div>
 
-            {loading ? (
-                <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>Loading…</p>
-            ) : filtered.length === 0 ? (
-                <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>No questions for this round yet.</p>
+            {tab === "duplicates" ? (
+                loading ? (
+                    <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>Loading…</p>
+                ) : duplicateGroups.length === 0 ? (
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "20px", textAlign: "center", color: "#166534", fontWeight: 600 }}>
+                        ✅ No duplicate questions found!
+                    </div>
+                ) : (
+                    <>
+                    <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", marginBottom: 16, color: "#9f1239", fontSize: "0.85rem" }}>
+                        Found <strong>{duplicateGroups.length}</strong> group{duplicateGroups.length > 1 ? "s" : ""} of duplicate questions. Keep one and delete or edit the rest.
+                    </div>
+                    {duplicateGroups.map((group, gi) => (
+                        <div key={gi} style={{ border: "1px solid #fecdd3", borderRadius: 8, marginBottom: 16, overflow: "hidden" }}>
+                            <div style={{ background: "#fff1f2", padding: "8px 14px", fontSize: "0.78rem", fontWeight: 700, color: "#9f1239" }}>
+                                Group {gi + 1} — {group.length} duplicates · Round: {group[0].round.toUpperCase()} · Category: {group[0].category || "—"}
+                            </div>
+                            <div style={{ overflowX: "auto" }}>
+                                <table style={s.table}>
+                                    <thead>
+                                        <tr>{["Question","Options","Correct","Round","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                                    </thead>
+                                    <tbody>
+                                        {group.map((q, i) => (
+                                            <tr key={q.id} style={{ background: i === 0 ? "#f0fdf4" : "#fff" }}>
+                                                <td style={{ ...s.td, maxWidth: 220 }}>
+                                                    {i === 0 && <span style={{ fontSize: "0.7rem", background: "#dcfce7", color: "#166534", borderRadius: 4, padding: "1px 6px", fontWeight: 700, marginRight: 6 }}>KEEP</span>}
+                                                    {q.question}
+                                                </td>
+                                                <td style={{ ...s.td, fontSize: "0.78rem", color: "#555" }}>
+                                                    {q.options.map((o, j) => (
+                                                        <div key={j} style={{ color: j === q.correct ? "#166534" : undefined, fontWeight: j === q.correct ? 700 : undefined }}>
+                                                            {["A","B","C","D"][j]}. {o}
+                                                        </div>
+                                                    ))}
+                                                </td>
+                                                <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>{["A","B","C","D"][q.correct]}</td>
+                                                <td style={s.td}>{q.round.toUpperCase()}</td>
+                                                <td style={s.td}><StatusBadge active={q.active} /></td>
+                                                <td style={s.td}>
+                                                    <div style={{ display: "flex", gap: 6 }}>
+                                                        <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
+                                                        {i !== 0 && (
+                                                            <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ))}
+                    </>
+                )
             ) : (
                 <>
-                <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
-                    <table style={s.table}>
-                        <thead>
-                            <tr>{["#","Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
-                        </thead>
-                        <tbody>
-                            {paginated.map((q, i) => (
-                                <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem", width: 40 }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
-                                    <td style={{ ...s.td, maxWidth: 220 }}>{q.question}</td>
-                                    <td style={{ ...s.td, fontSize: "0.78rem", color: "#555" }}>
-                                        {q.options.map((o, j) => (
-                                            <div key={j} style={{ color: j === q.correct ? "#166534" : undefined, fontWeight: j === q.correct ? 700 : undefined }}>
-                                                {["A","B","C","D"][j]}. {o}
-                                            </div>
-                                        ))}
-                                    </td>
-                                    <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>{["A","B","C","D"][q.correct]}</td>
-                                    <td style={s.td}>{q.category}</td>
-                                    <td style={s.td}><StatusBadge active={q.active} /></td>
-                                    <td style={s.td}>
-                                        <div style={{ display: "flex", gap: 6 }}>
-                                            <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
-                                            <button onClick={() => del(q.id!)}    style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                {totalPages > 1 && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 14 }}>
-                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                            style={{ ...s.btn, background: page === 1 ? "#f0f0f8" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}>← Prev</button>
-                        <span style={{ fontSize: "0.85rem", color: "#555" }}>Page {page} of {totalPages}</span>
-                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                            style={{ ...s.btn, background: page === totalPages ? "#f0f0f8" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}>Next →</button>
+                <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                    {(["r1","r2","r3"] as const).map(r => (
+                        <button key={r} onClick={() => setRound(r)}
+                            style={{ ...s.btn, background: round === r ? "#4361ee" : "#f0f0f8", color: round === r ? "#fff" : "#444" }}>
+                            {r === "r1" ? `Round 1 (${qs.filter(q=>q.round==="r1").length})` : r === "r2" ? `Round 2 (${qs.filter(q=>q.round==="r2").length})` : `Round 3 (${qs.filter(q=>q.round==="r3").length})`}
+                        </button>
+                    ))}
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                        <button onClick={() => { clearQuestionsCache(); alert("Question cache cleared. Players will get fresh questions on next game."); }}
+                            style={{ ...s.btn, background: "#f0f0f8", color: "#666", border: "1px solid #ddd" }}>🔄 Clear Cache</button>
+                        <button onClick={() => setPasteOpen(true)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a" }}>📋 Paste</button>
+                        <button onClick={() => setCsvOpen(true)}   style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
+                        <button onClick={() => setAdding(true)}  style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                     </div>
+                </div>
+
+                {loading ? (
+                    <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>Loading…</p>
+                ) : filtered.length === 0 ? (
+                    <p style={{ ...s.p, color: "#aaa", textAlign: "center", padding: "30px 0" }}>No questions for this round yet.</p>
+                ) : (
+                    <>
+                    <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                        <table style={s.table}>
+                            <thead>
+                                <tr>{["#","Question","Options","Correct","Category","Status","Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                            </thead>
+                            <tbody>
+                                {paginated.map((q, i) => (
+                                    <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                        <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem", width: 40 }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                                        <td style={{ ...s.td, maxWidth: 220 }}>{q.question}</td>
+                                        <td style={{ ...s.td, fontSize: "0.78rem", color: "#555" }}>
+                                            {q.options.map((o, j) => (
+                                                <div key={j} style={{ color: j === q.correct ? "#166534" : undefined, fontWeight: j === q.correct ? 700 : undefined }}>
+                                                    {["A","B","C","D"][j]}. {o}
+                                                </div>
+                                            ))}
+                                        </td>
+                                        <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>{["A","B","C","D"][q.correct]}</td>
+                                        <td style={s.td}>{q.category}</td>
+                                        <td style={s.td}><StatusBadge active={q.active} /></td>
+                                        <td style={s.td}>
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                                <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
+                                                <button onClick={() => del(q.id!)}    style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {totalPages > 1 && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 14 }}>
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                                style={{ ...s.btn, background: page === 1 ? "#f0f0f8" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}>← Prev</button>
+                            <span style={{ fontSize: "0.85rem", color: "#555" }}>Page {page} of {totalPages}</span>
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                                style={{ ...s.btn, background: page === totalPages ? "#f0f0f8" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}>Next →</button>
+                        </div>
+                    )}
+                    </>
                 )}
                 </>
             )}
