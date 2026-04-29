@@ -295,6 +295,8 @@ function Dashboard() {
 function Players() {
     const [search, setSearch] = useState("");
     const [players, setPlayers] = useState<any[]>([]);
+    const [page,    setPage]    = useState(1);
+    const PAGE_SIZE = 20;
 
     useEffect(() => {
         getDocs(collection(db, "players"))
@@ -303,21 +305,34 @@ function Players() {
             .catch(() => {});
     }, []);
 
-    const filtered = players.filter(p =>
+    const filtered   = players.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search)
     );
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Players">
             <input style={{ ...s.input, marginBottom: 14 }} placeholder="Search by name or phone…"
-                value={search} onChange={e => setSearch(e.target.value)} />
+                value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: 8 }}>
+                Showing {paginated.length} of {filtered.length} players
+            </div>
             <Table
-                heads={["Name", "Phone", "Joined"]}
-                rows={filtered.length ? filtered.map(p => [
+                heads={["#", "Name", "Phone", "Joined"]}
+                rows={paginated.length ? paginated.map((p, i) => [
+                    (page - 1) * PAGE_SIZE + i + 1,
                     p.name ?? "—", p.phone ?? "—",
                     p.updatedAt?.toDate?.()?.toLocaleDateString?.() ?? "—",
-                ]) : [["No players yet", "", ""]]}
+                ]) : [["—", "No players yet", "", ""]]}
             />
+            {totalPages > 1 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                    <span style={{ fontSize: "0.85rem", color: "#555", padding: "6px 8px" }}>Page {page} of {totalPages}</span>
+                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+            )}
         </Card>
     </>;
 }
@@ -489,8 +504,16 @@ function GameSessions() {
         const term = search.toLowerCase();
         return (r.name ?? "").toLowerCase().includes(term) || (r.phone ?? "").includes(term);
     });
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    // Deduplicate: keep only one session per (phone, minute) — same phone within same minute = duplicate
+    const seen = new Set<string>();
+    const deduped = filtered.filter(r => {
+        const minute = r.playedAt?.toDate ? Math.floor(r.playedAt.toDate().getTime() / 60000) : r.playedAt?.seconds ? Math.floor(r.playedAt.seconds / 60) : r.id;
+        const key = `${r.phone}|${minute}`;
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+    });
+    const totalPages = Math.max(1, Math.ceil(deduped.length / PAGE_SIZE));
+    const paginated  = deduped.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Game Sessions">
@@ -538,7 +561,7 @@ function GameSessions() {
             </>) : (<>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                     <span style={{ fontSize: "0.85rem", color: "#666" }}>
-                        Total: <strong>{filtered.length}</strong> session{filtered.length !== 1 ? "s" : ""}
+                        Total: <strong>{deduped.length}</strong> session{deduped.length !== 1 ? "s" : ""}
                     </span>
                     <input type="text" placeholder="Search by name or phone..."
                         value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
