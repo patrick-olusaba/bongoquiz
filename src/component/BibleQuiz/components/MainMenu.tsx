@@ -123,7 +123,7 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
       <div className="mm-content">
         <div className="mm-badge">
           <span className="mm-badge-dot" />
-          <span className="mm-badge-text">Bible Quiz · Season 1</span>
+          <span className="mm-badge-text">✝️ How Well Do You Know The Bible?</span>
         </div>
 
         <div className="mm-title-wrap">
