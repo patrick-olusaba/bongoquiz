@@ -25,7 +25,7 @@ export const MainGameLayout = () => {
                 const q = snap.docs.map(d => {
                     const data = d.data();
                     return {
-                        id: data.id ?? parseInt(d.id) || 0,
+                        id: (data.id ?? parseInt(d.id)) || 0,
                         question: data.question,
                         options: data.options,
                         correctAnswer: (data.correctAnswer ?? data.answer) ?? 0,
