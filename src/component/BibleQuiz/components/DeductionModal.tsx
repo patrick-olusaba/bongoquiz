@@ -1,5 +1,5 @@
 import { type FC, useState, useEffect, useRef } from 'react';
-import { getFirestore, doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import '../style/deduction.css';
 
 interface Props {
@@ -18,13 +18,11 @@ export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
   const [timedOut, setTimedOut] = useState(false);
   const acceptedRef  = useRef(false);
   const unsubRef     = useRef<(() => void) | null>(null);
-  const pollRef      = useRef<number | null>(null);
 
   const handleConfirmed = () => {
     if (acceptedRef.current) return;
     acceptedRef.current = true;
     unsubRef.current?.();
-    if (pollRef.current) clearInterval(pollRef.current);
     onAccept();
   };
 
@@ -38,34 +36,21 @@ export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
     setLoading(true); setElapsed(0); setTimedOut(false);
     try {
       const phone254 = phone.replace(/^0/, "254");
-      const res = await fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/bibleQuizDeposit", {
+      const res = await fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/deposit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: phone254, amount }),
+        body: JSON.stringify({ name, phone: phone254, amount, trigger: "BBQ" }),
       }).then(r => r.json());
 
       if (!res.paymentId) throw new Error(res.error || "Payment failed");
 
       const db = getFirestore();
 
-      // Listener 1: bibleQuizPayments doc (direct callback)
-      unsubRef.current = onSnapshot(doc(db, "bibleQuizPayments", res.paymentId), snap => {
+      // Listen on payments doc (main collection)
+      unsubRef.current = onSnapshot(doc(db, "payments", res.paymentId), snap => {
         const d = snap.data();
         if (d?.trans_id || d?.status === "paid") handleConfirmed();
       }, () => {});
-
-      // Listener 2: poll main payments collection by phone (fallback if callback goes to deposit)
-      pollRef.current = window.setInterval(async () => {
-        if (acceptedRef.current) { clearInterval(pollRef.current!); return; }
-        try {
-          const snap = await getDocs(query(
-            collection(db, "payments"),
-            where("phone", "==", phone254),
-            where("status", "==", "paid")
-          ));
-          if (!snap.empty) handleConfirmed();
-        } catch { /* ignore */ }
-      }, 4000);
 
       setTimeout(() => {
         if (!acceptedRef.current) { setTimedOut(true); setLoading(false); }
