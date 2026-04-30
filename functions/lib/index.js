@@ -56,15 +56,15 @@ function isValidCallback(req) {
  * consumeGrantedSession — callable. Deletes a granted session after it's been used.
  * Prevents clients from deleting other users' sessions.
  */
-exports.consumeGrantedSession = functions.https.onCall(async (request) => {
-    const { phone } = request.data;
+exports.consumeGrantedSession = functions.https.onCall(async (data) => {
+    const { phone } = data;
     if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
         throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
     await db.collection("grantedSessions").doc(phone).delete();
     return { success: true };
 });
-exports.saveGameSession = functions.https.onCall(async (request) => {
-    const data = request.data;
+exports.saveGameSession = functions.https.onCall(async (data) => {
+    // data is already the first argument
     // Basic validation
     if (typeof data.name !== "string" || data.name.trim().length === 0)
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
@@ -92,6 +92,20 @@ exports.saveGameSession = functions.https.onCall(async (request) => {
         .get();
     if (!recent.empty)
         return { sessionId: recent.docs[0].id, total };
+    // POST to SQL leaderboard server-side (non-fatal)
+    const msisdn = data.phone.replace(/^0/, "254");
+    const sqlPayload = JSON.stringify({ msisdn, score: total });
+    await new Promise((resolve) => {
+        const options = {
+            hostname: "142.93.47.187", port: 2027,
+            path: "/api/savewebscore", method: "POST",
+            headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(sqlPayload) },
+        };
+        const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
+        req.on("error", () => resolve());
+        req.write(sqlPayload);
+        req.end();
+    });
     const sessionRef = await db.collection("gameSessions").add({
         name,
         phone: data.phone,
@@ -386,8 +400,8 @@ exports.bibleQuizDeposit = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: "Internal error" });
     }
 });
-exports.saveBibleQuizSession = functions.https.onCall(async (request) => {
-    const data = request.data;
+exports.saveBibleQuizSession = functions.https.onCall(async (data) => {
+    // data is already the first argument
     if (typeof data.name !== "string" || !data.name.trim())
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))
@@ -493,8 +507,8 @@ exports.mathQuizDeposit = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: "Internal error" });
     }
 });
-exports.saveMathQuizSession = functions.https.onCall(async (request) => {
-    const data = request.data;
+exports.saveMathQuizSession = functions.https.onCall(async (data) => {
+    // data is already the first argument
     if (typeof data.name !== "string" || !data.name.trim())
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))
@@ -589,8 +603,8 @@ exports.bioQuizDeposit = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: "Internal error" });
     }
 });
-exports.saveBioQuizSession = functions.https.onCall(async (request) => {
-    const data = request.data;
+exports.saveBioQuizSession = functions.https.onCall(async (data) => {
+    // data is already the first argument
     if (typeof data.name !== "string" || !data.name.trim())
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))
@@ -685,8 +699,8 @@ exports.genQuizDeposit = functions.https.onRequest(async (req, res) => {
         res.status(500).json({ error: "Internal error" });
     }
 });
-exports.saveGenQuizSession = functions.https.onCall(async (request) => {
-    const data = request.data;
+exports.saveGenQuizSession = functions.https.onCall(async (data) => {
+    // data is already the first argument
     if (typeof data.name !== "string" || !data.name.trim())
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))

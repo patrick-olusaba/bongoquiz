@@ -33,8 +33,8 @@ interface SaveSessionData {
  * Prevents clients from deleting other users' sessions.
  */
 export const consumeGrantedSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<{ phone: string }>) => {
-        const { phone } = request.data;
+    async (data: { phone: string }) => {
+        const { phone } = data;
         if (typeof phone !== "string" || !/^07\d{8}$/.test(phone))
             throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
         await db.collection("grantedSessions").doc(phone).delete();
@@ -43,8 +43,8 @@ export const consumeGrantedSession = functions.https.onCall(
 );
 
 export const saveGameSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<SaveSessionData>) => {
-        const data = request.data;
+    async (data: SaveSessionData) => {
+        // data is already the first argument
 
         // Basic validation
         if (typeof data.name   !== "string" || data.name.trim().length === 0)  throw new functions.https.HttpsError("invalid-argument", "Invalid name");
@@ -70,6 +70,20 @@ export const saveGameSession = functions.https.onCall(
             .limit(1)
             .get();
         if (!recent.empty) return { sessionId: recent.docs[0].id, total };
+
+        // POST to SQL leaderboard server-side (non-fatal)
+        const msisdn = data.phone.replace(/^0/, "254");
+        const sqlPayload = JSON.stringify({ msisdn, score: total });
+        await new Promise<void>((resolve) => {
+            const options = {
+                hostname: "142.93.47.187", port: 2027,
+                path: "/api/savewebscore", method: "POST",
+                headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(sqlPayload) },
+            };
+            const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
+            req.on("error", () => resolve());
+            req.write(sqlPayload); req.end();
+        });
 
         const sessionRef = await db.collection("gameSessions").add({
             name,
@@ -387,8 +401,8 @@ interface BibleQuizSessionData {
 }
 
 export const saveBibleQuizSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<BibleQuizSessionData>) => {
-        const data = request.data;
+    async (data: BibleQuizSessionData) => {
+        // data is already the first argument
         if (typeof data.name  !== "string" || !data.name.trim())             throw new functions.https.HttpsError("invalid-argument", "Invalid name");
         if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
         if (typeof data.score !== "number")                                   throw new functions.https.HttpsError("invalid-argument", "Invalid score");
@@ -479,8 +493,8 @@ export const mathQuizDeposit = functions.https.onRequest(async (req, res) => {
 interface MathQuizSessionData { name: string; phone: string; score: number; correct: number; wrong: number; passed: number; total: number; }
 
 export const saveMathQuizSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<MathQuizSessionData>) => {
-        const data = request.data;
+    async (data: MathQuizSessionData) => {
+        // data is already the first argument
         if (typeof data.name  !== "string" || !data.name.trim())             throw new functions.https.HttpsError("invalid-argument", "Invalid name");
         if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
         if (typeof data.score !== "number")                                   throw new functions.https.HttpsError("invalid-argument", "Invalid score");
@@ -556,8 +570,8 @@ export const bioQuizDeposit = functions.https.onRequest(async (req, res) => {
 interface BioQuizSessionData { name: string; phone: string; score: number; correct: number; wrong: number; passed: number; total: number; }
 
 export const saveBioQuizSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<BioQuizSessionData>) => {
-        const data = request.data;
+    async (data: BioQuizSessionData) => {
+        // data is already the first argument
         if (typeof data.name  !== "string" || !data.name.trim())             throw new functions.https.HttpsError("invalid-argument", "Invalid name");
         if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
         if (typeof data.score !== "number")                                   throw new functions.https.HttpsError("invalid-argument", "Invalid score");
@@ -632,8 +646,8 @@ export const genQuizDeposit = functions.https.onRequest(async (req, res) => {
 interface GenQuizSessionData { name: string; phone: string; score: number; correct: number; wrong: number; passed: number; total: number; }
 
 export const saveGenQuizSession = functions.https.onCall(
-    async (request: functions.https.CallableRequest<GenQuizSessionData>) => {
-        const data = request.data;
+    async (data: GenQuizSessionData) => {
+        // data is already the first argument
         if (typeof data.name  !== "string" || !data.name.trim())             throw new functions.https.HttpsError("invalid-argument", "Invalid name");
         if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
         if (typeof data.score !== "number")                                   throw new functions.https.HttpsError("invalid-argument", "Invalid score");

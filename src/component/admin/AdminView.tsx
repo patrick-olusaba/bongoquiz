@@ -748,11 +748,11 @@ function AdminLeaderboard() {
             <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                 <table style={s.table}>
                     <thead><tr>
-                        {["Rank","Player","Phone","Score","Date",""].map(h => <th key={h} style={s.th}>{h}</th>)}
+                        {["Rank","Player","Phone","Score","Date","Status"].map(h => <th key={h} style={s.th}>{h === "Status" ? "" : h}</th>)}
                     </tr></thead>
                     <tbody>
                         {paginated.length ? paginated.map((r, i) => (
-                            <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                            <tr key={r.phone ?? i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
                                 <td style={{ ...s.td, fontWeight: 700 }}>{r.rank <= 3 ? ["🥇","🥈","🥉"][r.rank-1] : r.rank}</td>
                                 <td style={s.td}>
                                     {r.name ?? "—"}

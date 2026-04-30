@@ -151,16 +151,6 @@ export const BongoMain: FC = () => {
 
     const saveSession = async (r1: number, r2: number, r3: number, powerName: string) => {
         const phone = localStorage.getItem("bongo_player_phone") ?? "";
-        const total = r1 + r2 + r3;
-        const msisdn = phone.replace(/^0/, "254");
-
-        // POST to SQL leaderboard
-        fetch("http://142.93.47.187:2027/api/savewebscore", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ msisdn, score: total }),
-        }).catch(() => {});
-
         try {
             const save = httpsCallable(getFunctions(), "saveGameSession");
             await save({ name: playerName, phone, power: powerName, r1Score: r1, r2Score: r2, r3Bonus: r3 });
