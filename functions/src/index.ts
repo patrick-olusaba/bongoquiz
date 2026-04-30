@@ -159,30 +159,35 @@ export const deposit = functions.https.onRequest(async (req, res) => {
         // Check if this is a callback (has trans_id) or initiation request
         if (body.trans_id) {
             if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
-            const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            const { name, phone, amount, trans_id, trans_time, business_shortcode, checkoutRequestId } = body;
 
-            // Match by phone + pending status (most recent) — preserves original trigger (BBQ, R1R2, etc.)
-            const existing = await db.collection("payments")
-                .where("phone", "==", phone)
-                .where("status", "==", "pending")
-                .orderBy("createdAt", "desc")
-                .limit(1).get();
+            // Try to find by checkoutRequestId first (no index needed), then fall back to phone+status query
+            let docRef: FirebaseFirestore.DocumentReference | null = null;
 
-            if (!existing.empty) {
-                await existing.docs[0].ref.update({
-                    status: "paid",
-                    trans_id,
-                    trans_time,
-                    business_shortcode,
+            if (checkoutRequestId) {
+                const byCheckout = await db.collection("payments")
+                    .where("checkoutRequestId", "==", checkoutRequestId).limit(1).get();
+                if (!byCheckout.empty) docRef = byCheckout.docs[0].ref;
+            }
+
+            if (!docRef) {
+                const byPhone = await db.collection("payments")
+                    .where("phone", "==", phone)
+                    .where("status", "==", "pending")
+                    .orderBy("createdAt", "desc")
+                    .limit(1).get();
+                if (!byPhone.empty) docRef = byPhone.docs[0].ref;
+            }
+
+            if (docRef) {
+                await docRef.update({
+                    status: "paid", trans_id, trans_time, business_shortcode,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
             } else {
                 await db.collection("payments").add({
-                    name, phone, amount,
-                    status: "paid",
-                    trans_id,
-                    trans_time,
-                    business_shortcode,
+                    name, phone, amount, status: "paid",
+                    trans_id, trans_time, business_shortcode,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
             }
