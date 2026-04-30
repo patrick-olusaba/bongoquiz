@@ -159,18 +159,16 @@ export const deposit = functions.https.onRequest(async (req, res) => {
         // Check if this is a callback (has trans_id) or initiation request
         if (body.trans_id) {
             if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
-            // This is a callback from the backend with payment result
-            const { name, phone, amount, trigger, trans_id, trans_time, business_shortcode } = body;
+            const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
 
-            // Find the most recent pending payment with matching phone and trigger
+            // Match by phone + pending status (most recent) — preserves original trigger (BBQ, R1R2, etc.)
             const existing = await db.collection("payments")
                 .where("phone", "==", phone)
-                .where("trigger", "==", trigger)
+                .where("status", "==", "pending")
                 .orderBy("createdAt", "desc")
                 .limit(1).get();
 
             if (!existing.empty) {
-                console.log("Updating payment doc:", existing.docs[0].id);
                 await existing.docs[0].ref.update({
                     status: "paid",
                     trans_id,
@@ -179,9 +177,8 @@ export const deposit = functions.https.onRequest(async (req, res) => {
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
             } else {
-                console.log("No pending payment found, creating new doc");
                 await db.collection("payments").add({
-                    name, phone, amount, trigger,
+                    name, phone, amount,
                     status: "paid",
                     trans_id,
                     trans_time,
@@ -189,8 +186,6 @@ export const deposit = functions.https.onRequest(async (req, res) => {
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
             }
-
-            console.log("Payment callback received:", body);
             res.status(200).json({ success: true, message: "Payment recorded" });
             return;
         }
