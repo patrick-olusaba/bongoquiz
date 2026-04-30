@@ -39,7 +39,7 @@ export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
       const res = await fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/deposit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: phone254, amount, trigger: "BBQ" }),
+        body: JSON.stringify({ name, phone: phone254, amount, trigger: "R1R2" }),
       }).then(r => r.json());
 
       if (!res.paymentId) throw new Error(res.error || "Payment failed");
