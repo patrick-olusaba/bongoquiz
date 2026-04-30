@@ -15,7 +15,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "phone", "order": "ASCENDING" },
-        { "fieldPath": "trigger", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
