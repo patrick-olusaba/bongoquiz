@@ -1,0 +1,412 @@
+/* Tutorial Screen - Professional Design */
+.tutorial-screen {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.tutorial-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #7B61FF, #FF6B6B, transparent);
+    opacity: 0.5;
+}
+
+.tutorial-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(0, 201, 255, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.tutorial-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+.tutorial-orb1 {
+    position: absolute;
+    top: 10%; left: 5%;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(123,97,255,0.25) 0%, transparent 70%);
+    animation: mmOrb1 12s ease-in-out infinite;
+}
+.tutorial-orb2 {
+    position: absolute;
+    bottom: 10%; right: 5%;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,107,107,0.2) 0%, transparent 70%);
+    animation: mmOrb2 15s ease-in-out infinite;
+}
+.tutorial-orb3 {
+    position: absolute;
+    top: 40%; right: 20%;
+    width: 350px; height: 350px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,217,61,0.15) 0%, transparent 70%);
+    animation: mmOrb3 10s ease-in-out infinite;
+}
+@keyframes mmOrb1 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33%      { transform: translate(30px,-20px) scale(1.05); }
+    66%      { transform: translate(-20px,30px) scale(0.95); }
+}
+@keyframes mmOrb2 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33%      { transform: translate(-40px,20px) scale(1.08); }
+    66%      { transform: translate(20px,-30px) scale(0.92); }
+}
+@keyframes mmOrb3 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    50%      { transform: translate(25px,25px) scale(1.1); }
+}
+
+.tutorial-header {
+    text-align: center;
+    margin-bottom: 40px;
+    position: relative;
+    padding-bottom: 25px;
+    max-width: 800px;
+    width: 100%;
+    z-index: 1;
+}
+
+.tutorial-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 30%;
+    right: 30%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #7B61FF, #FF6B6B, transparent);
+    border-radius: 3px;
+}
+
+.tutorial-header h2 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FF6B6B 0%, #7B61FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+    letter-spacing: -0.5px;
+    filter: drop-shadow(0 4px 12px rgba(123, 97, 255, 0.4));
+}
+
+.tutorial-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    max-width: 1200px;
+    width: 100%;
+    margin-bottom: 50px;
+    position: relative;
+    z-index: 1;
+}
+
+.instruction {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 30px 25px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    box-shadow:
+            0 20px 40px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.instruction::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #FF6B6B, #7B61FF);
+}
+
+.instruction:hover {
+    transform: translateY(-10px);
+    border-color: rgba(123, 97, 255, 0.4);
+    box-shadow:
+            0 30px 60px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(123, 97, 255, 0.15) inset;
+}
+
+.instruction-icon {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #FF6B6B 0%, #7B61FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 4px 8px rgba(123, 97, 255, 0.4));
+    align-self: flex-start;
+}
+
+.instruction h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 15px 0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.instruction p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 15px 0;
+    flex: 1;
+}
+
+.instruction ul {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+    padding-left: 20px;
+    flex: 1;
+}
+
+.instruction li {
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 10px;
+}
+
+.instruction li::before {
+    content: '•';
+    color: #7B61FF;
+    position: absolute;
+    left: -15px;
+    font-size: 1.2rem;
+}
+
+.instruction li strong {
+    color: #ffd200;
+    font-weight: 600;
+}
+
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+}
+
+.tutorial-actions {
+    display: flex;
+    gap: 20px;
+    max-width: 500px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.btn-primary, .btn-secondary {
+    flex: 1;
+    border: none;
+    border-radius: 16px;
+    padding: 18px 25px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #FF6B6B 0%, #FF4444 30%, #7B61FF 70%, #5B41DF 100%);
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 100px;
+    animation: btnGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes btnGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,107,107,0.5), 0 0 40px rgba(123,97,255,0.3); }
+    50%       { box-shadow: 0 0 30px rgba(255,217,61,0.5), 0 0 60px rgba(255,107,107,0.3); }
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transition: left 0.6s ease;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 10px 30px rgba(123, 97, 255, 0.4);
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+.error-fallback {
+    text-align: center;
+    padding: 40px;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    color: #ffd200;
+    border-radius: 100px;
+    backdrop-filter: blur(8px);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.75);
+    color: #ffe84d;
+    transform: scale(1.04) translateY(-2px);
+    box-shadow: 0 0 22px rgba(255, 215, 0, 0.25);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .tutorial-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .tutorial-screen {
+        padding: 30px 15px;
+    }
+
+    .tutorial-header h2 {
+        font-size: 2.2rem;
+    }
+
+    .tutorial-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-width: 500px;
+    }
+
+    .instruction {
+        padding: 25px 20px;
+    }
+
+    .instruction-icon {
+        font-size: 2rem;
+        margin-bottom: 15px;
+    }
+
+    .tutorial-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .btn-primary, .btn-secondary {
+        min-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tutorial-header h2 {
+        font-size: 1.8rem;
+    }
+
+    .instruction h3 {
+        font-size: 1.3rem;
+    }
+
+    .btn-primary, .btn-secondary {
+        padding: 16px 20px;
+        font-size: 1rem;
+    }
+}
+
+/* Animation for tutorial entrance */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tutorial-header,
+.instruction,
+.tutorial-actions {
+    animation: slideIn 0.6s ease forwards;
+}
+
+.instruction:nth-child(1) { animation-delay: 0.1s; }
+.instruction:nth-child(2) { animation-delay: 0.2s; }
+.instruction:nth-child(3) { animation-delay: 0.3s; }
+.instruction:nth-child(4) { animation-delay: 0.4s; }
+.instruction:nth-child(5) { animation-delay: 0.5s; }
+
+.tutorial-actions {
+    animation-delay: 0.6s;
+}
+
+/* Scrollbar Styling */
+.tutorial-screen::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tutorial-screen::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.tutorial-screen::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #00C9FF 0%, #92FE9D 100%);
+    border-radius: 4px;
+}
+
+.tutorial-screen::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #00b8e6 0%, #83e68f 100%);
+}

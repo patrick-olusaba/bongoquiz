@@ -1,0 +1,128 @@
+@keyframes dedOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dedModalIn {
+  from { opacity: 0; transform: translateY(32px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes dedIconPulse {
+  0%, 100% { transform: scale(1) rotate(-5deg); }
+  50% { transform: scale(1.15) rotate(5deg); }
+}
+
+.ded-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: dedOverlayIn 0.25s ease both;
+}
+
+.ded-modal {
+  width: min(420px, 92vw);
+  background: linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(229, 45, 39, 0.35);
+  border-radius: 24px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  animation: dedModalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.ded-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  display: block;
+  animation: dedIconPulse 2s ease-in-out infinite;
+}
+
+.ded-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(229, 45, 39, 0.12);
+  border: 1px solid rgba(229, 45, 39, 0.4);
+  border-radius: 100px;
+  padding: 4px 14px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ff6b6b;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.ded-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+}
+
+.ded-desc {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  margin: 0 0 18px;
+}
+
+.ded-amount { color: #ff6b6b; font-size: 1rem; }
+
+.ded-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin-bottom: 18px;
+}
+
+.ded-actions { display: flex; gap: 10px; margin-bottom: 14px; }
+
+.ded-btn {
+  flex: 1;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 13px 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ded-btn:hover { transform: scale(1.04) translateY(-2px); }
+.ded-btn:active { transform: scale(0.97); }
+
+.ded-btn--decline {
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.6);
+}
+.ded-btn--decline:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.85);
+}
+
+.ded-btn--accept {
+  background: linear-gradient(135deg, #11998e, #38ef7d);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(56,239,125,0.35);
+}
+.ded-btn--accept:hover { box-shadow: 0 6px 28px rgba(56,239,125,0.55); }
+
+.ded-note {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.72rem;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 375px) {
+  .ded-modal { padding: 24px 18px 18px; }
+  .ded-title { font-size: 1.5rem; }
+  .ded-btn { font-size: 0.88rem; padding: 11px 12px; }
+}

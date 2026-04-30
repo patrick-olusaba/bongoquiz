@@ -13,6 +13,7 @@ const AdminView     = lazy(() => import("./component/admin/AdminView.tsx").then(
 const SummaryView   = lazy(() => import("./component/summary/SummaryView.tsx").then(m => ({ default: m.SummaryView })));
 const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPapers.tsx").then(m => ({ default: m.KCSEPastPapers })));
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
+const BibleQuiz     = lazy(() => import("./component/BibleQuiz/components/MainGameLayout.tsx").then(m => ({ default: m.MainGameLayout })));
 
 function KCSEAdminRoute() {
     const navigate = useNavigate();
@@ -81,6 +82,7 @@ function App() {
                 <Route path="/admin-main"  element={<AdminView />} />
                 <Route path="/kcse"        element={<KCSEPastPapers onBack={() => navigate('/')} />} />
                 <Route path="/kcse-admin"  element={<KCSEAdminRoute />} />
+                <Route path="/bible-quiz"   element={<BibleQuiz />} />
                 <Route path="/bible-admin" element={<AdminView initialTab="biblequiz" />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
             </Routes>
