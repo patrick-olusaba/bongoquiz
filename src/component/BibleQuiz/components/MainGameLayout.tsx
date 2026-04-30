@@ -65,11 +65,6 @@ export const MainGameLayout = () => {
             const newPlayer = game.getPlayerStats();
             const newLevelProgress = game.getLevelProgress();
 
-                pointsDeducted: answerResult.pointsDeducted,
-                isGameOver: answerResult.isGameOver,
-                playerPoints: newPlayer.points
-            });
-
             setPlayer(newPlayer);
             setResult(answerResult);
             setLevelProgress(newLevelProgress);
@@ -238,13 +233,6 @@ export const MainGameLayout = () => {
         const newPlayer = game.getPlayerStats();
         const newLevelProgress = game.getLevelProgress();
 
-            correct: answerResult.correct,
-            pointsEarned: answerResult.pointsEarned,
-            pointsDeducted: answerResult.pointsDeducted,
-            levelUp: answerResult.levelUp,
-            isGameOver: answerResult.isGameOver,
-            currentPoints: newPlayer.points
-        });
 
         setPlayer(newPlayer);
         setResult(answerResult);
