@@ -1,3 +1,5 @@
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../../firebase.ts';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import MainMenu from '../components/MainMenu.tsx';
 import QuestionScreen from '../components/QuestionScreen.tsx';
@@ -15,6 +17,17 @@ import type {AnswerResult, BibleQuestion, GameState, Player} from "../types/type
 
 export const MainGameLayout = () => {
 
+    const [questions, setQuestions] = useState<BibleQuestion[]>(BIBLE_QUESTIONS);
+
+    useEffect(() => {
+        getDocs(collection(db, "bibleQuizQuestions")).then(snap => {
+            if (!snap.empty) {
+                const q = snap.docs.map(d => ({ id: d.data().id ?? parseInt(d.id), ...d.data() } as BibleQuestion));
+                setQuestions(q);
+                game.updateQuestions(q);
+            }
+        }).catch(() => {});
+    }, []); // eslint-disable-line
 
     const [game] = useState(() => new BibleQuizGame(
         localStorage.getItem('bongo_player_name') || 'Bible Scholar',

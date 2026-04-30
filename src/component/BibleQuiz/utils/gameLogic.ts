@@ -33,6 +33,8 @@ export class BibleQuizGame {
         this.isGameOver = false;
     }
 
+    updateQuestions(questions: BibleQuestion[]): void { this.questions = [...questions]; }
+
     // Reset the game state
     startNewGame(): void {
         this.player = {
