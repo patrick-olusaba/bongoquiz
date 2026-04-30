@@ -1881,3 +1881,12 @@
     .qs-question-text { font-size: 0.95rem; }
     .qs-option { padding: 12px 14px; font-size: 0.88rem; }
 }
+
+.app-container {
+    width: 100%;
+    min-height: 100vh;
+}
+
+.main-content {
+    width: 100%;
+}
