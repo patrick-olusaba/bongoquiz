@@ -65,7 +65,6 @@ export const MainGameLayout = () => {
             const newPlayer = game.getPlayerStats();
             const newLevelProgress = game.getLevelProgress();
 
-            console.log('Time up result:', {
                 pointsDeducted: answerResult.pointsDeducted,
                 isGameOver: answerResult.isGameOver,
                 playerPoints: newPlayer.points
@@ -83,7 +82,6 @@ export const MainGameLayout = () => {
 
             // Check for game over immediately
             if (answerResult.isGameOver || newPlayer.points <= 0) {
-                console.log('TIME UP - GAME OVER! Points:', newPlayer.points);
 
                 // Show game over after delay
                 setTimeout(() => {
@@ -99,14 +97,12 @@ export const MainGameLayout = () => {
     }, [gameState.currentQuestion, gameState.isAnswered, game]);
 
     const handleContinueAfterLevelUp = useCallback(() => {
-        console.log('Continuing after level up');
         setShowLevelUpPopup(false);
         setNewLevelInfo(null);
 
         // Check if game should be over (points check)
         const currentPlayer = game.getPlayerStats();
         if (currentPlayer.points <= 0) {
-            console.log('Game over after level up - points:', currentPlayer.points);
             setGameState(prev => ({
                 ...prev,
                 currentScreen: 'gameover'
@@ -119,9 +115,6 @@ export const MainGameLayout = () => {
         const newLevelProgress = game.getLevelProgress();
         const newPlayer = game.getPlayerStats();
 
-        console.log('Next question after level up:', nextQuestion);
-        console.log('New player stats:', newPlayer);
-        console.log('New level progress:', newLevelProgress);
 
         if (nextQuestion && newPlayer.points > 0) {
             setGameState({
@@ -190,7 +183,6 @@ export const MainGameLayout = () => {
     };
 
     const _doStartGame = () => {
-        console.log('Starting new game');
 
         // Clear any existing timeouts
         if (timerRef.current !== null) {
@@ -210,7 +202,6 @@ export const MainGameLayout = () => {
 
         // Check if game should start (points should be positive)
         if (newPlayer.points <= 0) {
-            console.log('Cannot start game - points are already 0!');
             setGameState(prev => ({
                 ...prev,
                 currentScreen: 'gameover'
@@ -218,9 +209,6 @@ export const MainGameLayout = () => {
             return;
         }
 
-        console.log('First question:', question);
-        console.log('Initial player:', newPlayer);
-        console.log('Initial level progress:', newLevelProgress);
 
         setPlayer(newPlayer);
         setLevelProgress(newLevelProgress);
@@ -245,13 +233,11 @@ export const MainGameLayout = () => {
 
     // Update handleAnswerSelect to check for game over
     const handleAnswerSelect = useCallback((answerIndex: number, question: BibleQuestion) => {
-        console.log('Answer selected:', answerIndex, 'for question:', question.id);
 
         const answerResult = game.submitAnswer(question, answerIndex);
         const newPlayer = game.getPlayerStats();
         const newLevelProgress = game.getLevelProgress();
 
-        console.log('Answer result:', {
             correct: answerResult.correct,
             pointsEarned: answerResult.pointsEarned,
             pointsDeducted: answerResult.pointsDeducted,
@@ -315,10 +301,6 @@ export const MainGameLayout = () => {
     // Debug effect to check level progress
     useEffect(() => {
         if (gameState.currentScreen === 'game' && gameState.currentQuestion) {
-            console.log('Current question difficulty:', gameState.currentQuestion.difficulty);
-            console.log('Current level progress:', levelProgress);
-            console.log('Player currentDifficultyLevel:', player.currentDifficultyLevel);
-            console.log('Player points:', player.points, '/', player.maxPoints);
         }
     }, [gameState.currentScreen, gameState.currentQuestion, levelProgress, player]);
 
