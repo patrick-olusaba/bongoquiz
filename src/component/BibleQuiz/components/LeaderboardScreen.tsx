@@ -1,4 +1,6 @@
 import { type FC, useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase.ts";
 import "../style/leaderboard.css";
 
 interface LeaderboardEntry {
@@ -15,35 +17,49 @@ interface Props {
   onClose: () => void;
 }
 
-const DUMMY: LeaderboardEntry[] = [
-  { rank: 1, name: "GraceW",   score: 1850 },
-  { rank: 2, name: "FaithK",   score: 1620 },
-  { rank: 3, name: "DavidM",   score: 1410 },
-  { rank: 4, name: "RuthN",    score: 1200 },
-  { rank: 5, name: "SolomonO", score: 980  },
-  { rank: 6, name: "MaryJ",    score: 860  },
-  { rank: 7, name: "PaulT",    score: 740  },
-  { rank: 8, name: "EstherA",  score: 610  },
-  { rank: 9, name: "JoshuaB",  score: 490  },
-  { rank: 10, name: "NaomiC",  score: 350  },
-];
-
 const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", onPlayAgain, onClose }) => {
   const [visible, setVisible] = useState(false);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 
-  // Merge player into list
-  const entries: LeaderboardEntry[] = (() => {
-    const list = DUMMY.map(e => ({ ...e, isCurrentPlayer: false }));
-    const playerEntry = { rank: 0, name: playerName, score: playerScore, isCurrentPlayer: true };
-    const merged = [...list, playerEntry]
-      .sort((a, b) => b.score - a.score)
-      .map((e, i) => ({ ...e, rank: i + 1 }));
-    return merged.slice(0, 10);
-  })();
+  useEffect(() => {
+    const sqlFetch = fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard")
+      .then(r => r.json()).catch(() => []);
+    const fbFetch  = getDocs(collection(db, "bibleQuizLeaderboard"))
+      .then(snap => snap.docs.map(d => ({ ...d.data(), id: d.id }))).catch(() => []);
+
+    Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
+      const byPhone = new Map<string, { name: string; score: number }>();
+      const toKey = (p: string) => String(p).replace(/^0/, "254");
+
+      (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
+        const phone = toKey(String(d.msisdn ?? ""));
+        const score = d.score ?? 0;
+        const masked = phone.replace(/^254/, "0").slice(0, 3) + "*******";
+        if (!byPhone.has(phone) || score > byPhone.get(phone)!.score)
+          byPhone.set(phone, { name: masked, score });
+      });
+
+      (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
+        const phone = toKey(d.phone || d.id || "");
+        const score = d.score ?? 0;
+        const existing = byPhone.get(phone);
+        const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name ?? d.name;
+        if (!existing || score > existing.score) byPhone.set(phone, { name, score });
+        else if (existing && name && !/^\d/.test(name)) byPhone.set(phone, { ...existing, name });
+      });
+
+      const sorted = Array.from(byPhone.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10)
+        .map((e, i) => ({ rank: i + 1, name: e.name, score: e.score,
+          isCurrentPlayer: e.name === playerName && e.score === playerScore }));
+      setEntries(sorted);
+    });
+
+    setTimeout(() => setVisible(true), 50);
+  }, [playerScore, playerName]);
 
   const podium = entries.slice(0, 3);
-
-  useEffect(() => { setTimeout(() => setVisible(true), 50); }, []);
 
   return (
     <div className={`lb-root${visible ? " lb-root--visible" : ""}`}>

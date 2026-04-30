@@ -1,4 +1,5 @@
 import { type FC, useEffect, useState, useRef } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { Player } from '../types/type.ts';
 import '../style/resultpopup.css';
 
@@ -22,6 +23,20 @@ const ResultsPopup: FC<ResultsPopupProps> = ({ player, onPlayAgain, onMenu }) =>
         if (player.score > prev) {
             setIsNewBest(true);
             localStorage.setItem('bible_best_score', String(player.score));
+        }
+
+        // Save to backend
+        const phone = localStorage.getItem('bongo_player_phone') ?? '';
+        const name  = localStorage.getItem('bongo_player_name')  ?? 'Player';
+        if (/^07\d{8}$/.test(phone)) {
+            httpsCallable(getFunctions(), 'saveBibleQuizSession')({
+                name, phone,
+                score:   player.score,
+                correct: player.correctAnswers,
+                wrong:   player.totalQuestions - player.correctAnswers,
+                passed:  0,
+                total:   player.totalQuestions,
+            }).catch(() => {});
         }
     }, [player.score]);
 

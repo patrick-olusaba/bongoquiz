@@ -210,3 +210,12 @@
   .ded-amount-big { font-size: 2.4rem; }
   .ded-btn { font-size: 0.9rem; padding: 12px; }
 }
+
+.ded-waiting { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; }
+.ded-spinner { position: relative; width: 80px; height: 80px; }
+.ded-spinner-svg { width: 80px; height: 80px; }
+.ded-spinner-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.ded-spinner-icon { font-size: 1.4rem; }
+.ded-spinner-secs { font-size: 0.75rem; color: #38ef7d; font-weight: 700; }
+.ded-status-msg { color: rgba(255,255,255,0.6); font-size: 0.85rem; text-align: center; margin: 0; }
+.ded-status-msg--warn { color: #ffc107; }
