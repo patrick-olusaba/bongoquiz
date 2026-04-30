@@ -17,7 +17,7 @@ export const MainGameLayout = () => {
 
 
     const [game] = useState(() => new BibleQuizGame(
-        localStorage.getItem('bibleQuizPlayer') || 'Bible Scholar',
+        localStorage.getItem('bongo_player_name') || 'Bible Scholar',
         BIBLE_QUESTIONS
     ));
 

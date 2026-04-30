@@ -168,7 +168,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
+.mm-player-name-btn:hover { background: rgba(255,255,255,0.1); }
 .mm-best-score {
   background: rgba(255,215,0,0.12);
   border: 1px solid rgba(255,215,0,0.4);

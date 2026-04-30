@@ -8,7 +8,7 @@ interface Props {
 }
 
 export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
-  const phone = localStorage.getItem("bible_player_phone") ?? "";
+  const phone = localStorage.getItem("bongo_player_phone") ?? "";
 
   return (
     <div className="ded-overlay">

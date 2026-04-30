@@ -13,7 +13,29 @@ interface MainMenuProps {
 const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLeaderboard }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [name, setName]   = useState(() => localStorage.getItem("bongo_player_name") ?? "");
+  const [phone, setPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
+  const [nameErr, setNameErr] = useState("");
   const personalBest = parseInt(localStorage.getItem("bible_best_score") ?? "0");
+
+  const saveProfile = () => {
+    const n = name.trim().slice(0, 20);
+    const p = phone.trim();
+    if (!n) return setNameErr("Enter your name.");
+    if (!/^07\d{8}$/.test(p)) return setNameErr("Enter a valid phone (07XXXXXXXX).");
+    setNameErr("");
+    localStorage.setItem("bongo_player_name", n);
+    localStorage.setItem("bongo_player_phone", p);
+    setShowNameModal(false);
+    onStartGame();
+  };
+
+  const handlePlay = () => {
+    const p = localStorage.getItem("bongo_player_phone") ?? "";
+    if (!p || !/^07\d{8}$/.test(p)) { setShowNameModal(true); return; }
+    onStartGame();
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -111,7 +133,10 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
         <p className="mm-subtitle">Test your knowledge of the Holy Scriptures</p>
 
         <div className="mm-player-bar">
-          <div className="mm-player-name-btn">👤 {player.name}</div>
+          <button className="mm-player-name-btn" onClick={() => setShowNameModal(true)}>
+            👤 {localStorage.getItem("bongo_player_name") || "Set your name"} ✏️
+            {phone && <span style={{ fontSize: "0.75rem", color: "#aaa", marginLeft: 6 }}>· {phone}</span>}
+          </button>
           <div className="mm-player-bar-row">
             {player.score > 0 && (
               <div className="mm-best-score">🏆 Score: <strong>{player.score.toLocaleString()}</strong></div>
@@ -123,14 +148,55 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
         </div>
 
         <div className="mm-cta-wrap">
-          <button className="mm-btn" onClick={onStartGame}>
+          <button className="mm-btn" onClick={handlePlay}>
             <span className="mm-btn-shine" />
             🎯 &nbsp;PLAY NOW
           </button>
+          <button className="mm-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>
         </div>
 
-        <p className="mm-hint">Test Yourself</p>
+        <p className="mm-hint">Entry: KES 20 · 40s per question · +100 correct · −50 wrong</p>
       </div>
+
+      {/* Name/Phone Modal */}
+      {showNameModal && (
+        <div className="mm-backdrop" onClick={() => setShowNameModal(false)}>
+          <div style={{
+            position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              background: "linear-gradient(160deg, rgba(40,10,80,0.97), rgba(10,0,30,0.99))",
+              border: "1px solid rgba(180,100,255,0.35)", borderRadius: 24, padding: "32px 28px",
+              width: "min(400px, 92vw)", textAlign: "center", backdropFilter: "blur(24px)"
+            }}>
+              <div style={{ fontSize: "2rem", marginBottom: 8 }}>👤</div>
+              <h2 style={{ color: "#fff", margin: "0 0 6px", fontSize: "1.4rem", fontWeight: 900 }}>Who are you?</h2>
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.85rem", margin: "0 0 20px" }}>
+                Your name shows on the leaderboard. Phone is used for M-Pesa.
+              </p>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20}
+                style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (07XXXXXXXX)" maxLength={10}
+                style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+              {nameErr && <p style={{ color: "#ff6b6b", fontSize: "0.8rem", margin: "0 0 10px" }}>{nameErr}</p>}
+              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                <button onClick={() => setShowNameModal(false)}
+                  style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 50, color: "rgba(255,255,255,0.6)", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                  Cancel
+                </button>
+                <button onClick={saveProfile}
+                  style={{ flex: 1, background: "linear-gradient(135deg,#11998e,#38ef7d)", border: "none",
+                    borderRadius: 50, color: "#fff", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>
+                  ✅ Save & Play
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
