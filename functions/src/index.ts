@@ -199,7 +199,6 @@ export const deposit = functions.https.onRequest(async (req, res) => {
         if (typeof trigger !== "string" || trigger.trim().length === 0) { res.status(400).json({ error: "Invalid trigger" }); return; }
 
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
-
         const result = await new Promise<any>((resolve, reject) => {
             const options = {
                 hostname: "142.93.47.187",
@@ -223,6 +222,7 @@ export const deposit = functions.https.onRequest(async (req, res) => {
         // Save pending payment to Firestore
         const docRef = await db.collection("payments").add({
             name: name.trim(), phone, amount, trigger,
+            game: typeof body.game === "string" ? body.game : "BONGOQUIZ",
             status: "pending",
             checkoutRequestId: result?.CheckoutRequestID ?? result?.checkoutRequestId ?? null,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),

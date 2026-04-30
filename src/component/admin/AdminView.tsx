@@ -487,7 +487,7 @@ function Payments() {
                     r.name    ?? "—",
                     r.phone   ?? "—",
                     r.amount  != null ? `KSh ${r.amount}` : "—",
-                    r.trigger ?? r.round ?? "—",
+                    r.game ? `${r.game} / ${r.trigger ?? "—"}` : (r.trigger ?? r.round ?? "—"),
                     <StatusBadge status={r.status ?? "pending"} />,
                     r.trans_id ?? r.checkoutRequestId ?? "—",
                     r.receipt  ?? r.trans_id ?? "—",

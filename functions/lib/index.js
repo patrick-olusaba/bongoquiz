@@ -252,6 +252,7 @@ exports.deposit = functions.https.onRequest(async (req, res) => {
         // Save pending payment to Firestore
         const docRef = await db.collection("payments").add({
             name: name.trim(), phone, amount, trigger,
+            game: typeof body.game === "string" ? body.game : "BONGOQUIZ",
             status: "pending",
             checkoutRequestId: result?.CheckoutRequestID ?? result?.checkoutRequestId ?? null,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
