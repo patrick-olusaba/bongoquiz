@@ -28,7 +28,7 @@ export const MainGameLayout = () => {
                         id: data.id ?? parseInt(d.id) || 0,
                         question: data.question,
                         options: data.options,
-                        correctAnswer: data.correctAnswer ?? data.answer ?? 0,
+                        correctAnswer: (data.correctAnswer ?? data.answer) ?? 0,
                         category: data.category ?? "",
                         difficulty: data.difficulty ?? "easy",
                         scripture: data.scripture ?? "",
