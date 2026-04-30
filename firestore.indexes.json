@@ -9,6 +9,14 @@
         { "fieldPath": "trigger", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "gameSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone", "order": "ASCENDING" },
+        { "fieldPath": "playedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
