@@ -69,7 +69,7 @@ export const MainGameLayout = () => {
         multiplier: number;
         difficulty: string;
     } | null>(null);
-    const [roundTimeLeft, setRoundTimeLeft] = useState(40);
+    const [roundTimeLeft, setRoundTimeLeft] = useState(60);
 
     // Refs to manage timeout IDs
     const timerRef = useRef<number | null>(null);
@@ -233,7 +233,7 @@ export const MainGameLayout = () => {
 
         setPlayer(newPlayer);
         setLevelProgress(newLevelProgress);
-        setRoundTimeLeft(40);
+        setRoundTimeLeft(60);
         setShowLevelUpPopup(false);
         setNewLevelInfo(null);
 
@@ -282,7 +282,7 @@ export const MainGameLayout = () => {
             setLevelProgress(updatedProgress);
             setResult(null);
             if (nextQuestion) {
-                setRoundTimeLeft(40);
+                // no reset per question;
                 setGameState(prev => ({
                     ...prev,
                     currentQuestion: nextQuestion,
@@ -304,7 +304,7 @@ export const MainGameLayout = () => {
             setGameState(prev => ({ ...prev, currentScreen: 'results' }));
             return;
         }
-        setRoundTimeLeft(40);
+        // no reset per question;
         setGameState(prev => ({
             ...prev,
             currentQuestion: nextQuestion,

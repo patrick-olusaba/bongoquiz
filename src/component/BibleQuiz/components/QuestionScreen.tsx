@@ -29,7 +29,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({
     levelProgress,
 }) => {
     const timerColor = timeLeft <= 10 ? '#FF4757' : timeLeft <= 20 ? '#FFA500' : '#00c864';
-    const progressPct = (timeLeft / 40) * 100;
+    const progressPct = (timeLeft / 60) * 100;
 
     const getOptionClass = (index: number) => {
         if (!isAnswered) return 'qs-option';
