@@ -1,5 +1,5 @@
 import { type FC, useState, useEffect, useRef } from 'react';
-import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import '../style/deduction.css';
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   onDecline: () => void;
 }
 
-const TIMEOUT_S = 60;
+const TIMEOUT_S = 90;
 
 export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
   const phone    = localStorage.getItem("bongo_player_phone") ?? "";
@@ -16,13 +16,15 @@ export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
   const [loading,  setLoading]  = useState(false);
   const [elapsed,  setElapsed]  = useState(0);
   const [timedOut, setTimedOut] = useState(false);
-  const acceptedRef = useRef(false);
-  const unsubRef    = useRef<(() => void) | null>(null);
+  const acceptedRef  = useRef(false);
+  const unsubRef     = useRef<(() => void) | null>(null);
+  const pollRef      = useRef<number | null>(null);
 
   const handleConfirmed = () => {
     if (acceptedRef.current) return;
     acceptedRef.current = true;
     unsubRef.current?.();
+    if (pollRef.current) clearInterval(pollRef.current);
     onAccept();
   };
 
@@ -45,9 +47,25 @@ export const DeductionModal: FC<Props> = ({ amount, onAccept, onDecline }) => {
       if (!res.paymentId) throw new Error(res.error || "Payment failed");
 
       const db = getFirestore();
+
+      // Listener 1: bibleQuizPayments doc (direct callback)
       unsubRef.current = onSnapshot(doc(db, "bibleQuizPayments", res.paymentId), snap => {
-        if (snap.data()?.trans_id || snap.data()?.status === "paid") handleConfirmed();
+        const d = snap.data();
+        if (d?.trans_id || d?.status === "paid") handleConfirmed();
       }, () => {});
+
+      // Listener 2: poll main payments collection by phone (fallback if callback goes to deposit)
+      pollRef.current = window.setInterval(async () => {
+        if (acceptedRef.current) { clearInterval(pollRef.current!); return; }
+        try {
+          const snap = await getDocs(query(
+            collection(db, "payments"),
+            where("phone", "==", phone254),
+            where("status", "==", "paid")
+          ));
+          if (!snap.empty) handleConfirmed();
+        } catch { /* ignore */ }
+      }, 4000);
 
       setTimeout(() => {
         if (!acceptedRef.current) { setTimedOut(true); setLoading(false); }
