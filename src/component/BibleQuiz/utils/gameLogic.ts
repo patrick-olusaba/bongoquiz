@@ -3,7 +3,7 @@ import type {AnswerResult, BibleQuestion, Player} from "../types/type.ts";
 export class BibleQuizGame {
     private player: Player;
     private questions: BibleQuestion[];
-    private usedQuestions: Set<number>;
+    private usedQuestions: Set<any>;
     private currentLevel: number = 1;
     private correctInCurrentLevel: number = 0;
     private readonly questionsNeededToLevelUp: number = 3;

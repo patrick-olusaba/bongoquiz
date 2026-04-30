@@ -17,7 +17,7 @@ export type Player = {
 
 // Question type with optional level assignment
 export type BibleQuestion = {
-    id: number;
+    id: string | number;
     question: string;
     options: string[];
     correctAnswer: number;
