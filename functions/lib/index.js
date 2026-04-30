@@ -83,15 +83,6 @@ exports.saveGameSession = functions.https.onCall(async (data) => {
     }
     const total = data.r1Score + data.r2Score + data.r3Bonus;
     const name = data.name.trim().slice(0, 20);
-    // Idempotency: check if session with same phone already saved in last 5 minutes
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recent = await db.collection("gameSessions")
-        .where("phone", "==", data.phone)
-        .where("playedAt", ">=", fiveMinutesAgo)
-        .limit(1)
-        .get();
-    if (!recent.empty)
-        return { sessionId: recent.docs[0].id, total };
     // POST to SQL leaderboard server-side (non-fatal, 5s timeout)
     const msisdn = data.phone.replace(/^0/, "254");
     const sqlPayload = JSON.stringify({ msisdn, score: total });
