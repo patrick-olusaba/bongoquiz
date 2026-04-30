@@ -676,7 +676,7 @@ function AdminLeaderboard() {
     useEffect(() => {
         const toKey = (p: string) => String(p).replace(/^0/, "254");
 
-        const sqlFetch = fetch("http://142.93.47.187:2027/api/lifetime-leaderboard")
+        const sqlFetch = fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard")
             .then(r => r.json())
             .catch(() => []); // Fallback for HTTPS mixed content blocking
         const fbFetch = getDocs(collection(db, "leaderboard"))

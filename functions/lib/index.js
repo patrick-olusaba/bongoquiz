@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.saveGameSession = exports.consumeGrantedSession = void 0;
+exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const http = __importStar(require("http"));
@@ -128,6 +128,37 @@ exports.saveGameSession = functions.https.onCall(async (data) => {
         });
     }
     return { sessionId: sessionRef.id, total };
+});
+/**
+ * getLeaderboard — HTTP proxy so the HTTPS frontend can fetch the HTTP SQL leaderboard.
+ */
+exports.getLeaderboard = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+    try {
+        const data = await new Promise((resolve, reject) => {
+            const options = { hostname: "142.93.47.187", port: 2027, path: "/api/lifetime-leaderboard", method: "GET" };
+            const request = http.request(options, (response) => {
+                let body = "";
+                response.on("data", chunk => { body += chunk; });
+                response.on("end", () => { try {
+                    resolve(JSON.parse(body));
+                }
+                catch {
+                    resolve([]);
+                } });
+            });
+            request.on("error", reject);
+            request.end();
+        });
+        res.status(200).json(data);
+    }
+    catch {
+        res.status(200).json([]);
+    }
 });
 /**
  * deposit — HTTP endpoint to initiate M-Pesa STK push AND receive callback.
