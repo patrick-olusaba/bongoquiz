@@ -370,7 +370,7 @@ export const bibleQuizDeposit = functions.https.onRequest(async (req, res) => {
         if (typeof phone  !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
         if (typeof amount !== "number" || amount <= 0)               { res.status(400).json({ error: "Invalid amount" }); return; }
 
-        const trigger = "BIBLEQUIZ";
+        const trigger = "R1R2";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
 
         const result = await new Promise<any>((resolve, reject) => {
@@ -492,7 +492,7 @@ export const mathQuizDeposit = functions.https.onRequest(async (req, res) => {
         if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)){ res.status(400).json({ error: "Invalid phone" });  return; }
         if (typeof amount !== "number" || amount <= 0)             { res.status(400).json({ error: "Invalid amount" }); return; }
 
-        const trigger = "MATHQUIZ";
+        const trigger = "R1R2";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise<any>((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
@@ -570,7 +570,7 @@ export const bioQuizDeposit = functions.https.onRequest(async (req, res) => {
         if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
         if (typeof amount !== "number" || amount <= 0)              { res.status(400).json({ error: "Invalid amount" }); return; }
 
-        const trigger = "BIOQUIZ";
+        const trigger = "R1R2";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise<any>((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
@@ -645,7 +645,7 @@ export const genQuizDeposit = functions.https.onRequest(async (req, res) => {
         if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
         if (typeof amount !== "number" || amount <= 0)              { res.status(400).json({ error: "Invalid amount" }); return; }
 
-        const trigger = "GENQUIZ";
+        const trigger = "R1R2";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise<any>((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
