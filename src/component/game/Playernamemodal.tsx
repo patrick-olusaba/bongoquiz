@@ -27,12 +27,6 @@ export const PlayerNameModal: FC<Props> = ({ currentName, currentPhone, onSave, 
             name: trimmedName, phone: trimmedPhone, updatedAt: serverTimestamp(),
         }, { merge: true }).catch(() => {});
 
-        // Save to company API
-        fetch("http://143.244.158.85:3535/api/player/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone: trimmedPhone, name: trimmedName }),
-        }).catch(() => {});
         onSave(trimmedName, trimmedPhone);
         onClose();
     };

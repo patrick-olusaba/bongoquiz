@@ -212,13 +212,7 @@ export const BongoMain: FC = () => {
             roundLabel="Rounds 1 & 2"
             phone={playerPhone}
             playerName={playerName}
-            onAccept={async () => {
-                try {
-                    const push = httpsCallable(getFunctions(), "initiateStkPush");
-                    await push({ name: playerName, phone: playerPhone, amount: 20, ref: `${playerPhone}_R1R2` });
-                } catch { /* non-fatal — proceed anyway */ }
-                setScreen("transition_r1");
-            }}
+            onAccept={() => setScreen("transition_r1")}
             onDecline={resetGame}
         />;
 
@@ -228,13 +222,7 @@ export const BongoMain: FC = () => {
             roundLabel="Round 3"
             phone={playerPhone}
             playerName={playerName}
-            onAccept={async () => {
-                try {
-                    const push = httpsCallable(getFunctions(), "initiateStkPush");
-                    await push({ name: playerName, phone: playerPhone, amount: 10, ref: `${playerPhone}_R3` });
-                } catch { /* non-fatal — proceed anyway */ }
-                setScreen("transition_r3");
-            }}
+            onAccept={() => setScreen("transition_r3")}
             onDecline={() => setScreen("round2_result")}
         />;
 

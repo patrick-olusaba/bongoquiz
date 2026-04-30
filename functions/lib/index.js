@@ -92,20 +92,23 @@ exports.saveGameSession = functions.https.onCall(async (data) => {
         .get();
     if (!recent.empty)
         return { sessionId: recent.docs[0].id, total };
-    // POST to SQL leaderboard server-side (non-fatal)
+    // POST to SQL leaderboard server-side (non-fatal, 5s timeout)
     const msisdn = data.phone.replace(/^0/, "254");
     const sqlPayload = JSON.stringify({ msisdn, score: total });
-    await new Promise((resolve) => {
-        const options = {
-            hostname: "142.93.47.187", port: 2027,
-            path: "/api/savewebscore", method: "POST",
-            headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(sqlPayload) },
-        };
-        const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
-        req.on("error", () => resolve());
-        req.write(sqlPayload);
-        req.end();
-    });
+    await Promise.race([
+        new Promise((resolve) => {
+            const options = {
+                hostname: "142.93.47.187", port: 2027,
+                path: "/api/savewebscore", method: "POST",
+                headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(sqlPayload) },
+            };
+            const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
+            req.on("error", () => resolve());
+            req.write(sqlPayload);
+            req.end();
+        }),
+        new Promise(resolve => setTimeout(resolve, 5000)),
+    ]);
     const sessionRef = await db.collection("gameSessions").add({
         name,
         phone: data.phone,

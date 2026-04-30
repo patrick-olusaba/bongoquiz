@@ -49,11 +49,6 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name: playerName, phone: phone254, amount, trigger }),
                 }).then(r => r.json()),
-                fetch("http://143.244.158.85:3535/api/pay/initiate", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ phone: phone254, amount, round }),
-                }).catch(() => {}),
             ]);
 
             if (fbResponse.status !== "fulfilled") throw new Error("Payment initiation failed");
