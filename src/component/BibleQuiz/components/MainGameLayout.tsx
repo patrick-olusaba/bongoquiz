@@ -22,7 +22,20 @@ export const MainGameLayout = () => {
     useEffect(() => {
         getDocs(collection(db, "bibleQuizQuestions")).then(snap => {
             if (!snap.empty) {
-                const q = snap.docs.map(d => ({ id: d.data().id ?? parseInt(d.id), ...d.data() } as BibleQuestion));
+                const q = snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        id: data.id ?? parseInt(d.id) || 0,
+                        question: data.question,
+                        options: data.options,
+                        correctAnswer: data.correctAnswer ?? data.answer ?? 0,
+                        category: data.category ?? "",
+                        difficulty: data.difficulty ?? "easy",
+                        scripture: data.scripture ?? "",
+                        explanation: data.explanation ?? "",
+                        points: data.points ?? 10,
+                    } as BibleQuestion;
+                });
                 setQuestions(q);
                 game.updateQuestions(q);
             }
