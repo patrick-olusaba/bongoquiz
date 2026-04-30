@@ -282,6 +282,7 @@ export const MainGameLayout = () => {
             setLevelProgress(updatedProgress);
             setResult(null);
             if (nextQuestion) {
+                setRoundTimeLeft(40);
                 setGameState(prev => ({
                     ...prev,
                     currentQuestion: nextQuestion,
@@ -303,6 +304,7 @@ export const MainGameLayout = () => {
             setGameState(prev => ({ ...prev, currentScreen: 'results' }));
             return;
         }
+        setRoundTimeLeft(40);
         setGameState(prev => ({
             ...prev,
             currentQuestion: nextQuestion,
