@@ -388,7 +388,7 @@ exports.bibleQuizDeposit = functions.https.onRequest(async (req, res) => {
             res.status(400).json({ error: "Invalid amount" });
             return;
         }
-        const trigger = "R1R2";
+        const trigger = "BBQ";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise((resolve, reject) => {
             const options = {
@@ -510,7 +510,7 @@ exports.mathQuizDeposit = functions.https.onRequest(async (req, res) => {
             res.status(400).json({ error: "Invalid amount" });
             return;
         }
-        const trigger = "R1R2";
+        const trigger = "MQ";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
@@ -606,7 +606,7 @@ exports.bioQuizDeposit = functions.https.onRequest(async (req, res) => {
             res.status(400).json({ error: "Invalid amount" });
             return;
         }
-        const trigger = "R1R2";
+        const trigger = "BQ";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
@@ -702,7 +702,7 @@ exports.genQuizDeposit = functions.https.onRequest(async (req, res) => {
             res.status(400).json({ error: "Invalid amount" });
             return;
         }
-        const trigger = "R1R2";
+        const trigger = "GKQ";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
