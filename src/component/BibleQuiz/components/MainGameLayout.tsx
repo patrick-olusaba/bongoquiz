@@ -174,8 +174,8 @@ export const MainGameLayout = () => {
             timerRef.current = null;
         }
 
-        // Single 40s round timer — ticks continuously while in game screen
-        if (gameState.currentScreen === 'game' && gameState.currentQuestion) {
+        // Single 60s session timer — pauses while answer is shown
+        if (gameState.currentScreen === 'game' && gameState.currentQuestion && !gameState.isAnswered) {
             timerRef.current = window.setTimeout(() => {
                 setRoundTimeLeft(prev => {
                     if (prev <= 1) {
@@ -195,7 +195,7 @@ export const MainGameLayout = () => {
                 }
             };
         }
-    }, [gameState.currentScreen, gameState.currentQuestion, roundTimeLeft]);
+    }, [gameState.currentScreen, gameState.currentQuestion, gameState.isAnswered, roundTimeLeft]);
 
     // Auto-next is handled directly in handleAnswerSelect via setTimeout
 
