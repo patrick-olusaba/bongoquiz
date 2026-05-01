@@ -246,16 +246,33 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 </div>
 
                 <div style={{ width: "100%", marginBottom: 12, textAlign: "center" }}>
-                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 8px" }}>Browse Games</p>
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 10px" }}>Browse Games</p>
+                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
                         {moreApps.map((app) => (
-                            <img key={app.label} src={app.logo} alt={app.label} onClick={() => { window.location.href = app.path; }}
-                                style={{ width: 56, height: 56, borderRadius: 14, objectFit: "contain", cursor: "pointer",
-                                    boxShadow: "0 4px 16px rgba(123,97,255,0.35)", transition: "transform 0.15s, box-shadow 0.15s" }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1.12)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 28px rgba(123,97,255,0.6)"; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(123,97,255,0.35)"; }} />
+                            <div key={app.label} onClick={() => { window.location.href = app.path; }}
+                                title={app.label}
+                                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                                <div style={{
+                                    width: 72, height: 72, borderRadius: 20,
+                                    background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+                                    border: "2px solid rgba(255,255,255,0.12)",
+                                    boxShadow: "0 0 0 0 rgba(255,180,0,0.5), 0 6px 20px rgba(0,0,0,0.4)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    animation: "gamePulse 2.4s ease-in-out infinite",
+                                    transition: "transform 0.15s",
+                                }}>
+                                    <img src={app.logo} alt={app.label} style={{ width: 60, height: 60, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))" }} />
+                                </div>
+                                <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
+                            </div>
                         ))}
                     </div>
+                    <style>{`
+                        @keyframes gamePulse {
+                            0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.4), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(0); }
+                            50% { box-shadow: 0 0 0 6px rgba(255,180,0,0), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(-3px); }
+                        }
+                    `}</style>
                 </div>
 
                 <div className="home-title-wrap">
