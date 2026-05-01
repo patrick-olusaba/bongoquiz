@@ -177,6 +177,24 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
         </div>
 
         <div className="mm-cta-wrap">
+          {/* Game flow cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, width: "100%", marginBottom: 14 }}>
+            {[
+              { step: "STEP 01", icon: "💳", title: "Pay & Enter", desc: "KES 20 via M-Pesa STK push" },
+              { step: "STEP 02", icon: "📖", title: "Answer Fast", desc: "60s · +100 correct · −50 wrong" },
+              { step: "STEP 03", icon: "🏆", title: "Top the Board", desc: "Highest score wins the prize" },
+            ].map(c => (
+              <div key={c.step} style={{
+                background: "linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))",
+                border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "12px 8px", textAlign: "center"
+              }}>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.55rem", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", margin: "0 0 6px" }}>{c.step}</p>
+                <div style={{ fontSize: "1.5rem", marginBottom: 4 }}>{c.icon}</div>
+                <p style={{ color: "#fff", fontSize: "0.75rem", fontWeight: 800, margin: "0 0 4px" }}>{c.title}</p>
+                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.65rem", margin: 0, lineHeight: 1.4 }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
           <button className="mm-btn" onClick={handlePlay}>
             <span className="mm-btn-shine" />
             🎯 &nbsp;PLAY NOW
