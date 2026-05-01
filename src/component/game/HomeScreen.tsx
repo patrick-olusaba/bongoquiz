@@ -2,6 +2,7 @@
 import {type FC, useEffect, useRef, useState} from "react";
 import logoBg from "../../assets/logo.png";
 import mainLogo from "../../assets/background.png";
+import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 import {getStreakInfo} from "../../utils/streakDays.ts";
@@ -160,10 +161,8 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     ];
 
     const moreApps = [
-        // { icon: "📄", label: "KCSE Past Papers", color: "#7B61FF" },
-        { icon: "✝️",  label: "Bible Quiz",       color: "#FF6B6B", path: "/bible-quiz" },
-        // { icon: "➗",  label: "Math Quiz",         color: "#FFD93D" },
-        // { icon: "🇰🇪", label: "Kiswahili Quiz",   color: "#4ECDC4" },
+        { label: "Bible Quiz", logo: biblequizLogo, path: "/bible-quiz" },
+        // { label: "Math Quiz", logo: mathLogo, path: "/math-quiz" },
     ];
 
     return (
@@ -248,13 +247,19 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
 
                 <div style={{ width: "100%", marginBottom: 12, textAlign: "center" }}>
                     <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 8px" }}>Browse Games</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                         {moreApps.map((app) => (
                             <div key={app.label} onClick={() => { window.location.href = app.path; }}
-                                style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.07)",
-                                    border: "1px solid rgba(255,255,255,0.15)", borderRadius: 100, padding: "6px 16px",
-                                    cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>
-                                <span>{app.icon}</span><span>{app.label}</span>
+                                style={{ display: "flex", alignItems: "center", gap: 8,
+                                    background: "linear-gradient(135deg, rgba(123,97,255,0.25), rgba(255,107,107,0.15))",
+                                    border: "1.5px solid rgba(180,100,255,0.4)", borderRadius: 14,
+                                    padding: "6px 14px 6px 6px", cursor: "pointer",
+                                    boxShadow: "0 4px 16px rgba(123,97,255,0.2)",
+                                    transition: "transform 0.15s, box-shadow 0.15s" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1.06)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 24px rgba(123,97,255,0.4)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(123,97,255,0.2)"; }}>
+                                <img src={app.logo} alt={app.label} style={{ width: 32, height: 32, borderRadius: 8, objectFit: "contain" }} />
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#fff", letterSpacing: 0.5 }}>{app.label}</span>
                             </div>
                         ))}
                     </div>
