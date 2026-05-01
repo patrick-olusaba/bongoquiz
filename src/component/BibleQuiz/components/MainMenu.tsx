@@ -121,8 +121,27 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
       <div className="mm-scanline-wrap"><div className="mm-scanline" /></div>
 
       <div className="mm-content">
+        {/* Browse Games pills */}
+        <div style={{ width: "100%", marginBottom: 16 }}>
+          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 8px", textAlign: "center" }}>Browse Games</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            {[
+              { icon: "🎯", label: "Bongo Quiz", path: "/" },
+              // { icon: "➗", label: "Math Quiz", path: "/math-quiz" },
+              // { icon: "🧬", label: "Biology Quiz", path: "/bio-quiz" },
+            ].map(app => (
+              <div key={app.label} onClick={() => { window.location.href = app.path; }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.15)", borderRadius: 100, padding: "6px 16px",
+                  cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, color: "rgba(255,255,255,0.75)",
+                  transition: "background 0.2s" }}>
+                <span>{app.icon}</span><span>{app.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="mm-badge">
-          <span className="mm-badge-dot" />
+          {/*<span className="mm-badge-dot" />*/}
           <span className="mm-badge-text">✝️ How Well Do You Know The Bible?</span>
         </div>
 
