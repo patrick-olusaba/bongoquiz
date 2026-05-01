@@ -1,5 +1,6 @@
 // HowToPlayModal.tsx
 import { type FC } from "react";
+import bongoLogo from "../../assets/logo.png";
 import '../../styles/Howtoplaymodal.css';
 
 interface Props { onClose: () => void; }
@@ -47,7 +48,7 @@ export const HowToPlayModal: FC<Props> = ({ onClose }) => (
             <button className="htp-close" onClick={onClose}>✕</button>
 
             <div className="htp-header">
-                <div className="htp-header-icon">🎮</div>
+                <img src={bongoLogo} alt="Bongo Quiz" style={{ width: 56, height: 56, objectFit: "contain", filter: "drop-shadow(0 2px 10px rgba(255,107,107,0.5))" }} />
                 <h2 className="htp-title">How to Play</h2>
                 <p className="htp-header-sub">3 rounds · hidden powers · spin to win</p>
             </div>
