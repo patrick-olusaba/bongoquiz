@@ -152,9 +152,17 @@ function Dashboard() {
             bongoSessions.forEach(s => { if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1; });
             const topPowers = Object.entries(powerCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-            // Top players deduped
+            // Top players deduped — normalize phone to 07... format
+            const normPhone = (p: any) => {
+                const raw = (p.phone || p.id || "").toString();
+                return raw.startsWith("254") ? "0" + raw.slice(3) : raw;
+            };
             const byPhone = new Map<string, any>();
-            leaders.forEach((p: any) => { const ph = p.phone || p.id; const ex = byPhone.get(ph); if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, p); });
+            leaders.forEach((p: any) => {
+                const ph = normPhone(p);
+                const ex = byPhone.get(ph);
+                if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, { ...p, _normPhone: ph });
+            });
             const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10);
 
             // All revenue combined
@@ -288,7 +296,7 @@ function Dashboard() {
             <div style={s.card}>
                 <h2 style={s.h2}>🏆 Top 10 Players (Bongo Quiz)</h2>
                 {data.topPlayers.length ? data.topPlayers.map((p: any, i: number) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <div key={p._normPhone ?? p.id ?? i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                         <span style={{ fontSize: "1rem", minWidth: 24 }}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][i]}</span>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a2e" }}>{p.name ?? "—"}</div>
