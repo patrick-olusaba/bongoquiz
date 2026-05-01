@@ -161,8 +161,8 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     ];
 
     const moreApps = [
-        { label: "Bible Quiz", logo: biblequizLogo, path: "/bible-quiz" },
-        // { label: "Math Quiz", logo: mathLogo, path: "/math-quiz" },
+        { label: "Bible Quiz", logo: biblequizLogo, path: "/bible-quiz", tag: "NEW" },
+        // { label: "Math Quiz", logo: mathLogo, path: "/math-quiz", tag: "" },
     ];
 
     return (
@@ -240,18 +240,14 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </div>
 
             <div className="home-content">
-                <div className="home-badge">
-                    <span className="home-badge-dot"/>
-                    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
-                </div>
-
                 <div style={{ width: "100%", marginBottom: 12, textAlign: "center" }}>
                     <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 10px" }}>Browse Games</p>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
                         {moreApps.map((app) => (
                             <div key={app.label} onClick={() => { window.location.href = app.path; }}
-                                title={app.label}
-                                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                                 title={app.label}
+                                 style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
                                 <div style={{
                                     width: 72, height: 72, borderRadius: 20,
                                     background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
@@ -274,6 +270,12 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                         }
                     `}</style>
                 </div>
+                <div className="home-badge">
+                    <span className="home-badge-dot"/>
+                    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
+                </div>
+
+
 
                 <div className="home-title-wrap">
                     <img src={mainLogo} alt="Bongo Quiz" className="home-title-image"/>
