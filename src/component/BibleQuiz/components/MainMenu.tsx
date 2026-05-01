@@ -182,7 +182,7 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
             {[
               { step: "STEP 01", icon: "💳", title: "Pay & Enter", desc: "KES 20 via M-Pesa STK push" },
               { step: "STEP 02", icon: "📖", title: "Answer Fast", desc: "60s · +100 correct · −50 wrong" },
-              { step: "STEP 03", icon: "🏆", title: "Top the Board", desc: "Highest score wins the prize" },
+              { step: "STEP 03", icon: "🏆", title: "Climb the Ranks", desc: "Score high · beat others · own the leaderboard" },
             ].map(c => (
               <div key={c.step} style={{
                 background: "linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))",
