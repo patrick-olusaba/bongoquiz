@@ -1,6 +1,6 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
@@ -125,13 +125,13 @@ function Dashboard() {
             getDocs(collection(db, "leaderboard")),
             getDocs(collection(db, "grantedSessions")),
             getDocs(collection(db, "bibleQuizSessions")),
-            getDocs(collection(db, "bibleQuizPayments")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "BIBLEQUIZ"))),
             getDocs(collection(db, "mathQuizSessions")),
-            getDocs(collection(db, "mathQuizPayments")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "MATHQUIZ"))),
             getDocs(collection(db, "bioQuizSessions")),
-            getDocs(collection(db, "bioQuizPayments")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "BIOQUIZ"))),
             getDocs(collection(db, "genQuizSessions")),
-            getDocs(collection(db, "genQuizPayments")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "GENQUIZ"))),
         ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR]) => {
             const bongoSessions  = snap(sessR).map((d: any) => d.data());
             const bongoPayments  = snap(payR).map((d: any) => d.data());
