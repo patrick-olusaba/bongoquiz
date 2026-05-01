@@ -184,13 +184,13 @@ function BQQuestions() {
     return <>
         {(editing || adding) && <QuestionModal q={editing} onSave={save} onClose={() => { setEditing(null); setAdding(false); }} />}
         <div style={s.card}>
-            <h2 style={s.h2}>Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({questions.length} total)</span></h2>
+            <h2 style={s.h2}>Bible Quiz Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({questions.length} total)</span></h2>
 
             {/* Sub-tabs */}
             <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <button onClick={() => setQTab("all")}
                     style={{ ...s.btn, background: qTab === "all" ? "#4361ee" : "#f0f0f8", color: qTab === "all" ? "#fff" : "#444" }}>
-                    ❓ All Questions
+                    ❓ All Questions ({questions.length})
                 </button>
                 <button onClick={() => setQTab("duplicates")}
                     style={{ ...s.btn, background: qTab === "duplicates" ? "#dc2626" : "#f0f0f8", color: qTab === "duplicates" ? "#fff" : "#444" }}>
