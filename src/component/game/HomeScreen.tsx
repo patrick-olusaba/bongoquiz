@@ -229,21 +229,6 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 )}
             </div>
 
-            <div className="more-section">
-                <p className="more-section-title">Browse</p>
-                <div className="more-scroll">
-                    {moreApps.map((app) => (
-                        <div key={app.label}
-                            className="more-pill more-pill--active"
-                            onClick={() => { window.location.href = app.path; }}
-                            style={{ cursor: "pointer" }}>
-                            <span className="more-pill-icon">{app.icon}</span>
-                            <span className="more-pill-label">{app.label}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             <canvas ref={canvasRef} className="home-canvas"/>
             <img src={logoBg} alt="" className="home-logo-bg"/>
             <div className="home-orbs">
@@ -259,6 +244,20 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 <div className="home-badge">
                     <span className="home-badge-dot"/>
                     <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
+                </div>
+
+                <div style={{ width: "100%", marginBottom: 12, textAlign: "center" }}>
+                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 8px" }}>Browse Games</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                        {moreApps.map((app) => (
+                            <div key={app.label} onClick={() => { window.location.href = app.path; }}
+                                style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.07)",
+                                    border: "1px solid rgba(255,255,255,0.15)", borderRadius: 100, padding: "6px 16px",
+                                    cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>
+                                <span>{app.icon}</span><span>{app.label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="home-title-wrap">
