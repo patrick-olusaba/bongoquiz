@@ -1879,8 +1879,10 @@
     width: 100vw;
     min-height: 100vh;
     margin-left: calc(-50vw + 50%);
+    overflow: visible;
 }
 
 .main-content {
     width: 100%;
+    overflow: visible;
 }

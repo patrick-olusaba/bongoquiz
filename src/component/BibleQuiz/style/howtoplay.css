@@ -1,6 +1,7 @@
 /* Tutorial Screen - Professional Design */
 .tutorial-screen {
     min-height: 100vh;
+    height: 100vh;
     background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
     padding: 40px 20px;
     display: flex;
@@ -9,6 +10,8 @@
     position: relative;
     overflow-y: auto;
     overflow-x: hidden;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tutorial-screen::before {
