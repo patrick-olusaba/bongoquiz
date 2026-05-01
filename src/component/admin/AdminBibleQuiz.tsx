@@ -317,6 +317,34 @@ function BQQuestions() {
         </div>
     </>;
 }
+// ── Shared pagination helper ──────────────────────────────────────────────────
+const PAGE = 20;
+function usePage<T>(items: T[]) {
+    const [page, setPage] = useState(1);
+    const total = Math.max(1, Math.ceil(items.length / PAGE));
+    const safe  = Math.min(page, total);
+    const slice = items.slice((safe - 1) * PAGE, safe * PAGE);
+    return { page: safe, setPage, total, slice, from: items.length ? (safe - 1) * PAGE + 1 : 0, to: Math.min(safe * PAGE, items.length) };
+}
+function Pager({ page, total, setPage }: { page: number; total: number; setPage: (p: number) => void }) {
+    if (total <= 1) return null;
+    const pages = Array.from({ length: total }, (_, i) => i + 1)
+        .filter(p => p === 1 || p === total || Math.abs(p - page) <= 1)
+        .reduce<(number|"…")[]>((acc, p, i, arr) => { if (i > 0 && p - (arr[i-1] as number) > 1) acc.push("…"); acc.push(p); return acc; }, []);
+    return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 12, flexWrap: "wrap" }}>
+            <button onClick={() => setPage(1)} disabled={page===1} style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ddd", background: "#f0f0f8", cursor: "pointer" }}>«</button>
+            <button onClick={() => setPage(page-1)} disabled={page===1} style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ddd", background: "#f0f0f8", cursor: "pointer" }}>‹</button>
+            {pages.map((p, i) => p === "…"
+                ? <span key={`e${i}`} style={{ padding: "0 4px", color: "#aaa" }}>…</span>
+                : <button key={p} onClick={() => setPage(p as number)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #ddd", background: page===p ? "#4361ee" : "#f0f0f8", color: page===p ? "#fff" : "#444", cursor: "pointer", fontWeight: page===p ? 700 : 400 }}>{p}</button>
+            )}
+            <button onClick={() => setPage(page+1)} disabled={page===total} style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ddd", background: "#f0f0f8", cursor: "pointer" }}>›</button>
+            <button onClick={() => setPage(total)} disabled={page===total} style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #ddd", background: "#f0f0f8", cursor: "pointer" }}>»</button>
+        </div>
+    );
+}
+
 // ── Payments Tab ──────────────────────────────────────────────────────────────
 function BQPayments() {
     const [rows,   setRows]   = useState<any[]>([]);
@@ -341,6 +369,8 @@ function BQPayments() {
         return matchF && matchS;
     });
 
+    const { page, setPage, total, slice, from, to } = usePage(filtered);
+
     const StatusBadge = ({ status }: { status: string }) => {
         const c: Record<string, { bg: string; color: string }> = {
             paid:    { bg: "#dcfce7", color: "#166534" },
@@ -364,21 +394,22 @@ function BQPayments() {
                     ))}
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                <input style={{ ...s.input, maxWidth: 220 }} placeholder="Search phone or name…" value={search} onChange={e => setSearch(e.target.value)} />
+                <input style={{ ...s.input, maxWidth: 220 }} placeholder="Search phone or name…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
                 {["all", "paid", "pending", "failed"].map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
+                    <button key={f} onClick={() => { setFilter(f); setPage(1); }}
                         style={{ ...s.btn, background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#444" }}>
                         {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f] ?? 0})
                     </button>
                 ))}
             </div>
+            <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>Showing {from}–{to} of {filtered.length}</div>
             <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                 <table style={s.table}>
                     <thead><tr>{["#", "Name", "Phone", "Amount", "Status", "Trans ID", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {filtered.map((r, i) => (
+                        {slice.map((r, i) => (
                             <tr key={r._id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
+                                <td style={s.td}>{(page-1)*PAGE + i + 1}</td>
                                 <td style={s.td}>{r.name ?? "—"}</td>
                                 <td style={s.td}>{r.phone ?? "—"}</td>
                                 <td style={s.td}>{r.amount != null ? `KSh ${r.amount}` : "—"}</td>
@@ -387,10 +418,11 @@ function BQPayments() {
                                 <td style={s.td}>{r.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
                             </tr>
                         ))}
-                        {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No payments</td></tr>}
+                        {!slice.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No payments</td></tr>}
                     </tbody>
                 </table>
             </div>
+            <Pager page={page} total={total} setPage={setPage} />
         </div>
     );
 }
@@ -410,17 +442,20 @@ function BQSessions() {
     const filtered = rows.filter(r => !search ||
         (r.name ?? "").toLowerCase().includes(search.toLowerCase()) || (r.phone ?? "").includes(search));
 
+    const { page, setPage, total, slice, from, to } = usePage(filtered);
+
     return (
         <div style={s.card}>
             <h2 style={s.h2}>Game Sessions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({rows.length})</span></h2>
-            <input style={{ ...s.input, maxWidth: 240, marginBottom: 14 }} placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input style={{ ...s.input, maxWidth: 240, marginBottom: 14 }} placeholder="Search name or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>Showing {from}–{to} of {filtered.length}</div>
             <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                 <table style={s.table}>
                     <thead><tr>{["#", "Name", "Phone", "Score", "Correct", "Wrong", "Passed", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {filtered.map((r, i) => (
+                        {slice.map((r, i) => (
                             <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
+                                <td style={s.td}>{(page-1)*PAGE + i + 1}</td>
                                 <td style={s.td}>{r.name ?? "—"}</td>
                                 <td style={s.td}>{r.phone ?? "—"}</td>
                                 <td style={s.td}><strong>{(r.score ?? 0).toLocaleString()}</strong></td>
@@ -430,10 +465,11 @@ function BQSessions() {
                                 <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
                             </tr>
                         ))}
-                        {!filtered.length && <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No sessions</td></tr>}
+                        {!slice.length && <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No sessions</td></tr>}
                     </tbody>
                 </table>
             </div>
+            <Pager page={page} total={total} setPage={setPage} />
         </div>
     );
 }
@@ -441,6 +477,7 @@ function BQSessions() {
 // ── Leaderboard Tab ───────────────────────────────────────────────────────────
 function BQLeaderboard() {
     const [rows, setRows] = useState<any[]>([]);
+    const [search, setSearch] = useState("");
 
     useEffect(() => {
         getDocs(collection(db, "bibleQuizLeaderboard"))
@@ -449,26 +486,37 @@ function BQLeaderboard() {
             .catch(() => {});
     }, []);
 
+    const filtered = rows.filter(r => !search ||
+        (r.name ?? "").toLowerCase().includes(search.toLowerCase()) || (r.phone ?? "").includes(search));
+
+    const { page, setPage, total, slice, from, to } = usePage(filtered);
+
     return (
         <div style={s.card}>
             <h2 style={s.h2}>Leaderboard <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({rows.length} players)</span></h2>
+            <input style={{ ...s.input, maxWidth: 240, marginBottom: 14 }} placeholder="Search name or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>Showing {from}–{to} of {filtered.length}</div>
             <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                 <table style={s.table}>
                     <thead><tr>{["Rank", "Name", "Phone", "Score", "Last Played"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {rows.map((r, i) => (
-                            <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{["🥇","🥈","🥉"][i] ?? i + 1}</td>
-                                <td style={s.td}><strong>{r.name ?? "—"}</strong></td>
-                                <td style={s.td}>{(r.phone ?? "").slice(0, 4) + "****"}</td>
-                                <td style={s.td}><strong style={{ color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()} pts</strong></td>
-                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
-                            </tr>
-                        ))}
-                        {!rows.length && <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No data yet</td></tr>}
+                        {slice.map((r, i) => {
+                            const rank = (page-1)*PAGE + i + 1;
+                            return (
+                                <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                    <td style={s.td}>{["🥇","🥈","🥉"][rank-1] ?? rank}</td>
+                                    <td style={s.td}><strong>{r.name ?? "—"}</strong></td>
+                                    <td style={s.td}>{(r.phone ?? "").slice(0, 4) + "****"}</td>
+                                    <td style={s.td}><strong style={{ color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()} pts</strong></td>
+                                    <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
+                                </tr>
+                            );
+                        })}
+                        {!slice.length && <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No data yet</td></tr>}
                     </tbody>
                 </table>
             </div>
+            <Pager page={page} total={total} setPage={setPage} />
         </div>
     );
 }
