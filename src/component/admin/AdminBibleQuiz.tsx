@@ -98,9 +98,13 @@ function BQQuestions() {
     const [editing,   setEditing]   = useState<BQQuestion | null>(null);
     const [adding,    setAdding]    = useState(false);
     const [search,    setSearch]    = useState("");
+    const [catFilter, setCatFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState<"all"|"active"|"inactive">("all");
     const [qTab,      setQTab]      = useState<"all"|"duplicates">("all");
     const [importing, setImporting] = useState(false);
     const [msg,       setMsg]       = useState("");
+    const [page,      setPage]      = useState(1);
+    const PAGE_SIZE = 20;
     const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -160,9 +164,20 @@ function BQQuestions() {
         e.target.value = "";
     };
 
-    const filtered = questions.filter(q =>
-        !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase())
-    );
+    const categories = ["all", ...Array.from(new Set(questions.map(q => q.category ?? "").filter(Boolean))).sort()];
+
+    const filtered = questions.filter(q => {
+        const matchSearch = !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase());
+        const matchCat    = catFilter === "all" || (q.category ?? "") === catFilter;
+        const matchStatus = statusFilter === "all" || (statusFilter === "active" ? q.active : !q.active);
+        return matchSearch && matchCat && matchStatus;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const safePage   = Math.min(page, totalPages);
+    const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+    const resetPage  = () => setPage(1);
 
     const extraCount = dupGroups.reduce((a, g) => a + g.length - 1, 0);
 
@@ -226,7 +241,18 @@ function BQQuestions() {
             ) : <>
                 {/* Toolbar */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <input style={{ ...s.input, maxWidth: 220 }} placeholder="Search questions or category…" value={search}
+                        onChange={e => { setSearch(e.target.value); resetPage(); }} />
+                    <select style={{ ...s.input, maxWidth: 160 }} value={catFilter}
+                        onChange={e => { setCatFilter(e.target.value); resetPage(); }}>
+                        {categories.map(c => <option key={c} value={c}>{c === "all" ? "All Categories" : c}</option>)}
+                    </select>
+                    <select style={{ ...s.input, maxWidth: 130 }} value={statusFilter}
+                        onChange={e => { setStatusFilter(e.target.value as any); resetPage(); }}>
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
                     <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                     <button onClick={() => fileRef.current?.click()} disabled={importing}
                         style={{ ...s.btn, background: "#059669", color: "#fff" }}>
@@ -240,13 +266,16 @@ function BQQuestions() {
                     </a>
                 </div>
                 {msg && <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: msg.startsWith("✅") ? "#dcfce7" : "#fee2e2", color: msg.startsWith("✅") ? "#166534" : "#991b1b", fontSize: "0.85rem" }}>{msg}</div>}
+                <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>
+                    Showing {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} questions
+                </div>
                 <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
                     <table style={s.table}>
                         <thead><tr>{["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
-                            {filtered.map((q, i) => (
+                            {paginated.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={s.td}>{i + 1}</td>
+                                    <td style={s.td}>{(safePage - 1) * PAGE_SIZE + i + 1}</td>
                                     <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
                                     <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
                                     <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
@@ -260,10 +289,30 @@ function BQQuestions() {
                                     </td>
                                 </tr>
                             ))}
-                            {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions yet</td></tr>}
+                            {!paginated.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions found</td></tr>}
                         </tbody>
                     </table>
                 </div>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
+                        <button onClick={() => setPage(1)} disabled={safePage === 1} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>«</button>
+                        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>‹</button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+                                acc.push(p); return acc;
+                            }, [])
+                            .map((p, i) => p === "…"
+                                ? <span key={`e${i}`} style={{ padding: "0 4px", color: "#aaa" }}>…</span>
+                                : <button key={p} onClick={() => setPage(p as number)}
+                                    style={{ ...s.btn, background: safePage === p ? "#4361ee" : "#f0f0f8", color: safePage === p ? "#fff" : "#444", minWidth: 32 }}>{p}</button>
+                            )}
+                        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>›</button>
+                        <button onClick={() => setPage(totalPages)} disabled={safePage === totalPages} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>»</button>
+                    </div>
+                )}
             </>}
         </div>
     </>;
