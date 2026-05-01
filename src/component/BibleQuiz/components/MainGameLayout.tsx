@@ -10,6 +10,7 @@ import GameOverScreen from '../components/GameOver.tsx';
 import { BibleQuizGame } from '../utils/gameLogic.ts';
 import { DeductionModal } from './DeductionModal.tsx';
 import LeaderboardScreen from './LeaderboardScreen.tsx';
+import BibleGameIntro from './BibleGameIntro.tsx';
 import { BIBLE_QUESTIONS } from '../data/questions.ts';
 import { sound } from '../utils/sound.ts';
 import '../style/style.css';
@@ -339,11 +340,13 @@ export const MainGameLayout = () => {
                     <DeductionModal
                         amount={20}
                         onAccept={() => {
-                            _doStartGame();
+                            setGameState(prev => ({ ...prev, currentScreen: 'intro' }));
                         }}
                         onDecline={() => setGameState(prev => ({ ...prev, currentScreen: 'menu' }))}
                     />
                 );
+            case 'intro':
+                return <BibleGameIntro onDone={_doStartGame} />;
             case 'menu':
                 return (
                     <MainMenu

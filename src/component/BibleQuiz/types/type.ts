@@ -67,7 +67,7 @@ export interface BibleQuizGame {
 }
 
 // Game screen type - unchanged
-export type GameScreen = 'menu' | 'game' | 'result' | 'gameover' | 'tutorial' | 'deduction' | 'results' | 'leaderboard';
+export type GameScreen = 'menu' | 'game' | 'result' | 'gameover' | 'tutorial' | 'deduction' | 'results' | 'leaderboard' | 'intro';
 
 // GameState with level tracking
 export type GameState = {
