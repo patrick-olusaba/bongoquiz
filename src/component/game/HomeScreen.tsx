@@ -3,6 +3,10 @@ import {type FC, useEffect, useRef, useState} from "react";
 import logoBg from "../../assets/logo.png";
 import mainLogo from "../../assets/background.png";
 import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
+import biologyLogo from "../BiologyQuiz/assets/logo2.png";
+import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
+import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
+import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 import {getStreakInfo} from "../../utils/streakDays.ts";
@@ -161,7 +165,8 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     ];
 
     const moreApps = [
-        { label: "Bible Quiz", logo: biblequizLogo, path: "/bible-quiz", tag: "NEW" },
+        { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
+        { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
         // { label: "Math Quiz", logo: mathLogo, path: "/math-quiz", tag: "" },
     ];
 
@@ -240,36 +245,6 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </div>
 
             <div className="home-content">
-                <div style={{ width: "100%", marginBottom: 12, textAlign: "center" }}>
-                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 10px" }}>Browse Games</p>
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
-                        {moreApps.map((app) => (
-                            <div key={app.label} onClick={() => { window.location.href = app.path; }}
-                                 title={app.label}
-                                 style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, WebkitTapHighlightColor: "transparent" }}>
-                                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
-                                <div style={{
-                                    width: 72, height: 72, borderRadius: 20,
-                                    background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-                                    border: "2px solid rgba(255,255,255,0.12)",
-                                    boxShadow: "0 0 0 0 rgba(255,180,0,0.5), 0 6px 20px rgba(0,0,0,0.4)",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    animation: "gamePulse 2.4s ease-in-out infinite",
-                                    transition: "transform 0.15s",
-                                }}>
-                                    <img src={app.logo} alt={app.label} style={{ width: 60, height: 60, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))" }} />
-                                </div>
-                                <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <style>{`
-                        @keyframes gamePulse {
-                            0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.4), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(0); }
-                            50% { box-shadow: 0 0 0 6px rgba(255,180,0,0), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(-3px); }
-                        }
-                    `}</style>
-                </div>
                 <div className="home-badge">
                     <span className="home-badge-dot"/>
                     <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
@@ -339,6 +314,24 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 </div>
 
                 <p className="home-hint">Rounds 1 &amp; 2: KES 20 · Spin round: KES 10</p>
+
+                {/* Browse Games */}
+                <div style={{ width: "100%", marginTop: 20, textAlign: "center", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
+                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.65rem", fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 16px" }}>Browse Games</p>
+                    <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+                        {moreApps.map((app) => (
+                            <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
+                                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, WebkitTapHighlightColor: "transparent" }}>
+                                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
+                                <div style={{ width: 90, height: 90, borderRadius: 14, overflow: "hidden", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 6px 24px rgba(0,0,0,0.6)", animation: "gamePulse 2.4s ease-in-out infinite", transition: "transform 0.15s" }}>
+                                    <img src={app.logo} alt={app.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                </div>
+                                <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <style>{`@keyframes gamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,180,0,0.4),0 6px 20px rgba(0,0,0,0.4);transform:translateY(0)}50%{box-shadow:0 0 0 6px rgba(255,180,0,0),0 6px 20px rgba(0,0,0,0.4);transform:translateY(-3px)}}`}</style>
+                </div>
             </div>
 
             {showNameModal && (

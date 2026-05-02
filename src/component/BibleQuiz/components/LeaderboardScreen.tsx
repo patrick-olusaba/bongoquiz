@@ -30,6 +30,7 @@ const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", onPlayA
     Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
       const byPhone = new Map<string, { name: string; score: number }>();
       const toKey = (p: string) => String(p).replace(/^0/, "254");
+      const playerPhone254 = toKey(localStorage.getItem("bongo_player_phone") ?? "");
 
       (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
         const phone = toKey(String(d.msisdn ?? ""));
@@ -48,11 +49,11 @@ const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", onPlayA
         else if (existing && name && !/^\d/.test(name)) byPhone.set(phone, { ...existing, name });
       });
 
-      const sorted = Array.from(byPhone.values())
-        .sort((a, b) => b.score - a.score)
+      const sorted = Array.from(byPhone.entries())
+        .sort((a, b) => b[1].score - a[1].score)
         .slice(0, 10)
-        .map((e, i) => ({ rank: i + 1, name: e.name, score: e.score,
-          isCurrentPlayer: e.name === playerName && e.score === playerScore }));
+        .map(([phone, e], i) => ({ rank: i + 1, name: e.name, score: e.score,
+          isCurrentPlayer: !!playerPhone254 && phone === playerPhone254 }));
       setEntries(sorted);
     });
 

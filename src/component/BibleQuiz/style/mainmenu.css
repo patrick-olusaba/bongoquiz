@@ -8,7 +8,8 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   background: radial-gradient(ellipse at 30% 60%, #2a0060 0%, #0a0020 45%, #000 100%);
 }
@@ -75,12 +76,13 @@
   z-index: 2;
   width: 100%;
   max-width: 780px;
-  padding: 20px 20px 24px;
+  padding: 80px 20px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100svh;
   justify-content: center;
+  overflow-y: auto;
 }
 
 /* ── Badge ── */
@@ -88,26 +90,28 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255,80,80,0.15);
-  border: 1px solid rgba(255,80,80,0.5);
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.4);
   border-radius: 100px;
   padding: 6px 18px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   animation: mmBadgePop 0.6s ease forwards;
   backdrop-filter: blur(10px);
+  box-shadow: 0 0 20px rgba(255,215,0,0.12);
 }
 .mm-badge-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: #ff4444;
-  box-shadow: 0 0 8px #ff4444;
+  background: #FFD700;
+  box-shadow: 0 0 8px #FFD700;
   animation: mmDotPulse 1.5s ease-in-out infinite;
 }
 .mm-badge-text {
-  color: #ff9999;
-  font-size: 0.8rem;
-  font-weight: 700;
+  color: #FFD700;
+  font-size: 0.78rem;
+  font-weight: 800;
   letter-spacing: 2px;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -216,19 +220,25 @@
   font-weight: 900;
   letter-spacing: 2px;
   text-transform: uppercase;
-  padding: 14px 52px;
+  padding: 16px 56px;
   cursor: pointer;
   animation: mmBtnGlow 2.5s ease-in-out infinite;
   overflow: hidden;
   transition: transform 0.2s ease;
+  box-shadow: 0 0 40px rgba(255,107,107,0.5), 0 0 80px rgba(123,97,255,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.mm-btn:hover { transform: scale(1.06) translateY(-2px); }
+.mm-btn:hover { transform: scale(1.06) translateY(-3px); }
 .mm-btn:active { transform: scale(0.98); }
 .mm-btn-shine {
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.2) 50%, transparent 65%);
   pointer-events: none;
+  animation: mmBtnShine 3s ease-in-out infinite;
+}
+@keyframes mmBtnShine {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
 }
 .mm-secondary-btns {
   display: flex;
@@ -317,7 +327,7 @@
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .mm-content { padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); }
-  .mm-title-image { width: clamp(160px, 68vw, 300px); }
+  .mm-title-image { width: clamp(160px, 683vw, 120px); }
   .mm-subtitle { font-size: 0.88rem; margin-bottom: 14px; }
   .mm-player-bar { gap: 6px; margin-bottom: 16px; }
   .mm-best-score, .mm-streak-badge { font-size: 0.78rem; padding: 5px 12px; }

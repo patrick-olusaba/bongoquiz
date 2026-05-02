@@ -8,7 +8,8 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
     background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
 }
@@ -301,12 +302,13 @@
     z-index: 2;
     width: 100%;
     max-width: 780px;
-    padding: 20px 20px 24px;
+    padding: 80px 20px 40px;
     display: flex;
     flex-direction: column;
     align-items: center;
     min-height: 100svh;
     justify-content: center;
+    overflow-y: auto;
 }
 
 /* ── Live badge ── */
@@ -314,13 +316,14 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,80,80,0.15);
-    border: 1px solid rgba(255,80,80,0.5);
+    background: rgba(255,80,80,0.12);
+    border: 1px solid rgba(255,80,80,0.45);
     border-radius: 100px;
     padding: 6px 18px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     animation: badgePop 0.6s ease forwards;
     backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(255,80,80,0.15);
 }
 .home-badge-dot {
     width: 8px; height: 8px;
@@ -332,9 +335,9 @@
 }
 .home-badge-text {
     color: #ff9999;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 2px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
 }
 
@@ -378,46 +381,50 @@
     margin-bottom: 20px;
 }
 .home-round-card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
-    padding: 14px 12px;
+    padding: 16px 10px;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     cursor: default;
-    backdrop-filter: blur(10px);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 24px rgba(0,0,0,0.3);
     animation: floatUp 0.6s ease both;
 }
 .home-round-card:hover {
-    transform: translateY(-6px) scale(1.02);
-    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-8px) scale(1.03);
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 12px 40px rgba(0,0,0,0.4);
 }
 .home-round-num {
-    font-size: 0.65rem;
-    font-weight: 800;
+    font-size: 0.6rem;
+    font-weight: 900;
     letter-spacing: 3px;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.2);
     margin-bottom: 10px;
     text-transform: uppercase;
 }
 .home-round-icon {
-    font-size: 1.8rem;
-    margin-bottom: 6px;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    display: block;
 }
 .home-round-label {
-    font-weight: 800;
+    font-weight: 900;
     font-size: 0.9rem;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     letter-spacing: 1px;
+    text-shadow: 0 0 20px currentColor;
 }
 .home-round-divider {
-    width: 30px;
+    width: 36px;
     height: 2px;
-    margin: 0 auto 6px;
+    margin: 0 auto 8px;
+    border-radius: 2px;
 }
 .home-round-desc {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: rgba(255,255,255,0.35);
     line-height: 1.5;
 }
@@ -452,16 +459,22 @@
     color: #fff;
     font-size: 1.2rem;
     font-weight: 900;
-    padding: 14px 52px;
+    padding: 16px 56px;
     animation: btnGlow 2.5s ease-in-out infinite;
     overflow: hidden;
+    box-shadow: 0 0 40px rgba(255,107,107,0.5), 0 0 80px rgba(123,97,255,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.home-btn:hover { transform: scale(1.06) translateY(-2px); }
+.home-btn:hover { transform: scale(1.06) translateY(-3px); }
 .home-btn:active { transform: scale(0.98); }
 .home-btn-shine {
     position: absolute;
     inset: 0;
-    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.2) 50%, transparent 65%);
+    animation: btnShine 3s ease-in-out infinite;
+}
+@keyframes btnShine {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
 }
 
 /* Secondary — Leaderboard ghost style */
@@ -647,8 +660,8 @@
         min-height: 100svh;
         justify-content: center;
     }
-    .home-title-image   { width: clamp(160px, 68vw, 300px); }
-    .home-badge         { margin-bottom: 8px; }
+    .home-title-image   { width: clamp(160px, 68vw, 200px); }
+    .home-badge         { margin-bottom: 2px; }
     .home-subtitle      { font-size: 0.88rem; margin-bottom: 12px; }
     .home-rounds        { gap: 8px; margin-bottom: 14px; }
     .home-round-card    { padding: 10px 8px; }

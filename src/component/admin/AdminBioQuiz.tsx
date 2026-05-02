@@ -1,6 +1,6 @@
 // AdminBioQuiz.tsx — Biology Quiz admin: questions, payments, sessions, leaderboard
 import { useState, useEffect, useRef } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch, query, where } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 
 interface BQQuestion {
@@ -25,6 +25,27 @@ const s: Record<string, React.CSSProperties> = {
     row:    { marginBottom: 12 },
 };
 const badge = (ok: boolean): React.CSSProperties => ({ padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700, background: ok ? "#dcfce7" : "#fee2e2", color: ok ? "#166534" : "#991b1b" });
+
+const PAGE_SIZE = 20;
+
+function Pagination({ total, page, setPage }: { total: number; page: number; setPage: (p: number) => void }) {
+    const pages = Math.ceil(total / PAGE_SIZE);
+    if (pages <= 1) return null;
+    return (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button onClick={() => setPage(page - 1)} disabled={page === 0}
+                style={{ ...s.btn, background: "#f0f0f8", color: "#444", opacity: page === 0 ? 0.4 : 1 }}>‹ Prev</button>
+            {Array.from({ length: pages }, (_, i) => (
+                <button key={i} onClick={() => setPage(i)}
+                    style={{ ...s.btn, minWidth: 32, background: page === i ? "#4361ee" : "#f0f0f8", color: page === i ? "#fff" : "#444" }}>
+                    {i + 1}
+                </button>
+            ))}
+            <button onClick={() => setPage(page + 1)} disabled={page === pages - 1}
+                style={{ ...s.btn, background: "#f0f0f8", color: "#444", opacity: page === pages - 1 ? 0.4 : 1 }}>Next ›</button>
+        </div>
+    );
+}
 // ── Parse CSV text into questions ─────────────────────────────────────────────
 // Expected format: question,optionA,optionB,optionC,optionD,correctIndex(0-3),category
 function parseCSV(text: string): BQQuestion[] {
@@ -101,6 +122,7 @@ function BQQuestions() {
     const [qTab,      setQTab]      = useState<"all"|"duplicates">("all");
     const [importing, setImporting] = useState(false);
     const [msg,       setMsg]       = useState("");
+    const [page,      setPage]      = useState(0);
     const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -163,6 +185,7 @@ function BQQuestions() {
     const filtered = questions.filter(q =>
         !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase())
     );
+    const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const extraCount = dupGroups.reduce((a, g) => a + g.length - 1, 0);
 
@@ -242,9 +265,9 @@ function BQQuestions() {
                     <table style={s.table}>
                         <thead><tr>{["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
-                            {filtered.map((q, i) => (
+                            {paginated.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={s.td}>{i + 1}</td>
+                                    <td style={s.td}>{page * PAGE_SIZE + i + 1}</td>
                                     <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
                                     <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
                                     <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
@@ -262,6 +285,7 @@ function BQQuestions() {
                         </tbody>
                     </table>
                 </div>
+                <Pagination total={filtered.length} page={page} setPage={p => { setPage(p); }} />
             </>}
         </div>
     </>;
@@ -271,12 +295,19 @@ function BQPayments() {
     const [rows,   setRows]   = useState<any[]>([]);
     const [filter, setFilter] = useState("all");
     const [search, setSearch] = useState("");
+    const [page,   setPage]   = useState(0);
 
     useEffect(() => {
-        getDocs(collection(db, "bioQuizPayments"))
-            .then(snap => setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))))
-            .catch(() => {});
+        Promise.all([
+            getDocs(collection(db, "bioQuizPayments")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ"))),
+        ]).then(([bioSnap, mainSnap]) => {
+            const all = [
+                ...bioSnap.docs.map(d => ({ _id: d.id, ...d.data() })),
+                ...mainSnap.docs.map(d => ({ _id: d.id, ...d.data() })),
+            ].sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+            setRows(all);
+        }).catch(() => {});
     }, []);
 
     const counts: Record<string, number> = { all: rows.length };
@@ -325,9 +356,9 @@ function BQPayments() {
                 <table style={s.table}>
                     <thead><tr>{["#", "Name", "Phone", "Amount", "Status", "Trans ID", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {filtered.map((r, i) => (
+                        {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((r, i) => (
                             <tr key={r._id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
+                                <td style={s.td}>{page * PAGE_SIZE + i + 1}</td>
                                 <td style={s.td}>{r.name ?? "—"}</td>
                                 <td style={s.td}>{r.phone ?? "—"}</td>
                                 <td style={s.td}>{r.amount != null ? `KSh ${r.amount}` : "—"}</td>
@@ -340,6 +371,7 @@ function BQPayments() {
                     </tbody>
                 </table>
             </div>
+            <Pagination total={filtered.length} page={page} setPage={setPage} />
         </div>
     );
 }
@@ -348,6 +380,7 @@ function BQPayments() {
 function BQSessions() {
     const [rows, setRows] = useState<any[]>([]);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(0);
 
     useEffect(() => {
         getDocs(collection(db, "bioQuizSessions"))
@@ -367,9 +400,9 @@ function BQSessions() {
                 <table style={s.table}>
                     <thead><tr>{["#", "Name", "Phone", "Score", "Correct", "Wrong", "Passed", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {filtered.map((r, i) => (
+                        {filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((r, i) => (
                             <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
+                                <td style={s.td}>{page * PAGE_SIZE + i + 1}</td>
                                 <td style={s.td}>{r.name ?? "—"}</td>
                                 <td style={s.td}>{r.phone ?? "—"}</td>
                                 <td style={s.td}><strong>{(r.score ?? 0).toLocaleString()}</strong></td>
@@ -383,6 +416,7 @@ function BQSessions() {
                     </tbody>
                 </table>
             </div>
+            <Pagination total={filtered.length} page={page} setPage={setPage} />
         </div>
     );
 }
@@ -390,12 +424,31 @@ function BQSessions() {
 // ── Leaderboard Tab ───────────────────────────────────────────────────────────
 function BQLeaderboard() {
     const [rows, setRows] = useState<any[]>([]);
+    const [page, setPage] = useState(0);
 
     useEffect(() => {
-        getDocs(collection(db, "bioQuizLeaderboard"))
-            .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))))
-            .catch(() => {});
+        const toKey = (p: string) => String(p).replace(/^0/, "254");
+        Promise.all([
+            fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard").then(r => r.json()).catch(() => []),
+            getDocs(collection(db, "bioQuizLeaderboard")).then(snap => snap.docs.map(d => ({ ...d.data(), id: d.id }))).catch(() => []),
+        ]).then(([sqlRaw, fbRaw]) => {
+            const byPhone = new Map<string, { name: string; score: number; phone: string }>();
+            (Array.isArray(sqlRaw) ? sqlRaw : []).forEach((d: any) => {
+                const p = toKey(String(d.msisdn ?? ""));
+                const s = d.score ?? 0;
+                if (!byPhone.has(p) || s > byPhone.get(p)!.score)
+                    byPhone.set(p, { name: p.replace(/^254/, "0").slice(0, 3) + "*******", score: s, phone: p.replace(/^254/, "0") });
+            });
+            (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
+                const p = toKey(d.phone || d.id || "");
+                const s = d.score ?? 0;
+                const existing = byPhone.get(p);
+                const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name ?? d.name;
+                if (!existing || s > existing.score) byPhone.set(p, { name, score: s, phone: p.replace(/^254/, "0") });
+                else if (existing && name && !/^\d/.test(name)) byPhone.set(p, { ...existing, name });
+            });
+            setRows(Array.from(byPhone.values()).sort((a, b) => b.score - a.score));
+        });
     }, []);
 
     return (
@@ -405,19 +458,23 @@ function BQLeaderboard() {
                 <table style={s.table}>
                     <thead><tr>{["Rank", "Name", "Phone", "Score", "Last Played"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {rows.map((r, i) => (
-                            <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{["🥇","🥈","🥉"][i] ?? i + 1}</td>
-                                <td style={s.td}><strong>{r.name ?? "—"}</strong></td>
-                                <td style={s.td}>{(r.phone ?? "").slice(0, 4) + "****"}</td>
-                                <td style={s.td}><strong style={{ color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()} pts</strong></td>
-                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
-                            </tr>
-                        ))}
+                        {rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((r, i) => {
+                            const rank = page * PAGE_SIZE + i;
+                            return (
+                                <tr key={r.phone ?? i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                    <td style={s.td}>{["🥇","🥈","🥉"][rank] ?? rank + 1}</td>
+                                    <td style={s.td}><strong>{r.name ?? "—"}</strong></td>
+                                    <td style={s.td}>{(r.phone ?? "").slice(0, 4) + "****"}</td>
+                                    <td style={s.td}><strong style={{ color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()} pts</strong></td>
+                                    <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleDateString('en-GB') ?? "—"}</td>
+                                </tr>
+                            );
+                        })}
                         {!rows.length && <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No data yet</td></tr>}
                     </tbody>
                 </table>
             </div>
+            <Pagination total={rows.length} page={page} setPage={setPage} />
         </div>
     );
 }

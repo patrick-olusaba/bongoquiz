@@ -18,7 +18,7 @@ import type {AnswerResult, BibleQuestion, GameState, Player} from "../types/type
 
 export const MainGameLayout = () => {
 
-    const [questions, setQuestions] = useState<BibleQuestion[]>(BIBLE_QUESTIONS);
+    const [__questions, setQuestions] = useState<BibleQuestion[]>(BIBLE_QUESTIONS);
 
     useEffect(() => {
         getDocs(collection(db, "bibleQuizQuestions")).then(snap => {
@@ -61,7 +61,7 @@ export const MainGameLayout = () => {
     });
 
     const [player, setPlayer] = useState<Player>(() => game.getPlayerStats());
-    const [result, setResult] = useState<AnswerResult | null>(null);
+    const [___result, setResult] = useState<AnswerResult | null>(null);
     const [levelProgress, setLevelProgress] = useState(() => game.getLevelProgress());
     const [showLevelUpPopup, setShowLevelUpPopup] = useState(false);
     const [newLevelInfo, setNewLevelInfo] = useState<{
@@ -77,46 +77,46 @@ export const MainGameLayout = () => {
     const autoNextRef = useRef<number | null>(null);
 
     // Level up handling disabled
-    const handleLevelUp = useCallback(() => {}, []);
+    // const handleLevelUp = useCallback(() => {}, []);
 
     // Define handleTimeUp which uses handleLevelUp
-    const handleTimeUp = useCallback(() => {
-        // Clear any pending timer
-        if (timerRef.current !== null) {
-            clearTimeout(timerRef.current);
-            timerRef.current = null;
-        }
-
-        if (gameState.currentQuestion && !gameState.isAnswered) {
-            const answerResult = game.submitAnswer(gameState.currentQuestion, -1);
-            const newPlayer = game.getPlayerStats();
-            const newLevelProgress = game.getLevelProgress();
-
-            setPlayer(newPlayer);
-            setResult(answerResult);
-            setLevelProgress(newLevelProgress);
-
-            setGameState(prev => ({
-                ...prev,
-                isAnswered: true,
-                timeLeft: 0
-            }));
-
-            // Check for game over immediately
-            if (answerResult.isGameOver || newPlayer.points <= 0) {
-
-                // Show game over after delay
-                setTimeout(() => {
-                    setGameState(prev => ({
-                        ...prev,
-                        currentScreen: 'gameover'
-                    }));
-                }, 1500);
-                return;
-            }
-
-        }
-    }, [gameState.currentQuestion, gameState.isAnswered, game]);
+    // const handleTimeUp = useCallback(() => {
+    //     // Clear any pending timer
+    //     if (timerRef.current !== null) {
+    //         clearTimeout(timerRef.current);
+    //         timerRef.current = null;
+    //     }
+    //
+    //     if (gameState.currentQuestion && !gameState.isAnswered) {
+    //         const answerResult = game.submitAnswer(gameState.currentQuestion, -1);
+    //         const newPlayer = game.getPlayerStats();
+    //         const newLevelProgress = game.getLevelProgress();
+    //
+    //         setPlayer(newPlayer);
+    //         setResult(answerResult);
+    //         setLevelProgress(newLevelProgress);
+    //
+    //         setGameState(prev => ({
+    //             ...prev,
+    //             isAnswered: true,
+    //             timeLeft: 0
+    //         }));
+    //
+    //         // Check for game over immediately
+    //         if (answerResult.isGameOver || newPlayer.points <= 0) {
+    //
+    //             // Show game over after delay
+    //             setTimeout(() => {
+    //                 setGameState(prev => ({
+    //                     ...prev,
+    //                     currentScreen: 'gameover'
+    //                 }));
+    //             }, 1500);
+    //             return;
+    //         }
+    //
+    //     }
+    // }, [gameState.currentQuestion, gameState.isAnswered, game]);
 
     const handleContinueAfterLevelUp = useCallback(() => {
         setShowLevelUpPopup(false);

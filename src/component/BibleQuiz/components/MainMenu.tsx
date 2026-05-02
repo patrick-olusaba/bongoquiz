@@ -1,7 +1,12 @@
 import { type FC, useEffect, useRef, useState } from "react";
+import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { db } from "../../../firebase.ts";
 import type { Player } from "../types/type.ts";
 import biblequizLogo from "../assets/biblequiz.png";
-import bongoLogo from "../../../assets/logo.png";
+// import biologyLogo from "../../BiologyQuiz/assets/logo2.png";
+// import bongoLogo from "../../../assets/logo.png";
+import bongoPoster from "../../../assets/gamesposter/bongoquizb.png";
+import biologyPoster from "../../../assets/gamesposter/biologyquizposter.png";
 import "../style/mainmenu.css";
 
 interface MainMenuProps {
@@ -15,6 +20,8 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historySessions, setHistorySessions] = useState<any[]>([]);
   const [name, setName]   = useState(() => localStorage.getItem("bongo_player_name") ?? "");
   const [phone, setPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
   const [nameErr, setNameErr] = useState("");
@@ -109,6 +116,22 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
             <span className="mm-drawer-icon">🔗</span>
             <div><div className="mm-drawer-label">Share</div><div className="mm-drawer-sub">Invite friends to play</div></div>
           </button>
+          <button className="mm-drawer-item" onClick={() => {
+            setMenuOpen(false);
+            const p = localStorage.getItem("bongo_player_phone") ?? "";
+            if (!p) { setShowNameModal(true); return; }
+            getDocs(query(collection(db, "bibleQuizSessions"), where("phone", "==", p), limit(20)))
+              .then(snap => {
+                const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                  .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0));
+                setHistorySessions(sessions);
+              })
+              .catch(() => setHistorySessions([]));
+            setShowHistory(true);
+          }}>
+            <span className="mm-drawer-icon">📜</span>
+            <div><div className="mm-drawer-label">Game History</div><div className="mm-drawer-sub">View your past sessions</div></div>
+          </button>
         </div>
         {personalBest > 0 && (
           <div className="mm-drawer-best">🏅 Personal Best: <strong>{personalBest.toLocaleString()} pts</strong></div>
@@ -122,34 +145,6 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
       <div className="mm-scanline-wrap"><div className="mm-scanline" /></div>
 
       <div className="mm-content">
-        {/* Browse Games */}
-        <div style={{ width: "100%", marginBottom: 16, textAlign: "center" }}>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 10px" }}>Browse Games</p>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
-            {[{ label: "Bongo Quiz", logo: bongoLogo, path: "/", tag: "HOT" }].map(app => (
-              <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
-                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, WebkitTapHighlightColor: "transparent" }}>
-                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
-                <div style={{
-                  width: 72, height: 72, borderRadius: 20,
-                  background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-                  border: "2px solid rgba(255,255,255,0.12)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  animation: "gamePulse 2.4s ease-in-out infinite",
-                }}>
-                  <img src={app.logo} alt={app.label} style={{ width: 60, height: 60, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))" }} />
-                </div>
-                <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
-              </div>
-            ))}
-          </div>
-          <style>{`
-            @keyframes gamePulse {
-              0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.4), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(0); }
-              50% { box-shadow: 0 0 0 6px rgba(255,180,0,0), 0 6px 20px rgba(0,0,0,0.4); transform: translateY(-3px); }
-            }
-          `}</style>
-        </div>
         <div className="mm-badge">
           {/*<span className="mm-badge-dot" />*/}
           <span className="mm-badge-text">✝️ How Well Do You Know The Bible?</span>
@@ -199,11 +194,63 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
             <span className="mm-btn-shine" />
             🎯 &nbsp;PLAY NOW
           </button>
-          <button className="mm-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>
+          {/*<button className="mm-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>*/}
         </div>
 
         <p className="mm-hint">Entry: KES 20 · 40s per question · +100 correct · −50 wrong</p>
+
+        {/* Browse Games */}
+        <div style={{ width: "100%", marginTop: 20, textAlign: "center", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
+          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.65rem", fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 16px" }}>Browse Games</p>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+            {[{ label: "Bongo Quiz", logo: bongoPoster, path: "/", tag: "HOT" }, { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" }].map(app => (
+              <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
+                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, WebkitTapHighlightColor: "transparent" }}>
+                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
+                <div style={{ width: 90, height: 90, borderRadius: 14, overflow: "hidden", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 6px 24px rgba(0,0,0,0.6)", animation: "mmGamePulse 2.4s ease-in-out infinite" }}>
+                  <img src={app.logo} alt={app.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
+              </div>
+            ))}
+          </div>
+          <style>{`@keyframes mmGamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,180,0,0.4),0 6px 20px rgba(0,0,0,0.4);transform:translateY(0)}50%{box-shadow:0 0 0 6px rgba(255,180,0,0),0 6px 20px rgba(0,0,0,0.4);transform:translateY(-3px)}}`}</style>
+        </div>
       </div>
+
+      {/* Game History Modal */}
+      {showHistory && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 30, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowHistory(false)}>
+          <div style={{ background: "linear-gradient(160deg,rgba(40,10,80,0.97),rgba(10,0,30,0.99))", border: "1px solid rgba(180,100,255,0.25)", borderRadius: 24, padding: "24px 20px", width: "min(420px,92vw)", maxHeight: "80vh", display: "flex", flexDirection: "column", backdropFilter: "blur(24px)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ color: "#fff", margin: 0, fontSize: "1.2rem", fontWeight: 900 }}>📜 Game History</h2>
+              <button onClick={() => setShowHistory(false)} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "rgba(255,255,255,0.7)", width: 32, height: 32, cursor: "pointer", fontSize: "0.85rem" }}>✕</button>
+            </div>
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {historySessions.length === 0 ? (
+                <p style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "2rem 0" }}>No sessions found.</p>
+              ) : historySessions.map((s, i) => (
+                <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: i === 0 ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(255,215,0,0.25)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "10px 14px" }}>
+                  <div>
+                    <div style={{ color: "#fff", fontWeight: 700, fontSize: "0.9rem" }}>{(s.score ?? 0).toLocaleString()} pts</div>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.7rem", marginTop: 2 }}>
+                      ✅ {s.correct ?? 0} correct · ❌ {s.wrong ?? 0} wrong
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.7rem" }}>
+                      {s.playedAt?.toDate?.()?.toLocaleDateString("en-GB") ?? "—"}
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.65rem" }}>
+                      {s.playedAt?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) ?? ""}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Name/Phone Modal */}
       {showNameModal && (
@@ -244,6 +291,7 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
           </div>
         </div>
       )}
+
     </div>
   );
 };

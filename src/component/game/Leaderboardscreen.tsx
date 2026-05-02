@@ -89,9 +89,10 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
     }, [playerScore, playerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Mark current player in the fetched list
+    const playerPhone254 = (localStorage.getItem("bongo_player_phone") ?? "").replace(/^0/, "254");
     const entries: LeaderboardEntry[] = dbLeaders.map(e => ({
         ...e,
-        isCurrentPlayer: e.name === playerName && e.score === playerScore,
+        isCurrentPlayer: !!playerPhone254 && e.phone === playerPhone254,
     }));
 
     useEffect(() => {
