@@ -2,9 +2,9 @@
 import {type FC, useEffect, useRef, useState} from "react";
 import logoBg from "../../assets/logo.png";
 import mainLogo from "../../assets/background.png";
-import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
-import biologyLogo from "../BiologyQuiz/assets/logo2.png";
-import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
+// import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
+// import biologyLogo from "../BiologyQuiz/assets/logo2.png";
+// import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
 import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
 import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
@@ -245,10 +245,10 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </div>
 
             <div className="home-content">
-                <div className="home-badge">
-                    <span className="home-badge-dot"/>
-                    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>
-                </div>
+                {/*<div className="home-badge">*/}
+                {/*    <span className="home-badge-dot"/>*/}
+                {/*    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>*/}
+                {/*</div>*/}
 
 
 
