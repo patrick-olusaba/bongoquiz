@@ -20,6 +20,7 @@ import { LeaderboardScreen }       from "./Leaderboardscreen.tsx";
 import { DeductionModal }          from "./DeductionModal.tsx";
 import { SessionSummary }          from "./SessionSummary.tsx";
 import { GameHistory }             from "./GameHistory.tsx";
+import { clearQuestionsCache }     from "../../hooks/useQuestions.ts";
 
 // ─── R1 score modifier ────────────────────────────────────────────────────────
 function applyR1Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
@@ -160,6 +161,7 @@ export const BongoMain: FC = () => {
     };
 
     const resetGame = () => {
+        clearQuestionsCache();
         localStorage.removeItem("bongo_session_score");
         const savedName = localStorage.getItem("bongo_player_name") ?? "Player";
         setPlayerName(savedName);
@@ -199,6 +201,7 @@ export const BongoMain: FC = () => {
                 // Clean up granted session doc via Cloud Function
                 const phone = localStorage.getItem("bongo_player_phone") ?? "";
                 if (phone) httpsCallable(getFunctions(), "consumeGrantedSession")({ phone }).catch(() => {});
+                clearQuestionsCache();
                 setScreen("transition_r1");
             } else {
                 setScreen("deduct_r1r2");
@@ -212,7 +215,7 @@ export const BongoMain: FC = () => {
             roundLabel="Rounds 1 & 2"
             phone={playerPhone}
             playerName={playerName}
-            onAccept={() => setScreen("transition_r1")}
+            onAccept={() => { clearQuestionsCache(); setScreen("transition_r1"); }}
             onDecline={resetGame}
         />;
 

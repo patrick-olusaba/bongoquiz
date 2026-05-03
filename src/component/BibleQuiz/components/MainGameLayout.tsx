@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../firebase.ts';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import MainMenu from '../components/MainMenu.tsx';
@@ -47,6 +47,30 @@ export const MainGameLayout = () => {
         localStorage.getItem('bongo_player_name') || 'Bible Scholar',
         BIBLE_QUESTIONS
     ));
+
+    const [hasPaidSession, setHasPaidSession] = useState(false);
+    useEffect(() => {
+        const phone = localStorage.getItem('bongo_player_phone');
+        if (!phone || !/^07\d{8}$/.test(phone)) return;
+        const phone254 = phone.replace(/^0/, '254');
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        getDocs(query(collection(db, 'payments'), where('phone', '==', phone254), where('status', '==', 'paid'), where('game', '==', 'BIBLEQUIZ'), limit(5)))
+            .then(async snap => {
+                if (snap.empty) return;
+                const latest = snap.docs
+                    .map(d => ({ ...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0) }))
+                    .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime())[0];
+                if (latest._paidAt < since) return;
+                const sessionSnap = await getDocs(query(collection(db, 'bibleQuizSessions'), where('phone', '==', phone), limit(10)));
+                const alreadyPlayed = sessionSnap.docs.some(d => (d.data().playedAt?.toDate?.() ?? new Date(0)) > latest._paidAt);
+                if (!alreadyPlayed) setHasPaidSession(true);
+            }).catch(() => {});
+        // Also listen for admin-granted sessions
+        const unsub = onSnapshot(doc(db, 'grantedBibleSessions', phone), snap => {
+            if (snap.exists()) setHasPaidSession(true);
+        }, () => {});
+        return unsub;
+    }, []);
 
     const [gameState, setGameState] = useState<GameState>({
         currentScreen: 'menu',
@@ -201,7 +225,12 @@ export const MainGameLayout = () => {
     // Auto-next is handled directly in handleAnswerSelect via setTimeout
 
     const startNewGame = () => {
-        setGameState(prev => ({ ...prev, currentScreen: 'deduction' }));
+        if (hasPaidSession) {
+            setHasPaidSession(false);
+            setGameState(prev => ({ ...prev, currentScreen: 'intro' }));
+        } else {
+            setGameState(prev => ({ ...prev, currentScreen: 'deduction' }));
+        }
     };
 
     const _doStartGame = () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, where, limit, doc, onSnapshot } from 'firebase/firestore';
 import { getRandomQuestions } from '../constants/data';
 import type { Question, LeaderboardEntry } from '../types';
 import { audioSystem } from '../utils/audio';
@@ -23,6 +23,32 @@ export function useQuiz() {
     } else {
       window.history.pushState({ screen }, '', '');
     }
+  }, []);
+
+  // Check on mount if this phone has a paid session not yet played
+  const [hasPaidSession, setHasPaidSession] = useState(false);
+  useEffect(() => {
+    const phone = localStorage.getItem('biologyPlayerPhone');
+    if (!phone || !/^07\d{8}$/.test(phone)) return;
+    const phone254 = phone.replace(/^0/, '254');
+    const db = getFirestore();
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    getDocs(query(collection(db, 'payments'), where('phone', '==', phone254), where('status', '==', 'paid'), where('game', '==', 'BIOLOGYQUIZ'), limit(5)))
+      .then(async snap => {
+        if (snap.empty) return;
+        const latest = snap.docs
+          .map(d => ({ ...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0) }))
+          .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime())[0];
+        if (latest._paidAt < since) return;
+        const sessionSnap = await getDocs(query(collection(db, 'bioQuizSessions'), where('phone', '==', phone), limit(10)));
+        const alreadyPlayed = sessionSnap.docs.some(d => (d.data().playedAt?.toDate?.() ?? new Date(0)) > latest._paidAt);
+        if (!alreadyPlayed) setHasPaidSession(true);
+      }).catch(() => {});
+    // Also listen for admin-granted sessions
+    const unsub = onSnapshot(doc(db, 'grantedBioSessions', phone), snap => {
+      if (snap.exists()) setHasPaidSession(true);
+    }, () => {});
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -97,7 +123,12 @@ export function useQuiz() {
     localStorage.setItem('biologyPlayerPhone', phone);
     setPlayerName(name);
     setPlayerPhone(phone);
-    setCurrentScreen('payment');
+    if (hasPaidSession) {
+      setHasPaidSession(false);
+      setCurrentScreen('intro', true);
+    } else {
+      setCurrentScreen('payment');
+    }
   };
 
   const handleStartGame = () => {
@@ -111,11 +142,15 @@ export function useQuiz() {
       if (!snap.empty) {
         const all = snap.docs.map(d => {
           const data = d.data();
-          // Firestore stores answer as index; normalize to correct_answer string
           const correct_answer = data.correct_answer ?? data.options?.[data.answer] ?? '';
           return { id: d.id, ...data, correct_answer } as Question;
         });
-        questions = all.sort(() => 0.5 - Math.random()).slice(0, 50);
+        // Fisher-Yates shuffle
+        for (let i = all.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [all[i], all[j]] = [all[j], all[i]];
+        }
+        questions = all.slice(0, 50);
       }
     } catch { /* ignore */ }
     if (questions.length === 0) questions = getRandomQuestions(50);
@@ -295,6 +330,7 @@ export function useQuiz() {
     playerPhone,
     setPlayerPhone,
     leaderboard,
+    hasPaidSession,
     topicQuestions,
     currentQuestionIndex,
     score,

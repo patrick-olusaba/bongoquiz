@@ -1,6 +1,6 @@
 // AdminBibleQuiz.tsx — Bible Quiz admin: questions, payments, sessions, leaderboard
 import { useState, useEffect, useRef } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch, query, where, setDoc } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 
 interface BQQuestion {
@@ -431,46 +431,119 @@ function BQPayments() {
 // ── Sessions Tab ──────────────────────────────────────────────────────────────
 function BQSessions() {
     const [rows, setRows] = useState<any[]>([]);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [dismissed, setDismissed] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
+    const [tab, setTab] = useState<"sessions" | "stuck">("sessions");
+    const [granting, setGranting] = useState<string | null>(null);
 
     useEffect(() => {
         getDocs(collection(db, "bibleQuizSessions"))
             .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
                 .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))))
             .catch(() => {});
+        getDocs(query(collection(db, "payments"), where("game", "==", "BIBLEQUIZ")))
+            .then(snap => setPayments(snap.docs.map(d => ({ _id: d.id, ...d.data() }))))
+            .catch(() => {});
+        getDocs(collection(db, "dismissedBiblePayments"))
+            .then(snap => setDismissed(new Set(snap.docs.map(d => d.id))))
+            .catch(() => {});
     }, []);
+
+    const stuckPlayers = payments.filter(p => {
+        if (p.status !== "paid") return false;
+        if (dismissed.has(p._id)) return false;
+        const paidAt: Date = p.createdAt?.toDate?.() ?? new Date(0);
+        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        return !rows.some(s => (s.phone === phone07 || s.phone === p.phone) && (s.playedAt?.toDate?.() ?? new Date(0)) > paidAt);
+    });
+
+    const grantSession = async (p: any) => {
+        const phone07 = (p.phone ?? "").replace(/^254/, "0");
+        setGranting(phone07);
+        try {
+            await setDoc(doc(db, "grantedBibleSessions", phone07), {
+                phone: phone07, name: p.name ?? "", grantedAt: new Date(), grantedBy: "admin", paymentId: p._id,
+            });
+            setPayments(prev => prev.filter(x => x._id !== p._id));
+        } catch (e) { alert("Failed to grant session: " + e); }
+        setGranting(null);
+    };
 
     const filtered = rows.filter(r => !search ||
         (r.name ?? "").toLowerCase().includes(search.toLowerCase()) || (r.phone ?? "").includes(search));
-
     const { page, setPage, total, slice, from, to } = usePage(filtered);
 
     return (
         <div style={s.card}>
             <h2 style={s.h2}>Game Sessions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({rows.length})</span></h2>
-            <input style={{ ...s.input, maxWidth: 240, marginBottom: 14 }} placeholder="Search name or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>Showing {from}–{to} of {filtered.length}</div>
-            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
-                <table style={s.table}>
-                    <thead><tr>{["#", "Name", "Phone", "Score", "Correct", "Wrong", "Passed", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-                    <tbody>
-                        {slice.map((r, i) => (
-                            <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{(page-1)*PAGE + i + 1}</td>
-                                <td style={s.td}>{r.name ?? "—"}</td>
-                                <td style={s.td}>{r.phone ?? "—"}</td>
-                                <td style={s.td}><strong>{(r.score ?? 0).toLocaleString()}</strong></td>
-                                <td style={s.td}>{r.correct ?? 0}</td>
-                                <td style={s.td}>{r.wrong ?? 0}</td>
-                                <td style={s.td}>{r.passed ?? 0}</td>
-                                <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
-                            </tr>
-                        ))}
-                        {!slice.length && <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No sessions</td></tr>}
-                    </tbody>
-                </table>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <button onClick={() => setTab("sessions")}
+                    style={{ ...s.btn, background: tab === "sessions" ? "#4361ee" : "#f0f0f8", color: tab === "sessions" ? "#fff" : "#444" }}>
+                    🎮 All Sessions ({rows.length})
+                </button>
+                <button onClick={() => setTab("stuck")}
+                    style={{ ...s.btn, background: tab === "stuck" ? "#dc2626" : "#f0f0f8", color: tab === "stuck" ? "#fff" : "#444" }}>
+                    ⚠️ Stuck at Payment ({stuckPlayers.length})
+                </button>
             </div>
-            <Pager page={page} total={total} setPage={setPage} />
+
+            {tab === "stuck" ? (<>
+                <div style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#9f1239", fontSize: "0.85rem" }}>
+                    These players paid but never started a game session. Click <strong>Grant Session</strong> to restore their access.
+                </div>
+                <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                    <table style={s.table}>
+                        <thead><tr>{["Name", "Phone", "Amount", "Paid At", "Action"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                            {stuckPlayers.length ? stuckPlayers.map(p => (
+                                <tr key={p._id}>
+                                    <td style={s.td}>{p.name ?? "—"}</td>
+                                    <td style={s.td}>{(p.phone ?? "—").replace(/^254/, "0")}</td>
+                                    <td style={s.td}>{p.amount != null ? `KSh ${p.amount}` : "—"}</td>
+                                    <td style={s.td}>{p.createdAt?.toDate?.()?.toLocaleString("en-GB") ?? "—"}</td>
+                                    <td style={s.td}>
+                                        <div style={{ display: "flex", gap: 6 }}>
+                                            <button disabled={granting === (p.phone ?? "").replace(/^254/, "0")} onClick={() => grantSession(p)}
+                                                style={{ ...s.btn, background: "#22c55e", color: "#fff" }}>
+                                                {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
+                                            </button>
+                                            <button onClick={() => {
+                                                setDoc(doc(db, "dismissedBiblePayments", p._id), { dismissedAt: new Date() }).catch(() => {});
+                                                setDismissed(prev => new Set([...prev, p._id]));
+                                            }} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Already Granted</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan={5} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No stuck players 🎉</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </>) : (<>
+                <input style={{ ...s.input, maxWidth: 240, marginBottom: 14 }} placeholder="Search name or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+                <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: 8 }}>Showing {from}–{to} of {filtered.length}</div>
+                <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+                    <table style={s.table}>
+                        <thead><tr>{["#", "Name", "Phone", "Score", "Correct", "Wrong", "Passed", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                            {slice.map((r, i) => (
+                                <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                                    <td style={s.td}>{(page-1)*PAGE + i + 1}</td>
+                                    <td style={s.td}>{r.name ?? "—"}</td>
+                                    <td style={s.td}>{r.phone ?? "—"}</td>
+                                    <td style={s.td}><strong>{(r.score ?? 0).toLocaleString()}</strong></td>
+                                    <td style={s.td}>{r.correct ?? 0}</td>
+                                    <td style={s.td}>{r.wrong ?? 0}</td>
+                                    <td style={s.td}>{r.passed ?? 0}</td>
+                                    <td style={s.td}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
+                                </tr>
+                            ))}
+                            {!slice.length && <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No sessions</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+                <Pager page={page} total={total} setPage={setPage} />
+            </>)}
         </div>
     );
 }
