@@ -382,6 +382,15 @@ export function AdminQuestions() {
         setSelected(new Set());
     };
 
+    const deleteAllQuestions = async () => {
+        if (!confirm(`Delete ALL ${qs.length} questions? This cannot be undone.`)) return;
+        const batch = writeBatch(db);
+        qs.forEach(q => batch.delete(doc(db, "questions", q.id!)));
+        await batch.commit();
+        setQs([]);
+        setSelected(new Set());
+    };
+
     const bulkSetActive = async (active: boolean) => {
         const batch = writeBatch(db);
         selected.forEach(id => batch.update(doc(db, "questions", id), { active }));
@@ -576,11 +585,14 @@ export function AdminQuestions() {
                         </button>
                     ))}
                     <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button onClick={exportCSV} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📥 Export CSV</button>
+                        <button onClick={exportCSV} style={{ ...s.btn, background: "#059669", color: "#fff" }}>📥 Export CSV</button>
                         <button onClick={() => { clearQuestionsCache(); alert("Cache cleared."); }} style={{ ...s.btn, background: "#f0f0f8", color: "#666", border: "1px solid #ddd" }}>🔄 Cache</button>
                         <button onClick={() => setPasteOpen(true)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a" }}>📋 Paste</button>
-                        <button onClick={() => setCsvOpen(true)}   style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 CSV</button>
+                        <button onClick={() => setCsvOpen(true)}   style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>📂 Import CSV</button>
                         <button onClick={() => setAdding(true)}    style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add</button>
+                        {qs.length > 0 && (
+                            <button onClick={() => deleteAllQuestions()} style={{ ...s.btn, background: "#dc2626", color: "#fff" }}>🗑️ Delete All</button>
+                        )}
                     </div>
                 </div>
 

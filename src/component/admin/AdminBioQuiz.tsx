@@ -114,6 +114,23 @@ function QuestionModal({ q, onSave, onClose }: { q: BQQuestion | null; onSave: (
     );
 }
 
+// ── Confirm Modal ─────────────────────────────────────────────────────────────
+function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+    return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+            onClick={e => e.target === e.currentTarget && onCancel()}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: "100%", maxWidth: 400 }}>
+                <h3 style={{ margin: "0 0 16px", color: "#1a1a2e" }}>Confirm Action</h3>
+                <p style={{ margin: "0 0 24px", color: "#555", lineHeight: 1.5 }}>{message}</p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button onClick={onCancel} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Cancel</button>
+                    <button onClick={onConfirm} style={{ ...s.btn, background: "#dc2626", color: "#fff" }}>OK</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Questions Tab ─────────────────────────────────────────────────────────────
 function BQQuestions() {
     const [questions, setQuestions] = useState<BQQuestion[]>([]);
@@ -121,6 +138,8 @@ function BQQuestions() {
     const [adding,    setAdding]    = useState(false);
     const [search,    setSearch]    = useState("");
     const [qTab,      setQTab]      = useState<"all"|"duplicates">("all");
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
     const [importing, setImporting] = useState(false);
     const [msg,       setMsg]       = useState("");
     const [page,      setPage]      = useState(0);
@@ -157,9 +176,44 @@ function BQQuestions() {
     };
 
     const del = async (id: string) => {
-        if (!confirm("Delete this question?")) return;
         await deleteDoc(doc(db, "bioQuizQuestions", id));
         setQuestions(prev => prev.filter(q => q.id !== id));
+        setDeleteQuestionId(null);
+    };
+
+    const showDeleteConfirm = (id: string) => {
+        setDeleteQuestionId(id);
+    };
+
+    const deleteAllQuestions = async () => {
+        const batch = writeBatch(db);
+        questions.forEach(q => batch.delete(doc(db, "bioQuizQuestions", q.id!)));
+        await batch.commit();
+        setQuestions([]);
+        setShowConfirm(false);
+    };
+
+    const exportToCSV = () => {
+        const csvContent = [
+            "question,optionA,optionB,optionC,optionD,correct(A-D),category",
+            ...questions.map(q => [
+                `"${q.question}"`,
+                `"${q.options[0]}"`,
+                `"${q.options[1]}"`,
+                `"${q.options[2]}"`,
+                `"${q.options[3]}"`,
+                String.fromCharCode(65 + q.answer),
+                `"${q.category || ""}"`
+            ].join(","))
+        ].join("\n");
+        
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `biology_quiz_questions_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +246,16 @@ function BQQuestions() {
 
     return <>
         {(editing || adding) && <QuestionModal q={editing} onSave={save} onClose={() => { setEditing(null); setAdding(false); }} />}
+        {showConfirm && <ConfirmModal 
+            message={`Delete ALL ${questions.length} questions? This cannot be undone.`}
+            onConfirm={deleteAllQuestions}
+            onCancel={() => setShowConfirm(false)}
+        />}
+        {deleteQuestionId && <ConfirmModal 
+            message="Delete this question? This cannot be undone."
+            onConfirm={() => del(deleteQuestionId)}
+            onCancel={() => setDeleteQuestionId(null)}
+        />}
         <div style={s.card}>
             <h2 style={s.h2}>Questions <span style={{ color: "#aaa", fontWeight: 400, fontSize: "0.85rem" }}>({questions.length} total)</span></h2>
 
@@ -236,7 +300,7 @@ function BQQuestions() {
                                             <td style={s.td}>
                                                 <div style={{ display: "flex", gap: 6 }}>
                                                     <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
-                                                    {i !== 0 && <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>}
+                                                    {i !== 0 && <button onClick={() => showDeleteConfirm(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Delete</button>}
                                                 </div>
                                             </td>
                                         </tr>
@@ -251,7 +315,7 @@ function BQQuestions() {
                     <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
                     <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                     <button onClick={() => fileRef.current?.click()} disabled={importing}
-                        style={{ ...s.btn, background: "#059669", color: "#fff" }}>
+                        style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>
                         {importing ? "Importing…" : "📥 Import CSV"}
                     </button>
                     <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFile} />
@@ -260,6 +324,16 @@ function BQQuestions() {
                         style={{ ...s.btn, background: "#f0f0f8", color: "#444", textDecoration: "none", display: "inline-block" }}>
                         📄 CSV Template
                     </a>
+                    {questions.length > 0 && (
+                        <>
+                            <button onClick={exportToCSV} style={{ ...s.btn, background: "#059669", color: "#fff" }}>
+                                📤 Export CSV
+                            </button>
+                            <button onClick={() => setShowConfirm(true)} style={{ ...s.btn, background: "#dc2626", color: "#fff" }}>
+                                🗑️ Delete All Questions
+                            </button>
+                        </>
+                    )}
                 </div>
                 {msg && <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 6, background: msg.startsWith("✅") ? "#dcfce7" : "#fee2e2", color: msg.startsWith("✅") ? "#166534" : "#991b1b", fontSize: "0.85rem" }}>{msg}</div>}
                 <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
@@ -277,7 +351,7 @@ function BQQuestions() {
                                     <td style={s.td}>
                                         <div style={{ display: "flex", gap: 6 }}>
                                             <button onClick={() => setEditing(q)} style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
-                                            <button onClick={() => del(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Del</button>
+                                            <button onClick={() => showDeleteConfirm(q.id!)} style={{ ...s.btn, background: "#fee2e2", color: "#991b1b" }}>Del</button>
                                         </div>
                                     </td>
                                 </tr>
