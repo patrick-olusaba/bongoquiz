@@ -76,6 +76,7 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .quiz-wrapper {
@@ -413,6 +414,8 @@ body {
   margin-bottom: 2rem;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .question-card::before {
@@ -1450,6 +1453,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start; /* was center — now sticks to top */
+    box-sizing: border-box;
   }
 
   /* ── MOBILE QUESTION TEXT: not bold ── */
