@@ -47,14 +47,15 @@ function Pagination({ total, page, setPage }: { total: number; page: number; set
     );
 }
 // ── Parse CSV text into questions ─────────────────────────────────────────────
-// Expected format: question,optionA,optionB,optionC,optionD,correctIndex(0-3),category
+// Expected format: question,optionA,optionB,optionC,optionD,correct(A-D),category
 function parseCSV(text: string): BQQuestion[] {
     return text.split("\n")
         .map(l => l.trim()).filter(l => l && !l.startsWith("#"))
         .map(line => {
             const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
             if (cols.length < 6) return null;
-            const answerIdx = parseInt(cols[5]);
+            const raw = cols[5].toUpperCase();
+            const answerIdx = ["A","B","C","D"].includes(raw) ? raw.charCodeAt(0) - 65 : parseInt(cols[5]);
             if (isNaN(answerIdx) || answerIdx < 0 || answerIdx > 3) return null;
             return {
                 question: cols[0],
@@ -254,7 +255,7 @@ function BQQuestions() {
                         {importing ? "Importing…" : "📥 Import CSV"}
                     </button>
                     <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleFile} />
-                    <a href="data:text/plain,question,optionA,optionB,optionC,optionD,correctIndex(0-3),category%0AWhat is the first book of the Bible?,Genesis,Exodus,Leviticus,Numbers,0,Old Testament"
+                    <a href="data:text/plain,question,optionA,optionB,optionC,optionD,correct(A-D),category%0AWhat is the first book of the Bible?,Genesis,Exodus,Leviticus,Numbers,A,Old Testament"
                         download="bible_quiz_template.csv"
                         style={{ ...s.btn, background: "#f0f0f8", color: "#444", textDecoration: "none", display: "inline-block" }}>
                         📄 CSV Template
