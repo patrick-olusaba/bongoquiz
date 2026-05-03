@@ -61,7 +61,7 @@
 .menu-backdrop {
     position: fixed; inset: 0; z-index: 19;
     background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(8px);
 }
 
 /* ── Drawer ── */
@@ -227,8 +227,8 @@
     width: min(900px, 85vw);
     height: auto;
 
-    opacity: 0.2;
-    filter: blur(1px);
+    opacity: 0.6;
+    filter: blur(3px);
     mix-blend-mode: screen;
 
     z-index: 1;
@@ -381,14 +381,14 @@
     margin-bottom: 20px;
 }
 .home-round-card {
-    background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
+    background: linear-gradient(160deg, rgb(171 131 239 / 0.13) 0%, rgb(58 1 77) 100%);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
-    padding: 16px 10px;
+    padding: 10px 16px;
     text-align: center;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     cursor: default;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(0px);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 24px rgba(0,0,0,0.3);
     animation: floatUp 0.6s ease both;
 }
@@ -401,7 +401,7 @@
     font-size: 0.6rem;
     font-weight: 900;
     letter-spacing: 3px;
-    color: rgba(255,255,255,0.2);
+    color: rgb(255 255 255 / 0.56);
     margin-bottom: 10px;
     text-transform: uppercase;
 }
@@ -425,7 +425,7 @@
 }
 .home-round-desc {
     font-size: 0.68rem;
-    color: rgba(255,255,255,0.35);
+    color: rgb(255 255 255 / 0.56);
     line-height: 1.5;
 }
 

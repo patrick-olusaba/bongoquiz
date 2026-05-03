@@ -143,7 +143,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             label: "Quickfire",
             icon: "⚡",
             desc: "90s · 100 pts per answer · race the clock",
-            color: "#7B61FF",
+            color: "#00c6ff",
             glow: "drop-shadow(0 0 12px rgba(123,97,255,0.6))"
         },
         {
@@ -151,7 +151,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             label: "Categories",
             icon: "🗂️",
             desc: "40s · 10 questions · powers apply",
-            color: "#FF6B6B",
+            color: "#eaaaff",
             glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))"
         },
         {
