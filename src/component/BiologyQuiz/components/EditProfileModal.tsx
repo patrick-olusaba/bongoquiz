@@ -112,6 +112,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit",
     };
 
+
     return (
         <AnimatePresence>
             {isOpen && (
