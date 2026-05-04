@@ -39,22 +39,7 @@ const BiologyGameIntro: FC<Props> = ({ onDone }) => {
             opacity: phase === "out" ? 0 : 1,
             transition: phase === "out" ? "opacity 0.6s ease" : "none",
         }}>
-            {/* Light rays */}
-            {showRays && (
-                <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-                    {Array.from({ length: 12 }).map((_, i) => (
-                        <div key={i} style={{
-                            position: "absolute", top: "50%", left: "50%",
-                            width: 3, height: "70vh",
-                            background: "linear-gradient(to bottom, rgba(0,220,100,0.35), transparent)",
-                            transformOrigin: "top center",
-                            transform: `rotate(${i * 30}deg) translateX(-50%)`,
-                            animation: "bioRayExpand 0.6s ease-out forwards",
-                            animationDelay: `${i * 30}ms`,
-                        }} />
-                    ))}
-                </div>
-            )}
+            {/* Shockwave rings only - no rays */}
 
             {/* Shockwave rings */}
             {showLogo && [0, 180, 360].map(delay => (
@@ -124,10 +109,6 @@ const BiologyGameIntro: FC<Props> = ({ onDone }) => {
             )}
 
             <style>{`
-                @keyframes bioRayExpand {
-                    from { opacity: 0; transform: rotate(var(--r,0deg)) translateX(-50%) scaleY(0); }
-                    to   { opacity: 1; transform: rotate(var(--r,0deg)) translateX(-50%) scaleY(1); }
-                }
                 @keyframes bioShockRing {
                     from { transform: scale(1); opacity: 0.8; }
                     to   { transform: scale(40); opacity: 0; }

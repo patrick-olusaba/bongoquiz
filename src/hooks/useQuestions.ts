@@ -18,6 +18,8 @@ async function fetchRound(round: Round) {
     return docs;
 }
 
+const mapQ = (d: any) => d.question ?? d.q ?? "";
+
 export function useR1Questions() {
     const [qs,      setQs]      = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export function useR1Questions() {
         fetchRound("r1")
             .then(docs => {
                 const source = docs.length > 0
-                    ? docs.map(d => ({ q: d.question, options: d.options, answer: d.correct }))
+                    ? docs.map(d => ({ q: mapQ(d), options: d.options, answer: d.correct }))
                     : R1_QUESTIONS;
                 setQs(shuffle(source));
             })
@@ -51,7 +53,7 @@ export function useR2Questions() {
 
         fetchRound("r2")
             .then(docs => setQs(docs.length > 0
-                ? shuffle(docs.map(d => ({ q: d.question, options: d.options, answer: d.correct, category: d.category as Category })))
+                ? shuffle(docs.map(d => ({ q: mapQ(d), options: d.options, answer: d.correct, category: d.category as Category })))
                 : fallback()))
             .catch(() => setQs(fallback()))
             .finally(() => setLoading(false));
@@ -68,7 +70,7 @@ export function useR3Questions() {
         fetchRound("r3")
             .then(docs => {
                 const source = docs.length > 0
-                    ? docs.map(d => ({ q: d.question, options: d.options, answer: d.correct }))
+                    ? docs.map(d => ({ q: mapQ(d), options: d.options, answer: d.correct }))
                     : R3_QUESTIONS;
                 setQs(shuffle(source));
             })

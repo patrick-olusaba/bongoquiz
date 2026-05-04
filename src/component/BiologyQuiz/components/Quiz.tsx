@@ -144,6 +144,7 @@ export const Quiz: React.FC<Props> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           className="quiz-center-content"
+          style={{ width: '100%' }}
       >
         <div className="main-container">
           <div className="quiz-header" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

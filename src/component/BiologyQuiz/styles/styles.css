@@ -56,8 +56,6 @@ body {
   font-family: 'Outfit', sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 /* Layout */
@@ -65,17 +63,18 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .main-container {
-  max-width: 800px;
+  max-width: 480px;
+  width: 480px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
   flex: 1;
   display: flex;
   flex-direction: column;
-  width: 100%;
   box-sizing: border-box;
 }
 
@@ -416,6 +415,7 @@ body {
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
+  min-height: 200px;
 }
 
 .question-card::before {
@@ -1264,6 +1264,8 @@ body {
 
   .main-container {
     padding: 2rem 1rem;
+    width: 100%;
+    max-width: 100%;
   }
 
   .title-main {
@@ -1330,6 +1332,8 @@ body {
   .main-container {
     padding: 0.25rem;
     justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
   }
 
   .quiz-center-content .main-container {
@@ -1453,7 +1457,6 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start; /* was center — now sticks to top */
-    box-sizing: border-box;
   }
 
   /* ── MOBILE QUESTION TEXT: not bold ── */

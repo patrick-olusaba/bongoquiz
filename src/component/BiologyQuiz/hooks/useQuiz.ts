@@ -144,7 +144,7 @@ export function useQuiz() {
           const data = d.data();
           const correct_answer = data.correct_answer ?? data.options?.[data.answer] ?? '';
           return { id: d.id, ...data, correct_answer } as Question;
-        });
+        }).filter(q => q.question && q.question.trim() !== '');
         // Fisher-Yates shuffle
         for (let i = all.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));

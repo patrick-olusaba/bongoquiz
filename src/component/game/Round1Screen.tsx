@@ -242,7 +242,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                     </div>
                 )}
 
-                <div className="game-question" style={{ height: 100, minHeight: 100, maxHeight: 100, overflow: 'hidden', flexShrink: 0 }}><p>{q.q}</p></div>
+                <div className="game-question"><p>{q.q}</p></div>
 
                 {q.options.map((opt, i) => {
                     const isElim = eliminated.includes(i);
