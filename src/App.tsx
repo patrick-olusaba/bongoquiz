@@ -13,7 +13,7 @@ const AdminView     = lazy(() => import("./component/admin/AdminView.tsx").then(
 const SummaryView   = lazy(() => import("./component/summary/SummaryView.tsx").then(m => ({ default: m.SummaryView })));
 const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPapers.tsx").then(m => ({ default: m.KCSEPastPapers })));
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
-const BibleQuiz     = lazy(() => import("./component/BibleQuiz/components/MainGameLayout.tsx").then(m => ({ default: m.MainGameLayout })));
+const BibleQuiz     = lazy(() => import("./component/BibleQuiz/App.tsx"));
 const BiologyQuiz   = lazy(() => import("./component/BiologyQuiz/App.tsx"));
 
 function KCSEAdminRoute() {

@@ -118,7 +118,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
             />
 
             {/* Top Nav Bar */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1.5rem', alignItems: 'center', zIndex: 40, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1.5rem', alignItems: 'center', zIndex: 40, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <img src={logo} alt="Biology Quiz Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />
                 </div>

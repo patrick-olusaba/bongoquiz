@@ -24,24 +24,83 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
   const [historySessions, setHistorySessions] = useState<any[]>([]);
   const [name, setName]   = useState(() => localStorage.getItem("bongo_player_name") ?? "");
   const [phone, setPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
+  const [pin,     setPin]     = useState("");
+  const [pinConf, setPinConf] = useState("");
+  const [authStep, setAuthStep] = useState<"phone"|"new"|"login"|"reset_old"|"reset_new">("phone");
   const [nameErr, setNameErr] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [hasPin, setHasPin] = useState(true);
   const personalBest = parseInt(localStorage.getItem("bible_best_score") ?? "0");
 
-  const saveProfile = () => {
-    const n = name.trim().slice(0, 20);
+  const checkPhone = async () => {
     const p = phone.trim();
-    if (!n) return setNameErr("Enter your name.");
     if (!/^07\d{8}$/.test(p)) return setNameErr("Enter a valid phone (07XXXXXXXX).");
-    setNameErr("");
-    localStorage.setItem("bongo_player_name", n);
-    localStorage.setItem("bongo_player_phone", p);
-    setShowNameModal(false);
-    onStartGame();
+    setNameErr(""); setAuthLoading(true);
+    try {
+      const { lookupPlayer } = await import("../../../utils/playerAuth.ts");
+      const player = await lookupPlayer(p);
+      if (player) { setName(player.name); setHasPin(player.hasPin); setAuthStep("login"); }
+      else setAuthStep("new");
+    } catch { setNameErr("Network error. Try again."); }
+    finally { setAuthLoading(false); }
+  };
+
+  const register = async () => {
+    const n = name.trim().slice(0, 20);
+    if (!n) return setNameErr("Enter your name.");
+    if (!/^\d{4}$/.test(pin)) return setNameErr("PIN must be 4 digits.");
+    if (pin !== pinConf) return setNameErr("PINs do not match.");
+    setNameErr(""); setAuthLoading(true);
+    try {
+      const { registerPlayer, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+      await registerPlayer(n, phone.trim(), pin);
+      saveLocalProfile(n, phone.trim());
+      setShowNameModal(false); onStartGame();
+    } catch { setNameErr("Failed to save. Try again."); }
+    finally { setAuthLoading(false); }
+  };
+
+  const login = async () => {
+    if (!/^\d{4}$/.test(pin)) return setNameErr("Enter your 4-digit PIN.");
+    setNameErr(""); setAuthLoading(true);
+    try {
+      const { verifyPin, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+      const ok = await verifyPin(phone.trim(), pin);
+      if (!ok) return setNameErr("Incorrect PIN. Try again.");
+      saveLocalProfile(name, phone.trim());
+      setShowNameModal(false); onStartGame();
+    } catch { setNameErr("Network error. Try again."); }
+    finally { setAuthLoading(false); }
+  };
+
+  const verifyOldPin = async () => {
+    if (!/^\d{4}$/.test(pin)) return setNameErr("Enter your current 4-digit PIN.");
+    setNameErr(""); setAuthLoading(true);
+    try {
+      const { verifyPin } = await import("../../../utils/playerAuth.ts");
+      const ok = await verifyPin(phone.trim(), pin);
+      if (!ok) return setNameErr("Incorrect PIN. Try again.");
+      setPin(""); setPinConf(""); setAuthStep("reset_new");
+    } catch { setNameErr("Network error. Try again."); }
+    finally { setAuthLoading(false); }
+  };
+
+  const saveNewPin = async () => {
+    if (!/^\d{4}$/.test(pin)) return setNameErr("New PIN must be 4 digits.");
+    if (pin !== pinConf) return setNameErr("PINs do not match.");
+    setNameErr(""); setAuthLoading(true);
+    try {
+      const { registerPlayer, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+      await registerPlayer(name, phone.trim(), pin);
+      saveLocalProfile(name, phone.trim());
+      setShowNameModal(false);
+    } catch { setNameErr("Failed to save. Try again."); }
+    finally { setAuthLoading(false); }
   };
 
   const handlePlay = () => {
     const p = localStorage.getItem("bongo_player_phone") ?? "";
-    if (!p || !/^07\d{8}$/.test(p)) { setShowNameModal(true); return; }
+    if (!p || !/^07\d{8}$/.test(p)) { setAuthStep("phone"); setPin(""); setNameErr(""); setShowNameModal(true); return; }
     onStartGame();
   };
 
@@ -255,25 +314,80 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
       {/* Name/Phone Modal */}
       {showNameModal && (
         <div className="mm-backdrop" onClick={() => setShowNameModal(false)}>
-          <div style={{
-            position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              background: "linear-gradient(160deg, rgba(40,10,80,0.97), rgba(10,0,30,0.99))",
+          <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ background: "linear-gradient(160deg, rgba(40,10,80,0.97), rgba(10,0,30,0.99))",
               border: "1px solid rgba(180,100,255,0.35)", borderRadius: 24, padding: "32px 28px",
-              width: "min(400px, 92vw)", textAlign: "center", backdropFilter: "blur(24px)"
-            }}>
-              <div style={{ fontSize: "2rem", marginBottom: 8 }}>👤</div>
-              <h2 style={{ color: "#fff", margin: "0 0 6px", fontSize: "1.4rem", fontWeight: 900 }}>Who are you?</h2>
+              width: "min(400px, 92vw)", textAlign: "center", backdropFilter: "blur(24px)" }}>
+              <div style={{ fontSize: "2rem", marginBottom: 8 }}>{authStep === "login" ? "🔐" : authStep === "new" ? "🆕" : (authStep === "reset_old" || authStep === "reset_new") ? "🔑" : "👤"}</div>
+              <h2 style={{ color: "#fff", margin: "0 0 6px", fontSize: "1.4rem", fontWeight: 900 }}>
+                {authStep === "phone" ? "Who are you?" : authStep === "login" ? `Welcome back, ${name}!` : authStep === "new" ? "Create Account" : authStep === "reset_old" ? "Reset PIN" : "Choose New PIN"}
+              </h2>
               <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.85rem", margin: "0 0 20px" }}>
-                Your name shows on the leaderboard. Phone is used for M-Pesa.
+                {authStep === "phone" ? "Enter your phone number to continue." :
+                 authStep === "login" ? "Enter your 4-digit PIN to sign in." :
+                 authStep === "new" ? "Choose a 4-digit PIN for your account." :
+                 authStep === "reset_old" ? "Enter your current PIN to verify it's you." :
+                 "Enter and confirm your new 4-digit PIN."}
               </p>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20}
-                style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (07XXXXXXXX)" maxLength={10}
-                style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+              {authStep === "phone" && (
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (07XXXXXXXX)" maxLength={10} autoFocus
+                  onKeyDown={e => e.key === "Enter" && checkPhone()}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+              )}
+              {authStep === "new" && (<>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20} autoFocus
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+                <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Choose a 4-digit PIN" maxLength={4} type="password"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+                <input value={pinConf} onChange={e => setPinConf(e.target.value.replace(/\D/g,""))} placeholder="Confirm PIN" maxLength={4} type="password"
+                  onKeyDown={e => e.key === "Enter" && register()}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+              </>)}
+              {authStep === "login" && (<>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20} autoFocus
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+                <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Enter your 4-digit PIN" maxLength={4} type="password"
+                  onKeyDown={e => e.key === "Enter" && login()}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+                {!hasPin && (
+                  <p style={{ color: "#f59e0b", fontSize: "0.78rem", margin: "0 0 6px", textAlign: "left" }}>
+                    💡 Your default PIN is <strong>0000</strong>. We recommend resetting it.
+                  </p>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <button onClick={() => { setAuthStep("phone"); setPin(""); setNameErr(""); }}
+                    style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "0.75rem", cursor: "pointer" }}>
+                    Not you? Change number
+                  </button>
+                  <button onClick={() => { setPin(""); setPinConf(""); setNameErr(""); setAuthStep("reset_old"); }}
+                    style={{ background: "none", border: "none", color: "#f59e0b", fontSize: "0.75rem", cursor: "pointer" }}>
+                    🔑 Reset PIN
+                  </button>
+                </div>
+              </>)}
+              {authStep === "reset_old" && (
+                <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Current PIN (default: 0000)"
+                  maxLength={4} type="password" autoFocus onKeyDown={e => e.key === "Enter" && verifyOldPin()}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+              )}
+              {authStep === "reset_new" && (<>
+                <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="New 4-digit PIN"
+                  maxLength={4} type="password" autoFocus
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit" }} />
+                <input value={pinConf} onChange={e => setPinConf(e.target.value.replace(/\D/g,""))} placeholder="Confirm new PIN"
+                  maxLength={4} type="password" onKeyDown={e => e.key === "Enter" && saveNewPin()}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px", marginBottom: 6, boxSizing: "border-box", fontFamily: "inherit" }} />
+              </>)}
               {nameErr && <p style={{ color: "#ff6b6b", fontSize: "0.8rem", margin: "0 0 10px" }}>{nameErr}</p>}
               <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
                 <button onClick={() => setShowNameModal(false)}
@@ -281,10 +395,11 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
                     borderRadius: 50, color: "rgba(255,255,255,0.6)", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
                   Cancel
                 </button>
-                <button onClick={saveProfile}
+                <button disabled={authLoading}
+                  onClick={authStep === "phone" ? checkPhone : authStep === "new" ? register : authStep === "login" ? login : authStep === "reset_old" ? verifyOldPin : saveNewPin}
                   style={{ flex: 1, background: "linear-gradient(135deg,#11998e,#38ef7d)", border: "none",
                     borderRadius: 50, color: "#fff", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>
-                  ✅ Save & Play
+                  {authLoading ? "…" : authStep === "phone" ? "Continue →" : authStep === "new" ? "✅ Create Account" : authStep === "login" ? "🔓 Sign In" : authStep === "reset_old" ? "Verify →" : "🔑 Save New PIN"}
                 </button>
               </div>
             </div>

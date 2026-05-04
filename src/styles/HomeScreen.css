@@ -6,7 +6,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     position: relative;
     overflow-y: auto;
     overflow-x: hidden;
@@ -302,13 +302,10 @@
     z-index: 2;
     width: 100%;
     max-width: 780px;
-    padding: 80px 20px 40px;
+    padding: 80px 20px 140px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100svh;
-    justify-content: center;
-    overflow-y: auto;
 }
 
 /* ── Live badge ── */
@@ -656,9 +653,7 @@
 
 @media (max-width: 600px) {
     .home-content {
-        padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-        min-height: 100svh;
-        justify-content: center;
+        padding: max(80px, env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom));
     }
     .home-title-image   { width: clamp(160px, 68vw, 200px); }
     .home-badge         { margin-bottom: 2px; }

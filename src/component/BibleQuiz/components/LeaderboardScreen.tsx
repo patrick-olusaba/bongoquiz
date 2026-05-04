@@ -51,7 +51,7 @@ const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", onPlayA
 
       const sorted = Array.from(byPhone.entries())
         .sort((a, b) => b[1].score - a[1].score)
-        .slice(0, 10)
+        .slice(0, 30)
         .map(([phone, e], i) => ({ rank: i + 1, name: e.name, score: e.score,
           isCurrentPlayer: !!playerPhone254 && phone === playerPhone254 }));
       setEntries(sorted);

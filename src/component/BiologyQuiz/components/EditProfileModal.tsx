@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface EditProfileModalProps {
@@ -8,337 +8,186 @@ interface EditProfileModalProps {
     currentName: string;
     currentPhone: string;
     onSave: (name: string, phone: string) => void;
-    onStartGame?: (name: string, phone: string) => void; // New prop for auto-start
+    onStartGame?: (name: string, phone: string) => void;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
-                                                                      isOpen,
-                                                                      onClose,
-                                                                      currentName,
-                                                                      currentPhone,
-                                                                      onSave,
-                                                                      onStartGame,
-                                                                  }) => {
-    const [name, setName] = useState(currentName);
-    const [phone, setPhone] = useState(currentPhone);
-    const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+    isOpen, onClose, currentName, currentPhone, onSave, onStartGame,
+}) => {
+    const [phone,    setPhone]    = useState(currentPhone);
+    const [name,     setName]     = useState(currentName);
+    const [pin,      setPin]      = useState("");
+    const [pinConf,  setPinConf]  = useState("");
+    const [step,     setStep]     = useState<"phone"|"new"|"login"|"reset_old"|"reset_new">(currentPhone ? "login" : "phone");
+    const [err,      setErr]      = useState("");
+    const [loading,  setLoading]  = useState(false);
+    const [hasPin,   setHasPin]   = useState(true);
 
-    // Reset form when modal opens with latest values
     useEffect(() => {
-        if (isOpen) {
-            setName(currentName);
-            setPhone(currentPhone);
-            setErrors({});
-        }
+        if (isOpen) { setPhone(currentPhone); setName(currentName); setPin(""); setPinConf(""); setStep(currentPhone ? "login" : "phone"); setErr(""); }
     }, [isOpen, currentName, currentPhone]);
 
-    const validateForm = (): boolean => {
-        const newErrors: { name?: string; phone?: string } = {};
-
-        if (!name.trim()) {
-            newErrors.name = 'Name is required';
-        } else if (name.trim().length < 2) {
-            newErrors.name = 'Name must be at least 2 characters';
-        } else if (name.trim().length > 30) {
-            newErrors.name = 'Name must be less than 30 characters';
-        }
-
-        if (!phone.trim()) {
-            newErrors.phone = 'Phone number is required';
-        } else {
-            const cleanPhone = phone.trim().replace(/\D/g, '');
-            if (cleanPhone.length < 10 || cleanPhone.length > 12) {
-                newErrors.phone = 'Enter a valid phone number (10-12 digits)';
-            } else if (!cleanPhone.startsWith('0') && !cleanPhone.startsWith('254')) {
-                newErrors.phone = 'Phone should start with 0 or 254';
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+    const checkPhone = async () => {
+        const p = phone.trim();
+        if (!/^07\d{8}$/.test(p)) return setErr("Enter a valid phone (07XXXXXXXX).");
+        setErr(""); setLoading(true);
+        try {
+            const { lookupPlayer } = await import("../../../utils/playerAuth.ts");
+            const player = await lookupPlayer(p);
+            if (player) { setName(player.name); setHasPin(player.hasPin); setStep("login"); }
+            else setStep("new");
+        } catch { setErr("Network error. Try again."); }
+        finally { setLoading(false); }
     };
 
-    const handleSave = () => {
-        if (validateForm()) {
-            const cleanPhone = phone.trim().replace(/\D/g, '');
-            const trimmedName = name.trim();
-
-            // Save the profile data
-            onSave(trimmedName, cleanPhone);
-
-            // Close the modal
+    const register = async () => {
+        const n = name.trim().slice(0, 20);
+        if (!n) return setErr("Enter your name.");
+        if (!/^\d{4}$/.test(pin)) return setErr("PIN must be 4 digits.");
+        if (pin !== pinConf) return setErr("PINs do not match.");
+        setErr(""); setLoading(true);
+        try {
+            const { registerPlayer, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+            await registerPlayer(n, phone.trim(), pin);
+            saveLocalProfile(n, phone.trim());
+            onSave(n, phone.trim());
             onClose();
-
-            // Automatically start the game if onStartGame prop is provided
-            if (onStartGame) {
-                onStartGame(trimmedName, cleanPhone);
-            }
-        }
+            onStartGame?.(n, phone.trim());
+        } catch { setErr("Failed to save. Try again."); }
+        finally { setLoading(false); }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSave();
-        }
+    const login = async () => {
+        if (!/^\d{4}$/.test(pin)) return setErr("Enter your 4-digit PIN.");
+        setErr(""); setLoading(true);
+        try {
+            const { verifyPin, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+            const ok = await verifyPin(phone.trim(), pin);
+            if (!ok) return setErr("Incorrect PIN. Try again.");
+            saveLocalProfile(name, phone.trim());
+            onSave(name, phone.trim());
+            onClose();
+            onStartGame?.(name, phone.trim());
+        } catch { setErr("Network error. Try again."); }
+        finally { setLoading(false); }
+    };
+
+    const verifyOldPin = async () => {
+        if (!/^\d{4}$/.test(pin)) return setErr("Enter your current 4-digit PIN.");
+        setErr(""); setLoading(true);
+        try {
+            const { verifyPin } = await import("../../../utils/playerAuth.ts");
+            const ok = await verifyPin(phone.trim(), pin);
+            if (!ok) return setErr("Incorrect PIN. Try again.");
+            setPin(""); setPinConf(""); setStep("reset_new");
+        } catch { setErr("Network error. Try again."); }
+        finally { setLoading(false); }
+    };
+
+    const saveNewPin = async () => {
+        if (!/^\d{4}$/.test(pin)) return setErr("New PIN must be 4 digits.");
+        if (pin !== pinConf) return setErr("PINs do not match.");
+        setErr(""); setLoading(true);
+        try {
+            const { registerPlayer, saveLocalProfile } = await import("../../../utils/playerAuth.ts");
+            await registerPlayer(name, phone.trim(), pin);
+            saveLocalProfile(name, phone.trim());
+            onSave(name, phone.trim()); onClose();
+        } catch { setErr("Failed to save. Try again."); }
+        finally { setLoading(false); }
+    };
+
+    const titles: Record<string, string> = {
+        phone: "Who are you?", new: "Create Account", login: `Welcome back, ${name}!`,
+        reset_old: "Reset PIN", reset_new: "Choose New PIN",
+    };
+    const subtitles: Record<string, string> = {
+        phone: "Enter your phone number to continue.", new: "Choose a 4-digit PIN for your account.",
+        login: "Enter your 4-digit PIN to sign in.", reset_old: "Enter your current PIN to verify it's you.",
+        reset_new: "Enter and confirm your new 4-digit PIN.",
+    };
+    const inputStyle: React.CSSProperties = {
+        width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 12, color: "#fff", fontSize: "1rem", padding: "12px 16px",
+        marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit",
     };
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="edit-profile-overlay"
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        zIndex: 1000,
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        background: 'rgba(0, 0, 0, 0.85)',
-                        backdropFilter: 'blur(8px)',
-                        padding: '1rem',
-                    }}
-                    onClick={onClose}
-                >
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-                        style={{
-                            background: 'linear-gradient(135deg, #1e1b2e 0%, #0f0a21 100%)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '1.5rem',
-                            width: '100%',
-                            maxWidth: '420px',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(244, 63, 94, 0.15)',
-                            overflow: 'hidden',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div
-                            style={{
-                                padding: '1.5rem 1.5rem 1rem 1.5rem',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                                background: 'rgba(244, 63, 94, 0.04)',
-                            }}
-                        >
-                            <div>
-                                <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.35rem', margin: 0, letterSpacing: '-0.3px' }}>
-                                    Edit Profile
-                                </h3>
-                                <p style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.75rem', margin: '0.35rem 0 0' }}>
-                                    Your name shows on the leaderboard. Phone is used for M-Pesa.
-                                </p>
-                            </div>
-                            <button
-                                onClick={onClose}
-                                style={{
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    borderRadius: '0.75rem',
-                                    width: '34px',
-                                    height: '34px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#cbd5e1',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(244, 63, 94, 0.2)';
-                                    e.currentTarget.style.color = '#fff';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                    e.currentTarget.style.color = '#cbd5e1';
-                                }}
-                            >
-                                <X size={18} />
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center",
+                        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(5px)", padding: "1rem" }}
+                    onClick={onClose}>
+                    <motion.div initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 50, scale: 0.95 }}
+                        onClick={e => e.stopPropagation()}
+                        style={{ background: "#0f0a21", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "1.5rem",
+                            width: "100%", maxWidth: "400px", padding: "2rem", textAlign: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                            <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "0.5rem",
+                                width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "#cbd5e1", cursor: "pointer" }}>
+                                <X size={16} />
                             </button>
                         </div>
+                        <div style={{ fontSize: "2rem", marginBottom: 8 }}>{step === "login" ? "🔐" : step === "new" ? "🆕" : (step === "reset_old" || step === "reset_new") ? "🔑" : "👤"}</div>
+                        <h2 style={{ color: "#fff", margin: "0 0 6px", fontSize: "1.4rem", fontWeight: 900 }}>{titles[step]}</h2>
+                        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.85rem", margin: "0 0 20px" }}>{subtitles[step]}</p>
 
-                        {/* Body */}
-                        <div style={{ padding: '1.5rem' }}>
-                            {/* Name Field */}
-                            <div style={{ marginBottom: '1.25rem' }}>
-                                <label
-                                    htmlFor="profile-name"
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600,
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        marginBottom: '0.5rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                    }}
-                                >
-                                    Your Name
-                                </label>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        background: 'rgba(0, 0, 0, 0.35)',
-                                        borderRadius: '0.75rem',
-                                        border: `1px solid ${errors.name ? 'rgba(244, 63, 94, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                                        transition: 'border-color 0.2s',
-                                    }}
-                                >
-                                    <User size={18} style={{ marginLeft: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }} />
-                                    <input
-                                        id="profile-name"
-                                        type="text"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="e.g., John Doe"
-                                        autoComplete="off"
-                                        style={{
-                                            flex: 1,
-                                            background: 'transparent',
-                                            padding: '0.9rem 0.75rem 0.9rem 0',
-                                            border: 'none',
-                                            outline: 'none',
-                                            color: '#fff',
-                                            fontSize: '0.95rem',
-                                            fontWeight: 500,
-                                        }}
-                                    />
-                                </div>
-                                {errors.name && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.35rem' }}>
-                                        <AlertCircle size={12} style={{ color: '#f43f5e' }} />
-                                        <p style={{ color: '#f43f5e', fontSize: '0.7rem', margin: 0 }}>{errors.name}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Phone Field */}
-                            <div style={{ marginBottom: '1.75rem' }}>
-                                <label
-                                    htmlFor="profile-phone"
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600,
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        marginBottom: '0.5rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                    }}
-                                >
-                                    Phone Number
-                                </label>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        background: 'rgba(0, 0, 0, 0.35)',
-                                        borderRadius: '0.75rem',
-                                        border: `1px solid ${errors.phone ? 'rgba(244, 63, 94, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                                        transition: 'border-color 0.2s',
-                                    }}
-                                >
-                                    <Phone size={18} style={{ marginLeft: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }} />
-                                    <input
-                                        id="profile-phone"
-                                        type="tel"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="0712345678"
-                                        autoComplete="off"
-                                        style={{
-                                            flex: 1,
-                                            background: 'transparent',
-                                            padding: '0.9rem 0.75rem 0.9rem 0',
-                                            border: 'none',
-                                            outline: 'none',
-                                            color: '#fff',
-                                            fontSize: '0.95rem',
-                                            fontWeight: 500,
-                                        }}
-                                    />
-                                </div>
-                                {errors.phone ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.35rem' }}>
-                                        <AlertCircle size={12} style={{ color: '#f43f5e' }} />
-                                        <p style={{ color: '#f43f5e', fontSize: '0.7rem', margin: 0 }}>{errors.phone}</p>
-                                    </div>
-                                ) : (
-                                    <p style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.65rem', marginTop: '0.35rem', marginBottom: 0 }}>
-                                        Used for M-Pesa payments (format: 0712345678 or 254712345678)
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
-                                <button
-                                    onClick={onClose}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.85rem',
-                                        borderRadius: '0.75rem',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        background: 'rgba(255, 255, 255, 0.04)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                                        e.currentTarget.style.color = '#fff';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
-                                    }}
-                                >
-                                    Cancel
+                        {step === "phone" && (
+                            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (07XXXXXXXX)"
+                                maxLength={10} autoFocus onKeyDown={e => e.key === "Enter" && checkPhone()} style={inputStyle} />
+                        )}
+                        {step === "new" && (<>
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20} autoFocus style={inputStyle} />
+                            <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Choose a 4-digit PIN"
+                                maxLength={4} type="password" style={inputStyle} />
+                            <input value={pinConf} onChange={e => setPinConf(e.target.value.replace(/\D/g,""))} placeholder="Confirm PIN"
+                                maxLength={4} type="password" onKeyDown={e => e.key === "Enter" && register()} style={inputStyle} />
+                        </>)}
+                        {step === "login" && (<>
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name…" maxLength={20} autoFocus style={inputStyle} />
+                            <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Enter your 4-digit PIN"
+                                maxLength={4} type="password" onKeyDown={e => e.key === "Enter" && login()} style={inputStyle} />
+                            {!hasPin && (
+                                <p style={{ color: "#f59e0b", fontSize: "0.78rem", margin: "-4px 0 8px", textAlign: "left" }}>
+                                    💡 Your default PIN is <strong>0000</strong>. We recommend resetting it.
+                                </p>
+                            )}
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                <button onClick={() => { setStep("phone"); setPin(""); setErr(""); }}
+                                    style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "0.75rem", cursor: "pointer" }}>
+                                    Not you? Change number
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.85rem',
-                                        borderRadius: '0.75rem',
-                                        fontWeight: 700,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        background: 'linear-gradient(135deg, #f43f5e 0%, #db2777 100%)',
-                                        border: 'none',
-                                        color: '#fff',
-                                        boxShadow: '0 4px 12px rgba(244, 63, 94, 0.3)',
-                                        transition: 'transform 0.2s, box-shadow 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(244, 63, 94, 0.4)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(244, 63, 94, 0.3)';
-                                    }}
-                                >
-                                    Save & Play
+                                <button onClick={() => { setPin(""); setPinConf(""); setErr(""); setStep("reset_old"); }}
+                                    style={{ background: "none", border: "none", color: "#f59e0b", fontSize: "0.75rem", cursor: "pointer" }}>
+                                    🔑 Reset PIN
                                 </button>
                             </div>
+                        </>)}
+                        {step === "reset_old" && (
+                            <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="Current PIN (default: 0000)"
+                                maxLength={4} type="password" autoFocus onKeyDown={e => e.key === "Enter" && verifyOldPin()} style={inputStyle} />
+                        )}
+                        {step === "reset_new" && (<>
+                            <input value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,""))} placeholder="New 4-digit PIN"
+                                maxLength={4} type="password" autoFocus style={inputStyle} />
+                            <input value={pinConf} onChange={e => setPinConf(e.target.value.replace(/\D/g,""))} placeholder="Confirm new PIN"
+                                maxLength={4} type="password" onKeyDown={e => e.key === "Enter" && saveNewPin()} style={inputStyle} />
+                        </>)}
+
+                        {err && <p style={{ color: "#ff6b6b", fontSize: "0.8rem", margin: "0 0 10px" }}>{err}</p>}
+
+                        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                            <button onClick={onClose} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
+                                borderRadius: 50, color: "rgba(255,255,255,0.6)", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                                Cancel
+                            </button>
+                            <button disabled={loading}
+                                onClick={step === "phone" ? checkPhone : step === "new" ? register : step === "login" ? login : step === "reset_old" ? verifyOldPin : saveNewPin}
+                                style={{ flex: 1, background: "linear-gradient(135deg,#11998e,#38ef7d)", border: "none",
+                                    borderRadius: 50, color: "#fff", padding: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>
+                                {loading ? "…" : step === "phone" ? "Continue →" : step === "new" ? "✅ Create Account" : step === "login" ? "🔓 Sign In" : step === "reset_old" ? "Verify →" : "🔑 Save New PIN"}
+                            </button>
                         </div>
                     </motion.div>
                 </motion.div>
@@ -346,5 +195,3 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         </AnimatePresence>
     );
 };
-
-export default EditProfileModal;

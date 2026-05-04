@@ -76,7 +76,7 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
 
             const sorted = Array.from(byPhone.values())
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 10)
+                .slice(0, 30)
                 .map((d, i) => ({
                     rank: i + 1,
                     name: d.name,

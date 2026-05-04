@@ -1,6 +1,6 @@
 // AdminView.tsx — Admin panel UI
 import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, where, onSnapshot, Timestamp } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
@@ -81,6 +81,39 @@ function StatusBadge({ status }: { status: string }) {
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard() {
     const [data, setData] = useState<any>(null);
+    const [live, setLive] = useState<Record<string, number>>({ bongo: 0, bible: 0, bio: 0, math: 0, gen: 0 });
+    const [peak, setPeak] = useState<{ total: number; bongo: number; bible: number; bio: number; at: Date; } | null>(() => {
+        const saved = localStorage.getItem("admin_peak_live");
+        if (!saved) return null;
+        const p = JSON.parse(saved);
+        return { ...p, at: new Date(p.at) };
+    });
+
+    // Live players = sessions started in last 5 minutes
+    useEffect(() => {
+        const fiveMinAgo = () => Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
+        const unsubs = [
+            { key: "bongo", col: "gameSessions",    field: "playedAt" },
+            { key: "bible", col: "bibleQuizSessions", field: "playedAt" },
+            { key: "bio",   col: "bioQuizSessions",  field: "playedAt" },
+        ].map(({ key, col, field }) =>
+            onSnapshot(query(collection(db, col), where(field, ">=", fiveMinAgo())),
+                snap => setLive(prev => {
+                    const next = { ...prev, [key]: snap.size };
+                    const total = next.bongo + next.bible + next.bio;
+                    setPeak(p => {
+                        if (!p || total > p.total) {
+                            const newPeak = { total, bongo: next.bongo, bible: next.bible, bio: next.bio, at: new Date() };
+                            localStorage.setItem("admin_peak_live", JSON.stringify(newPeak));
+                            return newPeak;
+                        }
+                        return p;
+                    });
+                    return next;
+                }))
+        );
+        return () => unsubs.forEach(u => u());
+    }, []);
 
     useEffect(() => {
         const now = new Date();
@@ -129,7 +162,7 @@ function Dashboard() {
             getDocs(collection(db, "mathQuizSessions")),
             getDocs(query(collection(db, "payments"), where("game", "==", "MATHQUIZ"))),
             getDocs(collection(db, "bioQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "BIOQUIZ"))),
+            getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ"))),
             getDocs(collection(db, "genQuizSessions")),
             getDocs(query(collection(db, "payments"), where("game", "==", "GENQUIZ"))),
         ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR]) => {
@@ -163,7 +196,7 @@ function Dashboard() {
                 const ex = byPhone.get(ph);
                 if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, { ...p, _normPhone: ph });
             });
-            const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10);
+            const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 30);
 
             // All revenue combined
             const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments].filter(p => p.status === "paid");
@@ -273,38 +306,145 @@ function Dashboard() {
 
         {/* ── Per-game analytics ── */}
         <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "#aaa", marginBottom: 10 }}>Per-Game Analytics</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, marginBottom: 20 }}>
-            <GameCard label="Bongo Quiz"    icon="🎯" color="#4361ee" g={data.bongo} />
-            <GameCard label="Bible Quiz"    icon="✝️" color="#059669" g={data.bible} />
-            <GameCard label="Math Quiz"     icon="➗" color="#d97706" g={data.math}  />
-            <GameCard label="Biology Quiz"    icon="🧬" color="#7c3aed" g={data.bio}   />
-            <GameCard label="General Knowledge" icon="🌍" color="#0891b2" g={data.gen} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16, marginBottom: 20 }}>
+            <GameCard label="Bongo Quiz"         icon="🎯" color="#4361ee" g={data.bongo} />
+            <GameCard label="Bible Quiz"         icon="✝️" color="#059669" g={data.bible} />
+            <GameCard label="Biology Quiz"       icon="🧬" color="#7c3aed" g={data.bio}   />
+            <GameCard label="General Knowledge"  icon="🌍" color="#0891b2" g={data.gen}   />
+            <GameCard label="Math Quiz"          icon="➗" color="#d97706" g={data.math}  />
         </div>
 
-        {/* ── Shared leaderboard + powers ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
-            <div style={s.card}>
-                <h2 style={s.h2}>⚡ Most Used Powers (Bongo Quiz)</h2>
-                {data.topPowers.length ? data.topPowers.map(([name, count]: [string, number]) => (
-                    <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "0.78rem", color: "#666", minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                        <Bar val={count} max={data.topPowers[0][1]} color="#4361ee" />
-                        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#4361ee", minWidth: 24, textAlign: "right" }}>{count}</span>
+        {/* ── Cross-game analytics ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16 }}>
+            {/* Live players */}
+            <div style={{ ...s.card, borderTop: "3px solid #10b981" }}>
+                <h2 style={{ ...s.h2, color: "#10b981" }}>🟢 Live Players <span style={{ fontSize: "0.7rem", color: "#aaa", fontWeight: 400 }}>(last 5 min)</span></h2>
+                {[
+                    { label: "Bongo Quiz",       color: "#4361ee", count: live.bongo },
+                    { label: "Bible Quiz",        color: "#059669", count: live.bible },
+                    { label: "Biology Quiz",      color: "#7c3aed", count: live.bio   },
+                ].map(({ label, color, count }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#444" }}>{label}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {count > 0 && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block", boxShadow: "0 0 6px #10b981", animation: "pulse 1.5s infinite" }} />}
+                            <strong style={{ color: count > 0 ? color : "#aaa", fontSize: "1.1rem" }}>{count}</strong>
+                        </span>
                     </div>
-                )) : <p style={s.p}>No data yet</p>}
+                ))}
+                <div style={{ marginTop: 10, textAlign: "center", fontSize: "1.4rem", fontWeight: 800, color: "#10b981" }}>
+                    {live.bongo + live.bible + live.bio} <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 400 }}>total active</span>
+                </div>
+                <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
             </div>
-            <div style={s.card}>
-                <h2 style={s.h2}>🏆 Top 10 Players (Bongo Quiz)</h2>
-                {data.topPlayers.length ? data.topPlayers.map((p: any, i: number) => (
-                    <div key={p._normPhone ?? p.id ?? i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <span style={{ fontSize: "1rem", minWidth: 24 }}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][i]}</span>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1a1a2e" }}>{p.name ?? "—"}</div>
-                            <div style={{ fontSize: "0.72rem", color: "#aaa" }}>{(p.phone ?? "").replace(/^254/, "0").slice(0, 3) + "*******"}</div>
-                        </div>
-                        <span style={{ fontWeight: 700, color: "#4361ee", fontSize: "0.88rem" }}>{(p.score ?? 0).toLocaleString()} pts</span>
+
+            {/* Peak live players */}
+            <div style={{ ...s.card, borderTop: "3px solid #f59e0b" }}>
+                <h2 style={{ ...s.h2, color: "#f59e0b" }}>📈 Peak Live Players</h2>
+                {peak ? (<>
+                    <div style={{ textAlign: "center", margin: "12px 0" }}>
+                        <div style={{ fontSize: "3rem", fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>{peak.total}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#aaa", marginTop: 4 }}>simultaneous players</div>
                     </div>
-                )) : <p style={s.p}>No data yet</p>}
+                    <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: 12, textAlign: "center" }}>
+                        🕐 {peak.at.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" })}
+                    </div>
+                    {[
+                        { label: "Bongo Quiz",  color: "#4361ee", count: peak.bongo },
+                        { label: "Bible Quiz",  color: "#059669", count: peak.bible },
+                        { label: "Biology Quiz",color: "#7c3aed", count: peak.bio   },
+                    ].map(({ label, color, count }) => (
+                        <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontSize: "0.78rem", color: "#444", minWidth: 110 }}>{label}</span>
+                            <div style={{ flex: 1, background: "#f0f0f8", borderRadius: 4, height: 8 }}>
+                                <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((count / Math.max(peak.total, 1)) * 100)}%` }} />
+                            </div>
+                            <strong style={{ color, minWidth: 20, textAlign: "right", fontSize: "0.85rem" }}>{count}</strong>
+                        </div>
+                    ))}
+                    <button onClick={() => { setPeak(null); localStorage.removeItem("admin_peak_live"); }}
+                        style={{ marginTop: 10, fontSize: "0.72rem", color: "#aaa", background: "none", border: "1px solid #eee", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
+                        Reset peak
+                    </button>
+                </>) : (
+                    <p style={{ ...s.p, textAlign: "center", marginTop: 24 }}>No peak recorded yet.<br/>Keep this tab open to track it.</p>
+                )}
+            </div>
+            {/* Revenue breakdown */}
+            <div style={s.card}>
+                <h2 style={s.h2}>💰 Revenue by Game</h2>
+                {[
+                    { label: "Bongo Quiz",        color: "#4361ee", rev: data.bongo.revenueTotal, paid: data.bongo.paid },
+                    { label: "Bible Quiz",         color: "#059669", rev: data.bible.revenueTotal, paid: data.bible.paid },
+                    { label: "Biology Quiz",       color: "#7c3aed", rev: data.bio.revenueTotal,   paid: data.bio.paid   },
+                    { label: "General Knowledge",  color: "#0891b2", rev: data.gen.revenueTotal,   paid: data.gen.paid   },
+                    { label: "Math Quiz",          color: "#d97706", rev: data.math.revenueTotal,  paid: data.math.paid  },
+                ].map(({ label, color, rev, paid }) => {
+                    const maxRev = Math.max(data.bongo.revenueTotal, data.bible.revenueTotal, data.bio.revenueTotal, data.gen.revenueTotal, data.math.revenueTotal, 1);
+                    return (
+                        <div key={label} style={{ marginBottom: 10 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: 3 }}>
+                                <span style={{ color: "#444" }}>{label}</span>
+                                <span style={{ fontWeight: 700, color }}> KSh {rev.toLocaleString()} <span style={{ color: "#aaa", fontWeight: 400 }}>({paid} paid)</span></span>
+                            </div>
+                            <Bar val={rev} max={maxRev} color={color} />
+                        </div>
+                    );
+                })}
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f8", display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
+                    <span style={{ color: "#888" }}>Total Revenue</span>
+                    <strong style={{ color: "#4361ee" }}>KSh {data.totalRevenue.toLocaleString()}</strong>
+                </div>
+            </div>
+
+            {/* Sessions breakdown */}
+            <div style={s.card}>
+                <h2 style={s.h2}>🎮 Sessions by Game</h2>
+                {[
+                    { label: "Bongo Quiz",        color: "#4361ee", sess: data.bongo.sessions, rate: data.bongo.successRate },
+                    { label: "Bible Quiz",         color: "#059669", sess: data.bible.sessions, rate: data.bible.successRate },
+                    { label: "Biology Quiz",       color: "#7c3aed", sess: data.bio.sessions,   rate: data.bio.successRate   },
+                    { label: "General Knowledge",  color: "#0891b2", sess: data.gen.sessions,   rate: data.gen.successRate   },
+                    { label: "Math Quiz",          color: "#d97706", sess: data.math.sessions,  rate: data.math.successRate  },
+                ].map(({ label, color, sess, rate }) => {
+                    const maxSess = Math.max(data.bongo.sessions, data.bible.sessions, data.bio.sessions, data.gen.sessions, data.math.sessions, 1);
+                    return (
+                        <div key={label} style={{ marginBottom: 10 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: 3 }}>
+                                <span style={{ color: "#444" }}>{label}</span>
+                                <span style={{ fontWeight: 700, color }}>{sess.toLocaleString()} <span style={{ color: "#aaa", fontWeight: 400 }}>({rate}% success)</span></span>
+                            </div>
+                            <Bar val={sess} max={maxSess} color={color} />
+                        </div>
+                    );
+                })}
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f8", display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
+                    <span style={{ color: "#888" }}>Total Sessions</span>
+                    <strong style={{ color: "#4361ee" }}>{data.totalSessions.toLocaleString()}</strong>
+                </div>
+            </div>
+
+            {/* Payment health */}
+            <div style={s.card}>
+                <h2 style={s.h2}>📊 Payment Health</h2>
+                {[
+                    { label: "Bongo Quiz",        color: "#4361ee", g: data.bongo },
+                    { label: "Bible Quiz",         color: "#059669", g: data.bible },
+                    { label: "Biology Quiz",       color: "#7c3aed", g: data.bio   },
+                    { label: "General Knowledge",  color: "#0891b2", g: data.gen   },
+                    { label: "Math Quiz",          color: "#d97706", g: data.math  },
+                ].map(({ label, color, g }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: "0.78rem" }}>
+                        <span style={{ color: "#444", minWidth: 100, fontSize: "0.75rem" }}>{label}</span>
+                        <span style={{ color: "#059669", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>✓ {g.paid}</span>
+                        <span style={{ color: "#f59e0b", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>⏳ {g.pending}</span>
+                        <span style={{ color: "#ef4444", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>✗ {g.failed}</span>
+                        <div style={{ flex: 1, background: "#f0f0f8", borderRadius: 4, height: 6 }}>
+                            <div style={{ background: color, borderRadius: 4, height: 6, width: `${g.successRate}%` }} />
+                        </div>
+                        <span style={{ color, fontWeight: 700, minWidth: 36, textAlign: "right" }}>{g.successRate}%</span>
+                    </div>
+                ))}
             </div>
         </div>
     </>;

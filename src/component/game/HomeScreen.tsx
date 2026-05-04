@@ -2,6 +2,7 @@
 import {type FC, useEffect, useRef, useState} from "react";
 import logoBg from "../../assets/logo.png";
 import mainLogo from "../../assets/background.png";
+import chezaTenaAd from "../../assets/cheza-tena-ad.jpeg";
 // import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
 // import biologyLogo from "../BiologyQuiz/assets/logo2.png";
 // import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
@@ -36,8 +37,11 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     const [personalBest, setPersonalBest] = useState(() =>
         parseInt(localStorage.getItem("bongo_best_score") ?? "0")
     );
+    const [totalPoints, setTotalPoints] = useState(() =>
+        parseInt(localStorage.getItem("bongo_total_points") ?? "0")
+    );
 
-    // Fetch real personal best from Firestore when phone is known
+    // Fetch real personal best and total points from Firestore when phone is known
     useEffect(() => {
         if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) return;
         getDocs(query(
@@ -51,6 +55,15 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 setPersonalBest(best);
                 localStorage.setItem("bongo_best_score", String(best));
             }
+        }).catch(() => {});
+
+        getDocs(query(
+            collection(db, "gameSessions"),
+            where("phone", "==", playerPhone)
+        )).then(snap => {
+            const total = snap.docs.reduce((sum, d) => sum + (d.data().total ?? 0), 0);
+            setTotalPoints(total);
+            localStorage.setItem("bongo_total_points", String(total));
         }).catch(() => {});
     }, [playerPhone]);
     //     const next = !soundOn;
@@ -73,7 +86,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             const hoursSinceActivity = (Date.now() - parseInt(lastActivity)) / (1000 * 60 * 60);
             if (hoursSinceActivity >= 24) {
                 // Clear cache after 4 hours of inactivity
-                ["bongo_player_name", "bongo_player_phone", "bongo_best_score",
+                ["bongo_player_name", "bongo_player_phone", "bongo_best_score", "bongo_total_points",
                     "bongo_session_score", "bongo_achievements", "bongo_streak", "bongo_last_activity"].forEach(k => localStorage.removeItem(k));
                 setPlayerName("Player");
                 setPlayerPhone("");
@@ -227,6 +240,18 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     {/*    <div><div className="menu-item-label">Sound</div><div className="menu-item-sub">{soundOn ? 'On — tap to mute' : 'Off — tap to unmute'}</div></div>*/}
                     {/*    <span className={`menu-toggle${soundOn ? ' menu-toggle--on' : ''}`}/>*/}
                     {/*</button>*/}
+                    {playerPhone && (
+                        <button className="menu-item" style={{ color: "#ef4444" }} onClick={() => {
+                            ["bongo_player_name","bongo_player_phone","bongo_best_score","bongo_total_points",
+                             "bongo_session_score","bongo_achievements","bongo_streak","bongo_last_activity"].forEach(k => localStorage.removeItem(k));
+                            setPlayerName("Player");
+                            setPlayerPhone("");
+                            setMenuOpen(false);
+                        }}>
+                            <span className="menu-item-icon">🚪</span>
+                            <div><div className="menu-item-label" style={{ color: "#ef4444" }}>Log Out</div><div className="menu-item-sub">Sign out of your account</div></div>
+                        </button>
+                    )}
                 </div>
                 {personalBest > 0 && (
                     <div className="menu-best">🏅 Personal Best: <strong>{personalBest.toLocaleString()} pts</strong></div>
@@ -278,6 +303,11 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                             {personalBest > 0 && (
                                 <div className="home-best-score">
                                     🏆 Best: <strong>{personalBest.toLocaleString()}</strong>
+                                </div>
+                            )}
+                            {totalPoints > 0 && (
+                                <div className="home-best-score" style={{ color: "#FFD93D" }}>
+                                    ⭐ Total: <strong>{totalPoints.toLocaleString()} pts</strong>
                                 </div>
                             )}
                             {streakInfo.current > 0 && (
@@ -346,6 +376,24 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 />
             )}
             {showHTP && <HowToPlayModal onClose={() => setShowHTP(false)}/>}
+
+            {/* ── Fixed bottom ad banner ── */}
+            <a href="https://tushinde.com/" target="_blank" rel="noopener noreferrer"
+                style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, display: "block", cursor: "pointer" }}>
+                <div style={{ position: "relative", width: "100%", maxWidth: 800, margin: "0 auto" }}>
+                    <img src={chezaTenaAd} alt="Cheza Tena — Activate & Get 50% Back"
+                        style={{ width: "100%", display: "block", maxHeight: 56, objectFit: "cover", objectPosition: "center" }} />
+                    <button
+                        onClick={e => e.preventDefault()}
+                        aria-label="Close ad"
+                        style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.55)", border: "none",
+                            borderRadius: "50%", width: 20, height: 20, color: "#fff", fontSize: "0.65rem",
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+                        onClickCapture={e => { e.preventDefault(); e.stopPropagation(); (e.currentTarget.closest("a") as HTMLElement | null)?.remove(); }}>
+                        ✕
+                    </button>
+                </div>
+            </a>
         </div>
     );
 };

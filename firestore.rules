@@ -2,11 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Players — anyone can create/update their own record (keyed by phone)
-    // Only authenticated admin can read
+    // Players — anyone can read/write their own record (keyed by phone)
     match /players/{phone} {
-      allow create, update: if true;
-      allow read:           if request.auth != null;
+      allow read, create, update: if true;
     }
 
     // Questions — public read, authenticated admin can write

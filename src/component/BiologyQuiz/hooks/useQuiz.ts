@@ -10,10 +10,10 @@ export type Screen = 'landing' | 'payment' | 'intro' | 'quiz' | 'results';
 export function useQuiz() {
   const [currentScreen, setCurrentScreenState] = useState<Screen>('landing');
   const [playerName, setPlayerName] = useState<string>(() => {
-    return localStorage.getItem('biologyPlayerName') || '';
+    return localStorage.getItem('bongo_player_name') || localStorage.getItem('biologyPlayerName') || '';
   });
   const [playerPhone, setPlayerPhone] = useState<string>(() => {
-    return localStorage.getItem('biologyPlayerPhone') || '';
+    return localStorage.getItem('bongo_player_phone') || localStorage.getItem('biologyPlayerPhone') || '';
   });
 
   const setCurrentScreen = useCallback((screen: Screen, replace = false) => {
@@ -109,7 +109,7 @@ export function useQuiz() {
       });
       const entries = Array.from(byPhone.entries())
         .sort((a, b) => b[1].score - a[1].score)
-        .slice(0, 20)
+        .slice(0, 30)
         .map(([, v], i) => ({ id: String(i), name: v.name, phone: v.phone, score: v.score, date: new Date().toISOString() }));
       if (entries.length > 0) {
         setLeaderboard(entries);
@@ -119,6 +119,8 @@ export function useQuiz() {
   }, []);
 
   const handleGoToPayment = (name: string, phone: string) => {
+    localStorage.setItem('bongo_player_name', name);
+    localStorage.setItem('bongo_player_phone', phone);
     localStorage.setItem('biologyPlayerName', name);
     localStorage.setItem('biologyPlayerPhone', phone);
     setPlayerName(name);
@@ -222,7 +224,7 @@ export function useQuiz() {
           });
           const entries = Array.from(byPhone.entries())
             .sort((a, b) => b[1].score - a[1].score)
-            .slice(0, 20)
+            .slice(0, 30)
             .map(([, v], i) => ({ id: String(i), name: v.name, phone: v.phone, score: v.score, date: new Date().toISOString() }));
           setLeaderboard(entries);
           localStorage.setItem('biologyLeaderboard', JSON.stringify(entries));
