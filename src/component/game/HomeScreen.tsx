@@ -2,7 +2,7 @@
 import {type FC, useEffect, useRef, useState} from "react";
 import logoBg from "../../assets/logo.png";
 import mainLogo from "../../assets/background.png";
-import chezaTenaAd from "../../assets/cheza-tena-ad.jpeg";
+// import chezaTenaAd from "../../assets/cheza-tena-ad.jpeg";
 // import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
 // import biologyLogo from "../BiologyQuiz/assets/logo2.png";
 // import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
@@ -378,7 +378,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             {showHTP && <HowToPlayModal onClose={() => setShowHTP(false)}/>}
 
             {/* ── Fixed bottom ad banner ── */}
-            <a href="https://tushinde.com/" target="_blank" rel="noopener noreferrer"
+            {/* <a href="https://tushinde.com/" target="_blank" rel="noopener noreferrer"
                 style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, display: "block", cursor: "pointer" }}>
                 <div style={{ position: "relative", width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     <img src={chezaTenaAd} alt="Cheza Tena — Activate & Get 50% Back"
@@ -393,7 +393,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                         ✕
                     </button>
                 </div>
-            </a>
+            </a> */}
         </div>
     );
 };

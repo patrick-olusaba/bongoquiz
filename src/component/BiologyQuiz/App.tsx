@@ -1,6 +1,6 @@
 import './styles/styles.css';
 import './styles/aviator.css';
-import chezaTenaAd from '../../assets/cheza-tena-ad.jpeg';
+// import chezaTenaAd from '../../assets/cheza-tena-ad.jpeg';
 import { useQuiz } from './hooks/useQuiz';
 import { LandingPage } from './components/LandingPage';
 import { Quiz } from './components/Quiz';
@@ -73,7 +73,7 @@ export default function App() {
                     </div>
                 )}
             </>
-            <a href="https://tushinde.com/" target="_blank" rel="noopener noreferrer"
+            {/* <a href="https://tushinde.com/" target="_blank" rel="noopener noreferrer"
                 style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, display: "block" }}>
                 <div style={{ position: "relative", width: "100%", maxWidth: 800, margin: "0 auto" }}>
                     <img src={chezaTenaAd} alt="Cheza Tena"
@@ -87,7 +87,7 @@ export default function App() {
                         ✕
                     </button>
                 </div>
-            </a>
+            </a> */}
         </div>
     );
 }
