@@ -26,12 +26,30 @@ const s: Record<string, React.CSSProperties> = {
 const badge = (ok: boolean): React.CSSProperties => ({ padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700, background: ok ? "#dcfce7" : "#fee2e2", color: ok ? "#166534" : "#991b1b" });
 
 // ── Parse CSV text into questions ─────────────────────────────────────────────
-// Expected format: question,optionA,optionB,optionC,optionD,correct(A-D),category
+// Expected format: [id,] question,optionA,optionB,optionC,optionD,correct(A-D),category
+function parseCSVLine(line: string): string[] {
+    const cols: string[] = [];
+    let cur = "", inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuote = !inQuote; }
+        else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ""; }
+        else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    return cols;
+}
+
 function parseCSV(text: string): BQQuestion[] {
     return text.split("\n")
         .map(l => l.trim()).filter(l => l && !l.startsWith("#"))
         .map(line => {
-            const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+            let cols = parseCSVLine(line);
+            if (cols.length < 6) return null;
+            // Skip header row
+            if (cols[0].toLowerCase() === "question" || cols[0].toLowerCase() === "id") return null;
+            // Auto-skip leading numeric ID column
+            if (/^\d+$/.test(cols[0])) cols = cols.slice(1);
             if (cols.length < 6) return null;
             const raw = cols[5].toUpperCase();
             const answerIdx = ["A","B","C","D"].includes(raw) ? raw.charCodeAt(0) - 65 : parseInt(cols[5]);
@@ -118,6 +136,8 @@ function BQQuestions() {
     const [search,    setSearch]    = useState("");
     const [qTab,      setQTab]      = useState<"all"|"duplicates">("all");
     const [importing, setImporting] = useState(false);
+    const [page,      setPage]      = useState(0);
+    const PAGE_SIZE = 20;
     const [showConfirm, setShowConfirm] = useState(false);
     const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
     const [msg,       setMsg]       = useState("");
@@ -195,6 +215,8 @@ function BQQuestions() {
     const filtered = questions.filter(q =>
         !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase())
     );
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const extraCount = dupGroups.reduce((a, g) => a + g.length - 1, 0);
 
@@ -266,7 +288,7 @@ function BQQuestions() {
                 </>
             ) : <>
                 <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
                     <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                     <button onClick={() => fileRef.current?.click()} disabled={importing}
                         style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>
@@ -289,9 +311,9 @@ function BQQuestions() {
                     <table style={s.table}>
                         <thead><tr>{["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
-                            {filtered.map((q, i) => (
+                            {paginated.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={s.td}>{i + 1}</td>
+                                    <td style={s.td}>{page * PAGE_SIZE + i + 1}</td>
                                     <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
                                     <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
                                     <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
@@ -305,10 +327,24 @@ function BQQuestions() {
                                     </td>
                                 </tr>
                             ))}
-                            {!filtered.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions yet</td></tr>}
+                            {!paginated.length && <tr><td colSpan={7} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No questions yet</td></tr>}
                         </tbody>
                     </table>
                 </div>
+                {totalPages > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                            style={{ ...s.btn, background: "#f0f0f8", color: "#444", opacity: page === 0 ? 0.4 : 1 }}>‹ Prev</button>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <button key={i} onClick={() => setPage(i)}
+                                style={{ ...s.btn, minWidth: 32, background: page === i ? "#4361ee" : "#f0f0f8", color: page === i ? "#fff" : "#444" }}>
+                                {i + 1}
+                            </button>
+                        ))}
+                        <button onClick={() => setPage(p => p + 1)} disabled={page === totalPages - 1}
+                            style={{ ...s.btn, background: "#f0f0f8", color: "#444", opacity: page === totalPages - 1 ? 0.4 : 1 }}>Next ›</button>
+                    </div>
+                )}
             </>}
         </div>
     </>;

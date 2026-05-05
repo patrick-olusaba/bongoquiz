@@ -14,14 +14,15 @@ export interface PrizeItem {
     id: number;
     name: string;
     img: string;
-    description?: string; // Optional description
-    effect?: string; // Optional game effect
+    description?: string;
+    effect?: string;
+    active?: boolean;
 }
 
 // Import all the prize images
 import BonusTime from "../assets/Items/BonusTime.png";
-import Disqualified from "../assets/Items/Disqualified.png";
-import DoubleOrNothing from "../assets/Items/DoubleorNothing.png";
+// import Disqualified from "../assets/Items/Disqualified.png";
+// import DoubleOrNothing from "../assets/Items/DoubleorNothing.png";
 import DoublePoints from "../assets/Items/DoublePoints2.png";
 import FreezeFrame from "../assets/Items/FreezeFrame.png";
 import Insurance from "../assets/Items/insurance.png";
@@ -31,7 +32,7 @@ import QuestionSwap from "../assets/Items/questionswap.png";
 import SecondChance from "../assets/Items/secondchance.png";
 import TimeTax from '../assets/Items/TimeTax.png';
 import BorrowedBrain from "../assets/Items/BorrowedBrain.png";
-import PointChanceBrain from "../assets/Items/pointChanceBrain.png";
+// import PointChanceBrain from "../assets/Items/pointChanceBrain.png";
 import MirrorEffect from "../assets/Items/MirrorEffect.png";
 import StealAPoint from "../assets/Items/StealAPoint.png";
 import SwapFate from "../assets/Items/SwapFate.png";
@@ -40,8 +41,8 @@ import SuddenDeath from "../assets/Items/SuddenDeathDisqualified.png";
 // Master list of all available prize items
 export const PRIZE_ITEMS: PrizeItem[] = [
     { id: 1, name: "Bonus Time", img: BonusTime, description: "Extra time added to your turn" },
-    { id: 2, name: "Disqualified", img: Disqualified, description: "You are disqualified from this round" },
-    { id: 3, name: "Double Or Nothing", img: DoubleOrNothing, description: "Risk your points for double or nothing" },
+    // { id: 2, name: "Disqualified", img: Disqualified, description: "You are disqualified from this round" },
+    // { id: 3, name: "Double Or Nothing", img: DoubleOrNothing, description: "Risk your points for double or nothing" },
     { id: 4, name: "Double Points", img: DoublePoints, description: "Earn double points for your next answer" },
     { id: 5, name: "Freeze Frame", img: FreezeFrame, description: "Freeze another player's turn" },
     { id: 6, name: "Insurance", img: Insurance, description: "Protect your points from being stolen" },
@@ -90,8 +91,8 @@ export const CUSTOM_PRIZE_LIST_3: PrizeItem[] = [
 // Map power names to locally-imported images so Firestore img paths are never used directly
 const LOCAL_IMG_MAP: Record<string, string> = {
     "Bonus Time":                  BonusTime,
-    "Disqualified":                Disqualified,
-    "Double Or Nothing":           DoubleOrNothing,
+    // "Disqualified":                Disqualified,
+    // "Double Or Nothing":           DoubleOrNothing,
     "Double Points":               DoublePoints,
     "Freeze Frame":                FreezeFrame,
     "Insurance":                   Insurance,
@@ -101,7 +102,7 @@ const LOCAL_IMG_MAP: Record<string, string> = {
     "Second Chance":               SecondChance,
     "Time Tax":                    TimeTax,
     "Borrowed Brain":              BorrowedBrain,
-    "Point Chance Brain":          PointChanceBrain,
+    // "Point Chance Brain":          PointChanceBrain,
     "Mirror Effect":               MirrorEffect,
     "Steal A Point":               StealAPoint,
     "Swap Fate":                   SwapFate,

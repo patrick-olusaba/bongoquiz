@@ -14,13 +14,13 @@ import BorrowedBrain        from "../../assets/Items/BorrowedBrain.png";
 import DoublePoints         from "../../assets/Items/DoublePoints2.png";
 import DoubleOrNothing      from "../../assets/Items/DoubleorNothing.png";
 import PointGamble          from "../../assets/Items/PointGamble.png";
-import PointChanceBrain     from "../../assets/Items/pointChanceBrain.png";
+// import PointChanceBrain     from "../../assets/Items/pointChanceBrain.png";
 import Insurance            from "../../assets/Items/insurance.png";
 import MirrorEffect         from "../../assets/Items/MirrorEffect.png";
-import StealAPoint          from "../../assets/Items/StealAPoint.png";
-import SwapFate             from "../../assets/Items/SwapFate.png";
-import SuddenDeath          from "../../assets/Items/SuddenDeathDisqualified.png";
-import Disqualified         from "../../assets/Items/Disqualified.png";
+// import StealAPoint          from "../../assets/Items/StealAPoint.png";
+// import SwapFate             from "../../assets/Items/SwapFate.png";
+// import SuddenDeath          from "../../assets/Items/SuddenDeathDisqualified.png";
+// import Disqualified         from "../../assets/Items/Disqualified.png";
 
 type Power = {
     id?: string;
@@ -42,13 +42,13 @@ const SEED: Omit<Power, "id">[] = [
     { name: "Double Points",            img: DoublePoints,     roundEffect: "R2 correct ×2",             scoreModifier: "R1 score ×2",                       active: true },
     { name: "Double Or Nothing",        img: DoubleOrNothing,  roundEffect: "None",                      scoreModifier: "All correct → ×2, any wrong → 0",   active: true },
     { name: "Point Gamble",             img: PointGamble,      roundEffect: "None",                      scoreModifier: "50%: ×2 or ÷2",                     active: true },
-    { name: "Point Chance Brain",       img: PointChanceBrain, roundEffect: "None",                      scoreModifier: "50%: ×2 or unchanged",              active: true },
+    // { name: "Point Chance Brain",       img: PointChanceBrain, roundEffect: "None",                      scoreModifier: "50%: ×2 or unchanged",              active: true },
     { name: "Insurance",                img: Insurance,        roundEffect: "None",                      scoreModifier: "Floor: 500 (R1), 1000 (R2)",        active: true },
     { name: "Mirror Effect",            img: MirrorEffect,     roundEffect: "None",                      scoreModifier: "Score ×1.5",                        active: true },
-    { name: "Steal A Point",            img: StealAPoint,      roundEffect: "None",                      scoreModifier: "+200 (R1), +500 (R2)",              active: true },
-    { name: "Swap Fate",                img: SwapFate,         roundEffect: "None",                      scoreModifier: "Score ×1.25",                       active: true },
-    { name: "Sudden Death Disqualified",img: SuddenDeath,      roundEffect: "None",                      scoreModifier: "Any wrong → ÷2 (R1), → 0 (R2)",    active: true },
-    { name: "Disqualified",             img: Disqualified,     roundEffect: "None",                      scoreModifier: "Final score = 0",                   active: true },
+    // { name: "Steal A Point",            img: StealAPoint,      roundEffect: "None",                      scoreModifier: "+200 (R1), +500 (R2)",              active: true },
+    // { name: "Swap Fate",                img: SwapFate,         roundEffect: "None",                      scoreModifier: "Score ×1.25",                       active: true },
+    // { name: "Sudden Death Disqualified",img: SuddenDeath,      roundEffect: "None",                      scoreModifier: "Any wrong → ÷2 (R1), → 0 (R2)",    active: true },
+    // { name: "Disqualified",             img: Disqualified,     roundEffect: "None",                      scoreModifier: "Final score = 0",                   active: true },
 ];
 
 const BLANK: Omit<Power, "id"> = { name: "", img: "", roundEffect: "", scoreModifier: "", active: true };

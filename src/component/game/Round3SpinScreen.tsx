@@ -1,6 +1,6 @@
 // Round3SpinScreen.tsx — 5 spins, question per spin, accumulate or lose
 import { type FC, useEffect, useRef, useState } from "react";
-import { R1_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
+import { R3_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
 import wheelImg from "../../assets/wheel.png";
 import pointerImg from "../../assets/pointer.png";
@@ -287,7 +287,7 @@ interface Props { currentScore: number; onComplete: (r3Score: number) => void; }
 export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
     const { play, stop } = useSoundFX();
 
-    const [questions]    = useState<Question[]>(() => shuffle(R1_QUESTIONS));
+    const [questions]    = useState<Question[]>(() => shuffle(R3_QUESTIONS));
     const questionRef    = useRef(0);
 
     const rotRef         = useRef(START_DEG);
@@ -407,7 +407,7 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
         setPhase("spin");
     };
 
-    const currentQuestion = questions[questionRef.current] ?? questions[0];
+    const currentQuestion = questions[questionRef.current % questions.length];
 
     return (
         <div className="spin-root">

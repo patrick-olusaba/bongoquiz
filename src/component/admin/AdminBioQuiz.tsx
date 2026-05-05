@@ -48,11 +48,28 @@ function Pagination({ total, page, setPage }: { total: number; page: number; set
 }
 // ── Parse CSV text into questions ─────────────────────────────────────────────
 // Expected format: question,optionA,optionB,optionC,optionD,correct(A-D),category
+function parseCSVLine(line: string): string[] {
+    const cols: string[] = [];
+    let cur = "", inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuote = !inQuote; }
+        else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ""; }
+        else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    return cols;
+}
+
 function parseCSV(text: string): BQQuestion[] {
     return text.split("\n")
         .map(l => l.trim()).filter(l => l && !l.startsWith("#"))
         .map(line => {
-            const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+            const cols = parseCSVLine(line);
+            // Skip header row
+            if (cols[0].toLowerCase() === "question" || cols[0].toLowerCase() === "id") return null;
+            // Auto-skip leading numeric ID column
+            if (/^\d+$/.test(cols[0])) cols = cols.slice(1);
             if (cols.length < 6) return null;
             const raw = cols[5].toUpperCase();
             const answerIdx = ["A","B","C","D"].includes(raw) ? raw.charCodeAt(0) - 65 : parseInt(cols[5]);
