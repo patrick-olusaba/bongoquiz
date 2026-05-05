@@ -13,6 +13,7 @@ interface Props {
 /** 4 individual square boxes for PIN entry */
 const PinBoxes: FC<{ value: string; onChange: (v: string) => void; onComplete?: () => void }> = ({ value, onChange, onComplete }) => {
     const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+    const [show, setShow] = useState(false);
 
     const handleKey = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Backspace" && !value[i] && i > 0) refs[i - 1].current?.focus();
@@ -35,22 +36,33 @@ const PinBoxes: FC<{ value: string; onChange: (v: string) => void; onComplete?: 
     };
 
     return (
-        <div className="pnm-pin-boxes">
-            {[0, 1, 2, 3].map(i => (
-                <input
-                    key={i}
-                    ref={refs[i]}
-                    className={`pnm-pin-box${value[i] ? " filled" : ""}`}
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={value[i] || ""}
-                    autoFocus={i === 0}
-                    onChange={e => handleChange(i, e)}
-                    onKeyDown={e => handleKey(i, e)}
-                    onPaste={handlePaste}
-                />
-            ))}
+        <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+            <div className="pnm-pin-boxes">
+                {[0, 1, 2, 3].map(i => (
+                    <input
+                        key={i}
+                        ref={refs[i]}
+                        className={`pnm-pin-box${value[i] ? " filled" : ""}`}
+                        type={show ? "text" : "password"}
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={value[i] || ""}
+                        autoFocus={i === 0}
+                        onChange={e => handleChange(i, e)}
+                        onKeyDown={e => handleKey(i, e)}
+                        onPaste={handlePaste}
+                    />
+                ))}
+            </div>
+            <button
+                type="button"
+                onClick={() => setShow(s => !s)}
+                style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: "4px 6px", color: "#aaa", fontSize: "1.1rem" }}
+                tabIndex={-1}
+                aria-label={show ? "Hide PIN" : "Show PIN"}
+            >
+                {show ? "🙈" : "👁️"}
+            </button>
         </div>
     );
 };
