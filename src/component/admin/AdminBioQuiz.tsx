@@ -1,7 +1,7 @@
 // AdminBioQuiz.tsx — Biology Quiz admin: questions, payments, sessions, leaderboard
 import { useState, useEffect, useRef } from "react";
 import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch, query, where, setDoc } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { db, auth } from "../../firebase.ts";
 
 interface BQQuestion {
     id?: string;
@@ -163,6 +163,8 @@ function BQQuestions() {
     })();
 
     const save = async (q: BQQuestion) => {
+        if (!auth.currentUser) return;
+        await auth.currentUser.getIdToken(true);
         if (q.id) {
             const { id, ...data } = q;
             await import("firebase/firestore").then(({ updateDoc, doc: fDoc }) =>
@@ -176,6 +178,8 @@ function BQQuestions() {
     };
 
     const del = async (id: string) => {
+        if (!auth.currentUser) return;
+        await auth.currentUser.getIdToken(true);
         await deleteDoc(doc(db, "bioQuizQuestions", id));
         setQuestions(prev => prev.filter(q => q.id !== id));
         setDeleteQuestionId(null);
@@ -221,6 +225,10 @@ function BQQuestions() {
         if (!file) return;
         setImporting(true); setMsg("");
         try {
+            // Ensure auth token is fresh before writing
+            if (!auth.currentUser) { setMsg("Not authenticated. Please log in again."); setImporting(false); return; }
+            await auth.currentUser.getIdToken(true);
+
             const text = await file.text();
             const parsed = parseCSV(text);
             if (!parsed.length) { setMsg("No valid questions found. Check CSV format."); setImporting(false); return; }

@@ -19,7 +19,8 @@ export async function verifyPin(phone: string, pin: string): Promise<boolean> {
     const snap = await getDoc(doc(db, "players", phone));
     if (!snap.exists()) return false;
     const data = snap.data() as PlayerRecord;
-    return data.pin === pin;
+    const stored = data.pin ? String(data.pin) : "0000";
+    return stored === pin;
 }
 
 export async function registerPlayer(name: string, phone: string, pin: string): Promise<void> {
