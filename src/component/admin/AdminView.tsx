@@ -468,7 +468,7 @@ function Players() {
             getDocs(collection(db, "bannedPlayers")).catch(() => null),
         ]).then(([pSnap, sSnap, paySnap, banSnap]) => {
             if (pSnap)   setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-                .sort((a: any, b: any) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0)));
+                .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)));
             if (sSnap)   setSessions(sSnap.docs.map(d => d.data()));
             if (paySnap) setPayments(paySnap.docs.map(d => d.data()));
             if (banSnap) setBanned(new Set(banSnap.docs.map(d => d.id)));

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase.ts";
 
 interface PlayerRecord {
@@ -6,6 +6,7 @@ interface PlayerRecord {
     phone: string;
     pin: string;
     hasPin: boolean;
+    createdAt?: any;
 }
 
 export async function lookupPlayer(phone: string): Promise<{ name: string; hasPin: boolean } | null> {
@@ -24,7 +25,14 @@ export async function verifyPin(phone: string, pin: string): Promise<boolean> {
 }
 
 export async function registerPlayer(name: string, phone: string, pin: string): Promise<void> {
-    await setDoc(doc(db, "players", phone), { name, phone, pin, hasPin: true }, { merge: true });
+    const ref = doc(db, "players", phone);
+    const snap = await getDoc(ref);
+    const isNew = !snap.exists();
+    await setDoc(ref, {
+        name, phone, pin, hasPin: true,
+        updatedAt: serverTimestamp(),
+        ...(isNew ? { createdAt: serverTimestamp() } : {}),
+    }, { merge: true });
 }
 
 export function saveLocalProfile(name: string, phone: string): void {

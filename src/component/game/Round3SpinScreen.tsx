@@ -1,6 +1,8 @@
 // Round3SpinScreen.tsx — 5 spins, question per spin, accumulate or lose
 import { type FC, useEffect, useRef, useState } from "react";
 import { R3_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
 import wheelImg from "../../assets/wheel.png";
 import pointerImg from "../../assets/pointer.png";
@@ -287,8 +289,20 @@ interface Props { currentScore: number; onComplete: (r3Score: number) => void; }
 export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
     const { play, stop } = useSoundFX();
 
-    const [questions]    = useState<Question[]>(() => shuffle(R3_QUESTIONS));
+    const [questions, setQuestions] = useState<Question[]>(() => shuffle(R3_QUESTIONS));
     const questionRef    = useRef(0);
+
+    useEffect(() => {
+        getDocs(collection(db, "questions"))
+            .then(snap => {
+                const qs = snap.docs.map(d => {
+                    const data = d.data();
+                    return { q: data.question ?? data.q, options: data.options, answer: data.answer } as Question;
+                }).filter(q => q.q && q.options?.length === 4);
+                if (qs.length >= 5) setQuestions(shuffle(qs));
+            })
+            .catch(() => {});
+    }, []);
 
     const rotRef         = useRef(START_DEG);
     const angleRef       = useRef(START_DEG * Math.PI / 180);
