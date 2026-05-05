@@ -288,8 +288,9 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 {/* Player name + personal best bar */}
                 <div className="home-player-bar">
                     <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                        <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}>
-                            👤 {playerName} {playerPhone &&
+                        <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}
+                            data-initial={playerName.charAt(0).toUpperCase()}>
+                            {playerName} {playerPhone &&
                             <span style={{fontSize: "0.75rem", color: "#aaa"}}>· {playerPhone}</span>} <span
                             className="home-player-edit">✏️</span>
                         </button>

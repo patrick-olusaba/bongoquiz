@@ -1,119 +1,171 @@
 .pnm-overlay {
     position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
     animation: pnmFadeIn 0.2s ease;
+    padding: 16px;
 }
 @keyframes pnmFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .pnm-modal {
     background: #fff;
-    border-radius: 24px;
-    padding: 36px 32px 28px;
-    width: min(420px, 92vw);
+    border-radius: 28px;
+    padding: 32px 44px 24px 28px;
+    width: min(400px, 100%);
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.1);
     animation: pnmSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
 }
 @keyframes pnmSlideUp {
-    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+    from { transform: translateY(24px) scale(0.96); opacity: 0; }
     to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-.pnm-emoji { font-size: 2.8rem; margin-bottom: 8px; }
-.pnm-title { font-size: 1.45rem; font-weight: 900; color: #1a1a2e; margin: 0 0 4px; }
-.pnm-sub   { color: #888; font-size: 0.85rem; margin: 0 0 20px; }
+.pnm-emoji { font-size: 2.4rem; margin-bottom: 6px; }
+.pnm-title { font-size: 1.35rem; font-weight: 900; color: #1a1a2e; margin: 0 0 4px; }
+.pnm-sub   { color: #999; font-size: 0.82rem; margin: 0 0 18px; }
 
+/* ── text inputs (phone, name) ── */
 .pnm-input {
     width: 100%;
     background: #f5f6fa;
-    border: 1.5px solid #e0e0e0;
+    border: 1.5px solid #e8e8f0;
     border-radius: 12px;
     color: #1a1a2e;
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    padding: 13px 16px;
+    padding: 12px 14px;
     text-align: left;
     outline: none;
     box-sizing: border-box;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .pnm-input:focus {
-    border-color: #4361ee;
-    box-shadow: 0 0 0 3px rgba(67,97,238,0.12);
+    border-color: #7B61FF;
+    box-shadow: 0 0 0 3px rgba(123,97,255,0.1);
 }
-.pnm-input::placeholder { color: #bbb; }
+.pnm-input::placeholder { color: #c0c0cc; }
 
-/* ── PIN boxes ── */
+/* ── name display (read-only in login step) ── */
+.pnm-name-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f5f6fa;
+    border: 1.5px solid #e8e8f0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+}
+.pnm-name-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7B61FF, #FF6B6B);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.pnm-name-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+/* ── PIN section ── */
+.pnm-pin-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
 .pnm-pin-label {
-    color: #999;
-    font-size: 0.72rem;
+    color: #aaa;
+    font-size: 0.68rem;
     text-align: left;
-    margin: 12px 0 8px;
-    letter-spacing: 0.08em;
+    margin: 14px 0 8px;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 700;
 }
 .pnm-pin-boxes {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: center;
+    position: relative;
 }
+.pnm-pin-eye {
+    position: absolute;
+    right: -32px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: #bbb;
+    font-size: 1.15rem;
+    transition: color 0.15s;
+}
+.pnm-pin-eye:hover { color: #7B61FF; }
 .pnm-pin-box {
-    width: 58px;
-    height: 62px;
+    width: 52px;
+    height: 56px;
     background: #f5f6fa;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #e8e8f0;
     border-radius: 14px;
     color: #1a1a2e;
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     font-weight: 900;
     text-align: center;
     outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     caret-color: transparent;
 }
-.pnm-pin-box:focus  {
-    border-color: #4361ee;
-    box-shadow: 0 0 0 3px rgba(67,97,238,0.12);
+.pnm-pin-box:focus {
+    border-color: #7B61FF;
+    box-shadow: 0 0 0 3px rgba(123,97,255,0.12);
     background: #fff;
 }
-.pnm-pin-box.filled { border-color: #4361ee; background: #eef0ff; }
+.pnm-pin-box.filled {
+    border-color: #7B61FF;
+    background: #f0eeff;
+}
 
 /* ── actions ── */
 .pnm-actions { display: flex; gap: 10px; margin-top: 20px; }
 .pnm-btn {
     flex: 1; border: none; border-radius: 100px;
     cursor: pointer; font-family: inherit;
-    font-size: 0.95rem; font-weight: 800;
-    padding: 13px; transition: transform 0.15s, box-shadow 0.15s;
+    font-size: 0.92rem; font-weight: 800;
+    padding: 13px; transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 .pnm-btn:hover:not(:disabled) { transform: scale(1.03); }
-.pnm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.pnm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .pnm-btn--save {
-    background: linear-gradient(135deg, #4361ee, #3a0ca3);
+    background: linear-gradient(135deg, #7B61FF, #5B41DF);
     color: #fff;
-    box-shadow: 0 4px 14px rgba(67,97,238,0.35);
+    box-shadow: 0 4px 16px rgba(123,97,255,0.4);
 }
 .pnm-btn--cancel {
     background: #f5f6fa;
-    border: 1.5px solid #e0e0e0;
-    color: #888;
+    border: 1.5px solid #e8e8f0;
+    color: #999;
+    flex: 0.6;
 }
 
 /* ── inline link buttons ── */
 .pnm-link {
     background: none; border: none;
-    color: #aaa; font-size: 0.75rem;
+    color: #bbb; font-size: 0.73rem;
     cursor: pointer; padding: 0;
     font-family: inherit;
 }
 .pnm-link--gold { color: #e67e00; font-weight: 700; }
 
-@media (max-width: 600px) {
-    .pnm-modal  { padding: 28px 20px 22px; border-radius: 20px; }
-    .pnm-pin-box { width: 52px; height: 56px; font-size: 1.4rem; }
-    .pnm-btn    { font-size: 0.88rem; padding: 11px; }
+@media (max-width: 420px) {
+    .pnm-modal  { padding: 26px 18px 20px; border-radius: 22px; }
+    .pnm-pin-box { width: 46px; height: 50px; font-size: 1.3rem; }
 }

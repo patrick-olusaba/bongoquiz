@@ -161,21 +161,38 @@
   justify-content: center;
 }
 .mm-player-name-btn {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 100px;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.9);
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 700;
-  padding: 8px 18px;
+  padding: 8px 18px 8px 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
-.mm-player-name-btn:hover { background: rgba(255,255,255,0.1); }
+.mm-player-name-btn::before {
+  content: attr(data-initial);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+.mm-player-name-btn:hover {
+  background: rgba(255,255,255,0.13);
+  box-shadow: 0 4px 20px rgba(251,191,36,0.25);
+}
 .mm-best-score {
   background: rgba(255,215,0,0.12);
   border: 1px solid rgba(255,215,0,0.4);

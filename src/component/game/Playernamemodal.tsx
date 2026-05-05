@@ -57,7 +57,7 @@ const PinBoxes: FC<{ value: string; onChange: (v: string) => void; onComplete?: 
             <button
                 type="button"
                 onClick={() => setShow(s => !s)}
-                style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: "4px 6px", color: "#aaa", fontSize: "1.1rem" }}
+                className="pnm-pin-eye"
                 tabIndex={-1}
                 aria-label={show ? "Hide PIN" : "Show PIN"}
             >
@@ -182,10 +182,11 @@ export const PlayerNameModal: FC<Props> = ({ currentName, currentPhone, onSave, 
                 </>}
 
                 {step === "login" && <>
-                    <input className="pnm-input" value={name} maxLength={20}
-                        placeholder="Your name…"
-                        onChange={e => setName(e.target.value.replace(/[^a-zA-Z\s]/g, ""))} />
-                    <p className="pnm-pin-label" style={{ marginTop: 14 }}>Enter PIN</p>
+                    <div className="pnm-name-display">
+                        <div className="pnm-name-avatar">{name.charAt(0).toUpperCase()}</div>
+                        <span className="pnm-name-text">{name}</span>
+                    </div>
+                    <p className="pnm-pin-label">Enter PIN</p>
                     <PinBoxes value={pin} onChange={v => { setPin(v); setErr(""); }} onComplete={login} />
                     {!hasPin && (
                         <p style={{ color: "#f59e0b", fontSize: "0.78rem", margin: "8px 0 0", textAlign: "left" }}>

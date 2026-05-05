@@ -84,10 +84,9 @@ export const BongoCanvas: React.FC<{
     // Constants - UPDATED for 8 boxes (2x4 grid)
     const GRID_COLS = 4;  // 4 columns
     const GRID_ROWS = 2;  // 2 rows
-    // const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 8 cells
     const CELL_PADDING = 10;
     const CANVAS_WIDTH = 1200;
-    const CANVAS_HEIGHT = 1200;
+    const CANVAS_HEIGHT = 620;
 
     // Load prize images
     useEffect(() => {
