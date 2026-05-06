@@ -1025,7 +1025,11 @@
     .home-hero-rounds { font-size: 3.6rem; }
     .home-hero-wheel { max-width: 240px; }
 }
-
+@media (min-width: 460px) {
+    .home-browse-grid {
+        gap: 36px;
+    }
+}
 /* ═══════════════════════════════════════════════════
    DESKTOP LAYOUT — full width two-column
 ═══════════════════════════════════════════════════ */
