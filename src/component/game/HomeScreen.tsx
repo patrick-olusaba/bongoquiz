@@ -184,10 +184,12 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             <div className="bongo-top-bar">
                 <div className="topbar-left">
                     <img src={logoBg} alt="Bongo Quiz" className="topbar-logo"/>
+                    {playerPhone && /^07\d{8}$/.test(playerPhone) && (
                     <div className="topbar-coins">
                         <span className="topbar-coin-icon">🪙</span>
                         <span className="topbar-coin-value">{totalPoints.toLocaleString()}</span>
                     </div>
+                    )}
                 </div>
                 {/* Desktop nav links */}
                 <div className="topbar-desktop-nav">
