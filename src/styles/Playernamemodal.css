@@ -95,19 +95,21 @@
     gap: 10px;
     justify-content: center;
     position: relative;
+    padding-right: 36px;
 }
 .pnm-pin-eye {
     position: absolute;
-    right: -32px;
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
-    padding: 6px;
+    padding: 4px;
     color: #bbb;
-    font-size: 1.15rem;
+    font-size: 1rem;
     transition: color 0.15s;
+    line-height: 1;
 }
 .pnm-pin-eye:hover { color: #7B61FF; }
 .pnm-pin-box {
