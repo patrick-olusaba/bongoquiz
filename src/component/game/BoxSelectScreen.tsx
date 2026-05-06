@@ -7,9 +7,10 @@ import '../../styles/BoxSelectScreen.css'
 
 interface Props {
     onPowerSelected: (power: PrizeItem) => void;
+    onBack?: () => void;
 }
 
-export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
+export const BoxSelectScreen: FC<Props> = ({ onPowerSelected, onBack }) => {
     const [cells, setCells] = useState<CellState[]>([]);
     const [hasSelected, setHasSelected] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -80,6 +81,12 @@ export const BoxSelectScreen: FC<Props> = ({ onPowerSelected }) => {
 
     return (
         <div className="boxselect-root">
+            {onBack && (
+                <div style={{width:'100%', maxWidth:920, display:'flex', alignItems:'center', gap:10}}>
+                    <button onClick={onBack} style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,color:'#fff',width:36,height:36,cursor:'pointer',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>←</button>
+                    <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.85rem'}}>Back to Home</span>
+                </div>
+            )}
             <div className="boxselect-header">
                 {/*<span className="boxselect-badge">Step 1 of 3</span>*/}
                 <h2 className="boxselect-title">🎁 Choose Your Power Box</h2>

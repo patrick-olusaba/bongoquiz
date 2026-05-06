@@ -3,8 +3,7 @@ import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../../../firebase.ts";
 import type { Player } from "../types/type.ts";
 import biblequizLogo from "../assets/biblequiz.png";
-import bongoPoster from "../../../assets/gamesposter/bongoquizb.png";
-import biologyPoster from "../../../assets/gamesposter/biologyquizposter.png";
+import { BrowseGames } from "../../game/BrowseGames.tsx";
 import { PlayerNameModal } from "../../game/Playernamemodal.tsx";
 import "../style/mainmenu.css";
 
@@ -188,22 +187,7 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
         <p className="mm-hint">Entry: KES 20 · 40s per question · +100 correct · −50 wrong</p>
 
         {/* Browse Games */}
-        <div style={{ width: "100%", marginTop: 20, textAlign: "center", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.65rem", fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 16px" }}>Browse Games</p>
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
-            {[{ label: "Bongo Quiz", logo: bongoPoster, path: "/", tag: "HOT" }, { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" }].map(app => (
-              <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
-                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, WebkitTapHighlightColor: "transparent" }}>
-                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
-                <div style={{ width: 90, height: 90, borderRadius: 14, overflow: "hidden", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 6px 24px rgba(0,0,0,0.6)", animation: "mmGamePulse 2.4s ease-in-out infinite" }}>
-                  <img src={app.logo} alt={app.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-                <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
-              </div>
-            ))}
-          </div>
-          <style>{`@keyframes mmGamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,180,0,0.4),0 6px 20px rgba(0,0,0,0.4);transform:translateY(0)}50%{box-shadow:0 0 0 6px rgba(255,180,0,0),0 6px 20px rgba(0,0,0,0.4);transform:translateY(-3px)}}`}</style>
-        </div>
+        <BrowseGames exclude="Bible Quiz" />
       </div>
 
       {/* Game History Modal */}

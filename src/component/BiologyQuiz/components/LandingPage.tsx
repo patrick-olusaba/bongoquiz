@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '../../../firebase.ts';
@@ -6,8 +6,7 @@ import { Trophy, User, Menu, X, HelpCircle, ScrollText, Link as LinkIcon, Copy, 
 import type { LeaderboardEntry } from '../types';
 import { EditProfileModal } from './EditProfileModal';
 import logo from '../assets/logo2.png';
-import bongoPoster from '../../../assets/gamesposter/bongoquizb.png';
-import biblePoster from '../../../assets/gamesposter/Bible-IMG.png';
+import { BrowseGames } from '../../game/BrowseGames';
 
 interface Props {
     onStartGame: (name: string, phone: string) => void;
@@ -51,6 +50,12 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [activeModal, setActiveModal] = useState<'none' | 'howToPlay' | 'leaderboard' | 'history' | 'share'>('none');
+
+    useEffect(() => {
+        const handler = () => setActiveModal('leaderboard');
+        window.addEventListener('show-leaderboard', handler);
+        return () => window.removeEventListener('show-leaderboard', handler);
+    }, []);
     const [isCopied, setIsCopied] = useState(false);
     const [historySessions, setHistorySessions] = useState<any[]>([]);
 
@@ -430,25 +435,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
                     </div>
 
                     {/* Browse Games */}
-                    <div style={{ width: '100%', textAlign: 'center', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '16px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem', fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', margin: '0 0 14px' }}>Browse Games</p>
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {[
-                                { label: 'Bongo Quiz', logo: bongoPoster, path: '/', tag: 'HOT' },
-                                { label: 'Bible Quiz', logo: biblePoster, path: '/bible-quiz', tag: 'NEW' },
-                            ].map(app => (
-                                <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
-                                    style={{ cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, WebkitTapHighlightColor: 'transparent' }}>
-                                    {app.tag && <span style={{ position: 'absolute', top: -8, right: -8, background: app.tag === 'HOT' ? 'linear-gradient(135deg,#ff4e00,#ff9500)' : 'linear-gradient(135deg,#00c6ff,#7B61FF)', color: '#fff', fontSize: '0.55rem', fontWeight: 900, letterSpacing: 1, padding: '2px 6px', borderRadius: 20, textTransform: 'uppercase', zIndex: 1, boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>{app.tag}</span>}
-                                    <div style={{ width: 90, height: 90, borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)', boxShadow: '0 6px 20px rgba(0,0,0,0.5)', animation: 'gamePulse 2.4s ease-in-out infinite' }}>
-                                        <img src={app.logo} alt={app.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: 1, textTransform: 'uppercase' }}>{app.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <style>{`@keyframes gamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,180,0,0.4),0 6px 20px rgba(0,0,0,0.4);transform:translateY(0)}50%{box-shadow:0 0 0 6px rgba(255,180,0,0),0 6px 20px rgba(0,0,0,0.4);transform:translateY(-3px)}}`}</style>
-                    </div>
+                    <BrowseGames exclude="Biology Quiz" />
 
                 </div>
             </motion.div>

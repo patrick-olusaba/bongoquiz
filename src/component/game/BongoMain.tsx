@@ -7,6 +7,9 @@ import { type GameScreen, type Category } from "../../types/gametypes.ts";
 import type { RoundRecord } from "../../types/sessionTypes.ts";
 
 import { HomeScreen }              from "./HomeScreen.tsx";
+import { BottomNav }               from "./BottomNav.tsx";
+import { GamesPage }               from "./GamesPage.tsx";
+import { ProfilePage }             from "./ProfilePage.tsx";
 import { BoxSelectScreen }         from "./BoxSelectScreen.tsx";
 import { PowerRevealScreen }       from "./PowerRevealScreen.tsx";
 import { RoundTransitionScreen }   from "./RoundTransitionScreen.tsx";
@@ -69,6 +72,13 @@ export const BongoMain: FC = () => {
     const [power,       setPower]       = useState<PrizeItem | null>(null);
     const [hasPaidSession, setHasPaidSession] = useState(false);
     const hasPaidSessionRef = useRef(false);
+    const [triggerPlay, setTriggerPlay] = useState(false);
+
+    useEffect(() => {
+        const handler = () => { setScreen("home"); setTriggerPlay(true); };
+        window.addEventListener('trigger-play', handler);
+        return () => window.removeEventListener('trigger-play', handler);
+    }, []);
 
     // Check on mount if this phone has a paid R1R2 session that was never played
     useEffect(() => {
@@ -173,10 +183,41 @@ export const BongoMain: FC = () => {
         setScreen("home");
     };
 
+    if (screen === "games")
+        return <GamesPage onBack={() => setScreen("home")} onPlayBongo={() => {
+            const phone = localStorage.getItem('bongo_player_phone') ?? '';
+            if (phone && /^07\d{8}$/.test(phone)) {
+                setPlayerName(localStorage.getItem('bongo_player_name') ?? 'Player');
+                setPlayerPhone(phone);
+                setScreen("box_select");
+            } else {
+                setScreen("home");
+                setTriggerPlay(true);
+            }
+        }} onNavigate={(tab) => {
+            if (tab === 'home') setScreen("home");
+            else if (tab === 'games') setScreen("games");
+            else if (tab === 'spin') { setScreen("home"); setTriggerPlay(true); }
+            else if (tab === 'leaderboard') setScreen("leaderboard");
+            else if (tab === 'profile') setScreen("profile");
+        }} />;
+
+    if (screen === "profile")
+        return <ProfilePage onBack={() => setScreen("home")} onNavigate={(tab) => {
+            if (tab === 'home') setScreen("home");
+            else if (tab === 'games') setScreen("games");
+            else if (tab === 'spin') { setScreen("home"); setTriggerPlay(true); }
+            else if (tab === 'leaderboard') setScreen("leaderboard");
+            else if (tab === 'profile') setScreen("profile");
+        }} />;
+
     if (screen === "home")
         return <>
             <HomeScreen
                 hasPaidSession={hasPaidSession}
+                triggerPlay={triggerPlay}
+                onTriggerPlayDone={() => setTriggerPlay(false)}
+                onViewAllGames={() => setScreen("games")}
                 onStart={(name: string) => {
                     setPlayerName(name);
                     setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
@@ -186,15 +227,21 @@ export const BongoMain: FC = () => {
                 onHistory={() => setShowHistory(true)}
                 onReviewSession={lastSessionRounds.length > 0 ? () => setShowSummary(true) : undefined}
             />
+            <BottomNav active="home" onNavigate={(tab) => {
+                if (tab === 'leaderboard') setScreen("leaderboard");
+                else if (tab === 'spin') setTriggerPlay(true);
+                else if (tab === 'games') setScreen("games");
+                else if (tab === 'profile') setScreen("profile");
+            }} />
             {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
             {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
         </>;
 
     if (screen === "box_select")
-        return <BoxSelectScreen onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />;
+        return <BoxSelectScreen onBack={() => setScreen("home")} onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />;
 
     if (screen === "power_reveal" && power)
-        return <PowerRevealScreen power={power} onContinue={() => {
+        return <PowerRevealScreen power={power} onBack={() => setScreen("home")} onContinue={() => {
             if (hasPaidSessionRef.current) {
                 hasPaidSessionRef.current = false;
                 setHasPaidSession(false);
@@ -342,6 +389,9 @@ export const BongoMain: FC = () => {
             onLeaderboard={() => setScreen("leaderboard")}
             onHistory={() => setShowHistory(true)}
         />
+        <BottomNav active="home" onNavigate={(tab) => {
+            if (tab === 'leaderboard') setScreen("leaderboard");
+        }} />
         {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
         {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
     </>;

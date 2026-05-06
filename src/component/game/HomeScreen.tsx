@@ -1,16 +1,14 @@
 // HomeScreen.tsx
 import {type FC, useEffect, useRef, useState} from "react";
+import { Home, Gamepad2, Trophy } from 'lucide-react';
 import logoBg from "../../assets/logo.png";
-import mainLogo from "../../assets/background.png";
-// import chezaTenaAd from "../../assets/cheza-tena-ad.jpeg";
-// import biblequizLogo from "../BibleQuiz/assets/biblequiz.png";
-// import biologyLogo from "../BiologyQuiz/assets/logo2.png";
-// import bongoPoster from "../../assets/gamesposter/bongoquizb.png";
+// import mainLogo from "../../assets/background.png";
+import wheelImg from "../../assets/wheel-hero.png";
 import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
 import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
-import {getStreakInfo} from "../../utils/streakDays.ts";
+// import {getStreakInfo} from "../../utils/streakDays.ts";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import '../../styles/HomeScreen.css';
@@ -21,10 +19,14 @@ interface Props {
     onHistory?: () => void;
     onReviewSession?: () => void;
     hasPaidSession?: boolean;
+    triggerPlay?: boolean;
+    onTriggerPlayDone?: () => void;
+    onViewAllGames?: () => void;
 }
 
-export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onReviewSession, hasPaidSession = false}) => {
+export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onReviewSession, hasPaidSession = false, triggerPlay, onTriggerPlayDone, onViewAllGames}) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const logoRef = useRef<HTMLImageElement>(null);
     const [showNameModal, setShowNameModal] = useState(false);
     const [showHTP, setShowHTP] = useState(false);
     const [playerName, setPlayerName] = useState(() =>
@@ -70,7 +72,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     //     setSoundOn(next);
     //     localStorage.setItem("bongo_sound", next ? "on" : "off");
     // };
-    const streakInfo = getStreakInfo();
+    // const streakInfo = getStreakInfo();
 
     const saveProfile = (name: string, phone: string) => {
         setPlayerName(name);
@@ -102,6 +104,20 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             onStart(playerName);
         }
     };
+
+    useEffect(() => {
+        if (triggerPlay) { handlePlay(); onTriggerPlayDone?.(); }
+    }, [triggerPlay]);
+
+    useEffect(() => {
+        const onScroll = () => {
+            if (logoRef.current) {
+                logoRef.current.style.transform = `translate(-50%, calc(-50% + ${window.scrollY * 0.3}px))`;
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
 
     useEffect(() => {
         checkInactivity();
@@ -151,46 +167,52 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     }, []);
 
     const rounds = [
-        {
-            num: "01",
-            label: "Quickfire",
-            icon: "⚡",
-            desc: "90s · 100 pts per answer · race the clock",
-            color: "#00c6ff",
-            glow: "drop-shadow(0 0 12px rgba(123,97,255,0.6))"
-        },
-        {
-            num: "02",
-            label: "Categories",
-            icon: "🗂️",
-            desc: "40s · 10 questions · powers apply",
-            color: "#eaaaff",
-            glow: "drop-shadow(0 0 12px rgba(255,107,107,0.6))"
-        },
-        {
-            num: "03",
-            label: "Spin & Win",
-            icon: "🎡",
-            desc: "Spin the wheel · answer to claim your bonus",
-            color: "#FFD93D",
-            glow: "drop-shadow(0 0 12px rgba(255,217,61,0.6))"
-        },
+        { num: "01", label: "Quickfire", icon: "⚡", desc: "90s · 100 pts per answer · race the clock", color: "#00e5ff", glow: "drop-shadow(0 0 12px rgba(0,229,255,0.6))", footerIcon: "⏱", footerLabel: "90s" },
+        { num: "02", label: "Categories", icon: "🗂️", desc: "40s · 10 questions · powers apply", color: "#c084fc", glow: "drop-shadow(0 0 12px rgba(192,132,252,0.6))", footerIcon: "⏱", footerLabel: "40s" },
+        { num: "03", label: "Spin & Win", icon: "🎡", desc: "Spin the wheel · answer to claim your bonus", color: "#e2e8f0", glow: "drop-shadow(0 0 12px rgba(226,232,240,0.4))", footerIcon: "🎡", footerLabel: "SPIN" },
     ];
 
     const moreApps = [
         { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
         { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
-        // { label: "Math Quiz", logo: mathLogo, path: "/math-quiz", tag: "" },
+        // { label: "Math Quiz", logo: null, path: null, tag: "NEW", emoji: "2+2=?" },
+        // { label: "History Quiz", logo: null, path: null, tag: "NEW", emoji: "🏛️" },
     ];
 
     return (
         <div className="home-root">
             <div className="bongo-top-bar">
-                <img src={logoBg} alt="" className="topbar-logo"/>
-                <button className="topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-                    <span/><span/><span/>
-                </button>
+                <div className="topbar-left">
+                    <img src={logoBg} alt="Bongo Quiz" className="topbar-logo"/>
+                    <div className="topbar-coins">
+                        <span className="topbar-coin-icon">🪙</span>
+                        <span className="topbar-coin-value">{totalPoints.toLocaleString()}</span>
+                    </div>
+                </div>
+                {/* Desktop nav links */}
+                <div className="topbar-desktop-nav">
+                    <button className="topbar-nav-link active" onClick={() => {}}><Home size={16} strokeWidth={2}/> Home</button>
+                    <button className="topbar-nav-link" onClick={onViewAllGames}><Gamepad2 size={16} strokeWidth={2}/> Games</button>
+                    <button className="topbar-nav-link" onClick={onLeaderboard}><Trophy size={16} strokeWidth={2}/> Leaderboard</button>
+                </div>
+                <div className="topbar-right">
+                    {personalBest > 0 && (
+                        <div className="topbar-score">
+                            <span>🏆</span>
+                            <span>{personalBest.toLocaleString()}</span>
+                        </div>
+                    )}
+                    <div className="topbar-avatar" data-initial={playerName.charAt(0).toUpperCase()} onClick={() => setShowNameModal(true)} />
+                    <button className="topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+                        <span/><span/><span/>
+                    </button>
+                </div>
             </div>
+
+            {/* Floating centered logo */}
+            {/*<div className="home-floating-logo">*/}
+            {/*    <img src={logoBg} alt="Bongo Quiz" className="home-title-image"/>*/}
+            {/*</div>*/}
 
             {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)}/>}
             <div className={`menu-drawer${menuOpen ? ' menu-drawer--open' : ''}`}>
@@ -204,14 +226,17 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                         <span className="menu-item-icon">❓</span>
                         <div><div className="menu-item-label">How to Play</div><div className="menu-item-sub">Learn the rules & rounds</div></div>
                     </button>
-                    <button className="menu-item" onClick={() => { setMenuOpen(false); onLeaderboard(); }}>
-                        <span className="menu-item-icon">🏆</span>
-                        <div><div className="menu-item-label">Leaderboard</div><div className="menu-item-sub">See top players</div></div>
-                    </button>
-                    <button className="menu-item" onClick={() => { setMenuOpen(false); setShowNameModal(true); }}>
-                        <span className="menu-item-icon">👤</span>
-                        <div><div className="menu-item-label">Edit Profile</div><div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div></div>
-                    </button>
+                    <div className="hideonmobile">
+                        <button className="menu-item" onClick={() => { setMenuOpen(false); onLeaderboard(); }}>
+                            <span className="menu-item-icon">🏆</span>
+                            <div><div className="menu-item-label">Leaderboard</div><div className="menu-item-sub">See top players</div></div>
+                        </button>
+                        <button className="menu-item" onClick={() => { setMenuOpen(false); setShowNameModal(true); }}>
+                            <span className="menu-item-icon">👤</span>
+                            <div><div className="menu-item-label">Edit Profile</div><div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div></div>
+                        </button>
+                    </div>
+
                     {onHistory && (
                         <button className="menu-item" onClick={() => { setMenuOpen(false); onHistory(); }}>
                             <span className="menu-item-icon">📜</span>
@@ -259,7 +284,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </div>
 
             <canvas ref={canvasRef} className="home-canvas"/>
-            <img src={logoBg} alt="" className="home-logo-bg"/>
+            <img ref={logoRef} src={logoBg} alt="" className="home-logo-bg"/>
             <div className="home-orbs">
                 <div className="home-orb1"/>
                 <div className="home-orb2"/>
@@ -277,91 +302,56 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
 
 
 
-                <div className="home-title-wrap">
-                    <img src={mainLogo} alt="Bongo Quiz" className="home-title-image"/>
+                {/* ── Hero section: text + wheel ── */}
+                <div className="home-hero">
+                    <div className="home-hero-text">
+                        <p className="home-hero-label">3 EXPLOSIVE</p>
+                        <p className="home-hero-rounds">ROUNDS</p>
+                        <p className="home-hero-sub">TEST YOUR KNOWLEDGE</p>
+                        <p className="home-hero-win">WIN BIG!</p>
+                        <button className="home-btn" onClick={handlePlay}>
+                            <span className="home-btn-shine"/>
+                            {hasPaidSession ? "▶️  Continue" : "PLAY NOW"}
+                        </button>
+                        <p className="home-hint">Rounds 1 &amp; 2: KES 20 · Spin round: KES 10</p>
+                    </div>
+                    <div className="home-hero-wheel">
+                        <img src={wheelImg} alt="Prize Wheel" className="home-wheel-img"/>
+                    </div>
                 </div>
-
-                <p className="home-subtitle">
-                    3 explosive rounds of trivia · hidden powers · a spinning prize wheel
-                </p>
 
                 {/* Player name + personal best bar */}
-                <div className="home-player-bar">
-                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                        <button className="home-player-name-btn" onClick={() => setShowNameModal(true)}
-                            data-initial={playerName.charAt(0).toUpperCase()}>
-                            {playerName} {playerPhone &&
-                            <span style={{fontSize: "0.75rem", color: "#aaa"}}>· {playerPhone}</span>} <span
-                            className="home-player-edit">✏️</span>
-                        </button>
-                    </div>
-                    {!playerPhone || !/^07\d{8}$/.test(playerPhone) ? (
-                        <button className="home-phone-warning" onClick={() => setShowNameModal(true)}>
-                            ⚠️ Set your phone number to play
-                        </button>
-                    ) : (personalBest > 0 || streakInfo.current > 0) && (
-                        <div className="home-player-bar-row">
-                            {personalBest > 0 && (
-                                <div className="home-best-score">
-                                    🏆 Best: <strong>{personalBest.toLocaleString()}</strong>
-                                </div>
-                            )}
-                            {totalPoints > 0 && (
-                                <div className="home-best-score" style={{ color: "#FFD93D" }}>
-                                    ⭐ Total: <strong>{totalPoints.toLocaleString()} pts</strong>
-                                </div>
-                            )}
-                            {streakInfo.current > 0 && (
-                                <div className="home-streak-badge">
-                                    🔥 {streakInfo.current} day{streakInfo.current !== 1 ? "s" : ""} streak
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
                 <div className="home-rounds">
                     {rounds.map((r, i) => (
-                        <div key={r.num} className="home-round-card" style={{animationDelay: `${0.4 + i * 0.08}s`}}>
-                            <div className="home-round-num">ROUND {r.num}</div>
+                        <div key={r.num} className="home-round-card" style={{animationDelay: `${0.4 + i * 0.08}s`, borderColor: r.color, boxShadow: `0 0 16px ${r.color}33`}}>
+                            <div className="home-round-num" style={{color: r.color}}>ROUND {r.num}</div>
                             <div className="home-round-icon" style={{filter: r.glow}}>{r.icon}</div>
                             <div className="home-round-label" style={{color: r.color}}>{r.label}</div>
-                            <div className="home-round-divider"
-                                 style={{background: `linear-gradient(90deg, transparent, ${r.color}, transparent)`}}/>
                             <div className="home-round-desc">{r.desc}</div>
+                            <div className="home-round-footer" style={{borderTopColor: `${r.color}44`}}>
+                                <span className="home-round-footer-text" style={{color: r.color}}>{r.footerIcon} {r.footerLabel}</span>
+                            </div>
                         </div>
                     ))}
                 </div>
 
-                <div className="home-cta-wrap">
-                    <button className="home-btn" onClick={handlePlay}>
-                        <span className="home-btn-shine"/>
-                        {hasPaidSession ? "▶️ \u00a0Continue Where You Left Off" : "🎯 \u00a0PLAY NOW"}
-                    </button>
-                    {/*<div className="home-secondary-btns">*/}
-                    {/*    <button className="home-lb-btn" onClick={onLeaderboard}>🏆 Leaderboard</button>*/}
-                    {/*    <button className="home-lb-btn" onClick={() => setShowHTP(true)}>❓ How to Play</button>*/}
-                    {/*</div>*/}
-                </div>
-
-                <p className="home-hint">Rounds 1 &amp; 2: KES 20 · Spin round: KES 10</p>
-
                 {/* Browse Games */}
-                <div style={{ width: "100%", marginTop: 20, textAlign: "center", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "18px 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07)" }}>
-                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.65rem", fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", margin: "0 0 16px" }}>Browse Games</p>
-                    <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+                <div className="home-browse-games">
+                    <div className="home-browse-header">
+                        <span className="home-browse-title">BROWSE GAMES</span>
+                        <span className="home-browse-viewall" onClick={onViewAllGames}>View all &gt;</span>
+                    </div>
+                    <div className="home-browse-grid">
                         {moreApps.map((app) => (
-                            <div key={app.label} onClick={() => { window.location.href = app.path; }} title={app.label}
-                                style={{ cursor: "pointer", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, WebkitTapHighlightColor: "transparent" }}>
-                                {app.tag && <span style={{ position: "absolute", top: -8, right: -8, background: app.tag === "HOT" ? "linear-gradient(135deg,#ff4e00,#ff9500)" : "linear-gradient(135deg,#00c6ff,#7B61FF)", color: "#fff", fontSize: "0.55rem", fontWeight: 900, letterSpacing: 1, padding: "2px 6px", borderRadius: 20, textTransform: "uppercase", zIndex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>{app.tag}</span>}
-                                <div style={{ width: 90, height: 90, borderRadius: 14, overflow: "hidden", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 6px 24px rgba(0,0,0,0.6)", animation: "gamePulse 2.4s ease-in-out infinite", transition: "transform 0.15s" }}>
-                                    <img src={app.logo} alt={app.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <div key={app.label} className="home-browse-item" onClick={() => { if (app.path) window.location.href = app.path; }}>
+                                {app.tag && <span className="home-browse-tag">{app.tag}</span>}
+                                <div className="home-browse-img-wrap">
+                                    <img src={app.logo} alt={app.label} />
                                 </div>
-                                <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, textTransform: "uppercase" }}>{app.label}</span>
+                                <span className="home-browse-label">{app.label}</span>
                             </div>
                         ))}
                     </div>
-                    <style>{`@keyframes gamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,180,0,0.4),0 6px 20px rgba(0,0,0,0.4);transform:translateY(0)}50%{box-shadow:0 0 0 6px rgba(255,180,0,0),0 6px 20px rgba(0,0,0,0.4);transform:translateY(-3px)}}`}</style>
                 </div>
             </div>
 

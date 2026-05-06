@@ -362,6 +362,12 @@ export const MainGameLayout = () => {
         };
     }, []);
 
+    useEffect(() => {
+        const handler = () => setGameState(prev => ({ ...prev, currentScreen: 'leaderboard' }));
+        window.addEventListener('show-leaderboard', handler);
+        return () => window.removeEventListener('show-leaderboard', handler);
+    }, []);
+
     const renderScreen = () => {
         switch (gameState.currentScreen) {
             case 'deduction':

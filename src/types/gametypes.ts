@@ -2,6 +2,8 @@
 
 export type GameScreen =
     | "home"
+    | "games"
+    | "profile"
     | "box_select"
     | "power_reveal"
     | "deduct_r1r2"

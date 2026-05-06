@@ -68,7 +68,7 @@ export const CUSTOM_PRIZE_LIST_1: PrizeItem[] = [
 
 // Custom list 2: High Risk
 export const CUSTOM_PRIZE_LIST_2: PrizeItem[] = [
-    PRIZE_ITEMS.find(item => item.name === "Double Or Nothing")!,
+    PRIZE_ITEMS.find(item => item.name === "Mirror Effect")!,
     PRIZE_ITEMS.find(item => item.name === "Point Gamble")!,
     PRIZE_ITEMS.find(item => item.name === "Double Points")!,
     PRIZE_ITEMS.find(item => item.name === "Steal A Point")!,

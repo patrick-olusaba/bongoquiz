@@ -1,6 +1,6 @@
 import './styles/styles.css';
 import './styles/aviator.css';
-// import chezaTenaAd from '../../assets/cheza-tena-ad.jpeg';
+import { BottomNav } from '../game/BottomNav';
 import { useQuiz } from './hooks/useQuiz';
 import { LandingPage } from './components/LandingPage';
 import { Quiz } from './components/Quiz';
@@ -13,6 +13,7 @@ export default function App() {
     const quizState = useQuiz();
 
     return (
+        <>
         <div className="app-wrapper">
             <AviatorBackground />
             <>
@@ -89,5 +90,11 @@ export default function App() {
                 </div>
             </a> */}
         </div>
+        <BottomNav active="games" onNavigate={(tab) => {
+            if (tab === 'home') window.location.href = '/';
+            else if (tab === 'games') window.location.href = '/';
+            else if (tab === 'leaderboard') window.dispatchEvent(new CustomEvent('show-leaderboard'));
+        }} />
+        </>
     );
 }

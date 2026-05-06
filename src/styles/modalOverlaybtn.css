@@ -82,10 +82,10 @@
 }
 
 .modal-cell-preview {
+    display: none;
     padding: 12px 20px;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    display: flex;
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(10px);
