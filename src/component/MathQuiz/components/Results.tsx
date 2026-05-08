@@ -18,8 +18,8 @@ export const Results: React.FC<Props> = ({ score, correctCount, wrongCount, onPl
   const initials = (n: string) => (n || '??').slice(0, 2).toUpperCase();
 
   return (
-    <div style={{ minHeight: '100svh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'Trebuchet MS','Segoe UI',sans-serif", boxSizing: 'border-box', background: 'radial-gradient(ellipse at 50% 0%, #002a10 0%, #001208 45%, #000 100%)' }}>
-      <div style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border: '1px solid rgba(0,220,100,0.2)', borderRadius: 28, padding: '24px 20px 20px', backdropFilter: 'blur(20px)', boxShadow: '0 30px 80px rgba(0,0,0,0.6)', animation: 'mathLbIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+    <div style={{ minHeight: '100svh', width: '100%', maxWidth: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'Trebuchet MS','Segoe UI',sans-serif", boxSizing: 'border-box', overflowX: 'hidden', background: 'radial-gradient(ellipse at 50% 0%, #002a10 0%, #001208 45%, #000 100%)' }}>
+      <div style={{ width: '100%', maxWidth: 480, minWidth: 0, background: 'linear-gradient(160deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border: '1px solid rgba(0,220,100,0.2)', borderRadius: 28, padding: '24px 16px 20px', backdropFilter: 'blur(20px)', boxShadow: '0 30px 80px rgba(0,0,0,0.6)', boxSizing: 'border-box', overflowX: 'hidden', animation: 'mathLbIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -73,7 +73,7 @@ export const Results: React.FC<Props> = ({ score, correctCount, wrongCount, onPl
                   {entry.name}
                   {isPlayer && <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#00DC64', background: 'rgba(0,220,100,0.2)', border: '1px solid rgba(0,220,100,0.4)', borderRadius: 6, padding: '1px 6px', letterSpacing: 1, flexShrink: 0 }}>YOU</span>}
                 </div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 900, color: '#00DC64', flexShrink: 0 }}>{entry.score.toLocaleString()}<span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600, marginLeft: 3 }}>pts</span></div>
+                <div style={{ fontSize: '0.84rem', fontWeight: 900, color: '#00DC64', flexShrink: 0, whiteSpace: 'nowrap' }}>{entry.score.toLocaleString()}<span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600, marginLeft: 3 }}>pts</span></div>
               </div>
             );
           })}
