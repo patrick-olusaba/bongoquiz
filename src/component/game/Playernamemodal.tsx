@@ -21,7 +21,7 @@ const PinBoxes: FC<{ value: string; onChange: (v: string) => void; onComplete?: 
 
     const handleChange = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const digit = e.target.value.replace(/\D/g, "").slice(-1);
-        const arr = (value + "    ").slice(0, 4).split("");
+        const arr = (value.padEnd(4, " ")).slice(0, 4).split("");
         arr[i] = digit;
         const next = arr.join("").replace(/ /g, "");
         onChange(next);

@@ -207,7 +207,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                             <span>{personalBest.toLocaleString()}</span>
                         </div>
                     )}
-                    <div className="topbar-avatar" data-initial={playerName.charAt(0).toUpperCase()} onClick={() => setShowNameModal(true)} />
+
                     <button className="topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
                         <span/><span/><span/>
                     </button>

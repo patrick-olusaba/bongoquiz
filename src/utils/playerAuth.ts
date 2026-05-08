@@ -28,11 +28,15 @@ export async function registerPlayer(name: string, phone: string, pin: string): 
     const ref = doc(db, "players", phone);
     const snap = await getDoc(ref);
     const isNew = !snap.exists();
-    await setDoc(ref, {
+    const write = setDoc(ref, {
         name, phone, pin, hasPin: true,
         updatedAt: serverTimestamp(),
         ...(isNew ? { createdAt: serverTimestamp() } : {}),
     }, { merge: true });
+    const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Save timed out. Check your connection.")), 10000)
+    );
+    await Promise.race([write, timeout]);
 }
 
 export function saveLocalProfile(name: string, phone: string): void {

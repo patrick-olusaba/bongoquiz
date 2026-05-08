@@ -295,10 +295,14 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
     useEffect(() => {
         getDocs(query(collection(db, "questions"), where("round", "==", "r3")))
             .then(snap => {
-                const qs = snap.docs.map(d => {
-                    const data = d.data();
-                    return { q: data.question ?? data.q, options: data.options, answer: data.correct } as Question;
-                }).filter(q => q.q && q.options?.length === 4 && typeof q.answer === 'number');
+                const docs = snap.empty
+                    ? [] // will use fallback below
+                    : snap.docs.map(d => d.data());
+                const qs = docs.map(data => {
+                    const raw = data.correct ?? data.answer;
+                    const answer = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
+                    return { q: data.question ?? data.q, options: data.options, answer } as Question;
+                }).filter(q => q.q && Array.isArray(q.options) && q.options.length === 4 && !isNaN(q.answer as number));
                 if (qs.length >= 5) setQuestions(shuffle(qs));
             })
             .catch(() => {});
