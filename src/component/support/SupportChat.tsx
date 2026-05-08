@@ -16,8 +16,16 @@ export function SupportChat() {
     const playerId   = useRef(localStorage.getItem("bongo_player_phone") || "");
     const [isLoggedIn, setIsLoggedIn] = useState(!!playerName.current && !!playerId.current);
     const [showLogin, setShowLogin]   = useState(false);
-
     const [open, setOpen]               = useState(false);
+
+    // Re-check login state whenever widget opens
+    useEffect(() => {
+        if (open) {
+            playerName.current = localStorage.getItem("bongo_player_name") || "";
+            playerId.current   = localStorage.getItem("bongo_player_phone") || "";
+            setIsLoggedIn(!!playerName.current && !!playerId.current);
+        }
+    }, [open]);
     const [chatId, setChatId]           = useState<string | null>(() => localStorage.getItem(`bq_chat_${playerId.current}`));
     const [msgs, setMsgs]               = useState<Msg[]>([]);
     const [text, setText]               = useState("");
