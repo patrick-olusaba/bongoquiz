@@ -2,6 +2,7 @@ import { FC } from 'react';
 import biblePoster from '../../assets/gamesposter/Bible-IMG.png';
 import biologyPoster from '../../assets/gamesposter/biologyquizposter.png';
 import bongoPoster from '../../assets/gamesposter/bongoquizb.png';
+import mathPoster from '../../assets/gamesposter/MathQuiz.png';
 import { BottomNav } from './BottomNav';
 import '../../styles/GamesPage.css';
 
@@ -15,6 +16,7 @@ const GAMES = [
     { label: 'Bongo Quiz', poster: bongoPoster, tag: 'HOT', path: null, desc: '3 explosive rounds · hidden powers · prize wheel' },
     { label: 'Bible Quiz', poster: biblePoster, tag: 'NEW', path: '/bible-quiz', desc: 'Test your biblical knowledge' },
     { label: 'Biology Quiz', poster: biologyPoster, tag: 'NEW', path: '/biology-quiz', desc: 'Science trivia challenge' },
+    { label: 'Math Quiz', poster: mathPoster, tag: 'NEW', path: '/math-quiz', desc: 'Numbers, algebra & more' },
 ];
 
 export const GamesPage: FC<Props> = ({ onBack, onPlayBongo, onNavigate }) => (

@@ -6,6 +6,7 @@ import logoBg from "../../assets/logo.png";
 import wheelImg from "../../assets/wheel-hero.png";
 import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
 import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
+import mathPoster from "../../assets/gamesposter/MathQuiz.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 // import {getStreakInfo} from "../../utils/streakDays.ts";
@@ -59,14 +60,16 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             }
         }).catch(() => {});
 
-        getDocs(query(
-            collection(db, "gameSessions"),
-            where("phone", "==", playerPhone)
-        )).then(snap => {
-            const total = snap.docs.reduce((sum, d) => sum + (d.data().total ?? 0), 0);
-            setTotalPoints(total);
-            localStorage.setItem("bongo_total_points", String(total));
-        }).catch(() => {});
+        const phone254 = playerPhone.replace(/^0/, '254');
+        fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard')
+            .then(r => r.json())
+            .then((data: any[]) => {
+                const entry = data.find((d: any) => String(d.msisdn) === phone254 || String(d.msisdn) === playerPhone);
+                if (entry) {
+                    setTotalPoints(entry.score ?? 0);
+                    localStorage.setItem("bongo_total_points", String(entry.score ?? 0));
+                }
+            }).catch(() => {});
     }, [playerPhone]);
     //     const next = !soundOn;
     //     setSoundOn(next);
@@ -175,7 +178,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     const moreApps = [
         { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
         { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
-        // { label: "Math Quiz", logo: null, path: null, tag: "NEW", emoji: "2+2=?" },
+        { label: "Math Quiz", logo: mathPoster, path: "/math-quiz", tag: "NEW" },
         // { label: "History Quiz", logo: null, path: null, tag: "NEW", emoji: "🏛️" },
     ];
 

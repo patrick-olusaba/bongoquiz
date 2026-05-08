@@ -15,6 +15,7 @@ const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPap
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
 const BibleQuiz     = lazy(() => import("./component/BibleQuiz/App.tsx"));
 const BiologyQuiz   = lazy(() => import("./component/BiologyQuiz/App.tsx"));
+const MathQuiz      = lazy(() => import("./component/MathQuiz/App.tsx"));
 
 function KCSEAdminRoute() {
     const navigate = useNavigate();
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/bible-quiz"   element={<BibleQuiz />} />
                 <Route path="/bible-admin" element={<AdminView initialTab="biblequiz" />} />
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
+                <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
             </Routes>
         </Suspense>

@@ -66,13 +66,17 @@ function applyR2Power(rawScore: number, correct: number, total: number, power: P
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const BongoMain: FC = () => {
-    const [screen,      setScreen]      = useState<GameScreen>("home");
+    const [screen,      setScreen]      = useState<GameScreen>(() => {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab === 'games' || tab === 'profile' || tab === 'leaderboard') return tab as GameScreen;
+        return "home";
+    });
     const [playerName,  setPlayerName]  = useState(() => localStorage.getItem("bongo_player_name") ?? "Player");
     const [playerPhone, setPlayerPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
     const [power,       setPower]       = useState<PrizeItem | null>(null);
     const [hasPaidSession, setHasPaidSession] = useState(false);
     const hasPaidSessionRef = useRef(false);
-    const [triggerPlay, setTriggerPlay] = useState(false);
+    const [triggerPlay, setTriggerPlay] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'spin');
 
     useEffect(() => {
         const handler = () => { setScreen("home"); setTriggerPlay(true); };

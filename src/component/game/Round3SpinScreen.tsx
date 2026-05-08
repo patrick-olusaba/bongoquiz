@@ -297,7 +297,12 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
             .then(snap => {
                 const qs = snap.docs.map(d => {
                     const data = d.data();
-                    return { q: data.question ?? data.q, options: data.options, answer: data.answer } as Question;
+                    // answer may be stored as "A"/"B"/"C"/"D" or 0/1/2/3
+                    const raw = data.answer;
+                    const answer = typeof raw === 'string'
+                        ? Math.max(0, 'ABCD'.indexOf(raw.toUpperCase()))
+                        : Number(raw);
+                    return { q: data.question ?? data.q, options: data.options, answer } as Question;
                 }).filter(q => q.q && q.options?.length === 4);
                 if (qs.length >= 5) setQuestions(shuffle(qs));
             })

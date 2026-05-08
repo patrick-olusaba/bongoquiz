@@ -7,11 +7,13 @@ import { PlayerNameModal } from './Playernamemodal';
 import bongoPoster from '../../assets/gamesposter/bongoquizb.png';
 import biblePoster from '../../assets/gamesposter/Bible-IMG.png';
 import biologyPoster from '../../assets/gamesposter/biologyquizposter.png';
+import mathPoster from '../../assets/gamesposter/MathQuiz.png';
 
 const GAME_INFO: Record<string, { name: string; logo: string }> = {
     bongo:   { name: 'Bongo Quiz',   logo: bongoPoster },
     bible:   { name: 'Bible Quiz',   logo: biblePoster },
     biology: { name: 'Biology Quiz', logo: biologyPoster },
+    math:    { name: 'Math Quiz',    logo: mathPoster },
 };
 
 function detectGame(s: Session) {
@@ -31,18 +33,31 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [showEdit, setShowEdit] = useState(false);
     const [allSessions, setAllSessions] = useState<Session[]>([]);
+    const [leaderboardTotal, setLeaderboardTotal] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!phone) return;
+        const phone254 = phone.replace(/^0/, '254');
+        fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard')
+            .then(r => r.json())
+            .then((data: any[]) => {
+                const entry = data.find((d: any) => String(d.msisdn) === phone254 || String(d.msisdn) === phone);
+                if (entry) setLeaderboardTotal(entry.score ?? 0);
+            }).catch(() => {});
+    }, [phone]);
 
     useEffect(() => {
         if (!phone || !/^07\d{8}$/.test(phone)) return;
 
         const q = (col: string) => getDocs(query(collection(db, col), where('phone', '==', phone)));
 
-        Promise.all([q('gameSessions'), q('bibleQuizSessions'), q('bioQuizSessions')])
-            .then(([bongo, bible, bio]) => {
+        Promise.all([q('gameSessions'), q('bibleQuizSessions'), q('bioQuizSessions'), q('mathQuizSessions')])
+            .then(([bongo, bible, bio, math]) => {
                 const all: Session[] = [
                     ...bongo.docs.map(d => ({ ...d.data(), gameType: 'bongo' } as Session)),
                     ...bible.docs.map(d => ({ ...d.data(), gameType: 'bible' } as Session)),
                     ...bio.docs.map(d => ({ ...d.data(), gameType: 'biology' } as Session)),
+                    ...math.docs.map(d => ({ ...d.data(), gameType: 'math' } as Session)),
                 ];
                 const sorted = all.sort((a, b) => {
                     const ta = a.playedAt?.toDate?.()?.getTime() ?? 0;
@@ -56,8 +71,9 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
 
     const gamesPlayed = allSessions.length;
     const getScore = (s: Session) => s.gameType === 'bongo' ? (s.total ?? 0) : (s.score ?? s.total ?? 0);
-    const personalBest = allSessions.reduce((max, s) => Math.max(max, getScore(s)), 0);
-    const totalPoints = allSessions.reduce((sum, s) => sum + getScore(s), 0);
+    const bongoSessions = allSessions.filter(s => s.gameType === 'bongo');
+    const personalBest = bongoSessions.reduce((max, s) => Math.max(max, s.total ?? 0), 0);
+    const totalPoints = leaderboardTotal ?? bongoSessions.reduce((sum, s) => sum + (s.total ?? 0), 0);
     const streak = parseInt(localStorage.getItem('bongo_streak') ?? '0');
 
     const handleLogout = () => {
@@ -73,6 +89,7 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
                 <button className="profile-back" onClick={onBack}>←</button>
                 <span className="profile-topbar-title">Profile</span>
             </div>
+            <div className="profile-content">
 
             {/* Avatar */}
             <div className="profile-avatar-section">
@@ -117,7 +134,10 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
                                     <p className="profile-session-power">{s.power}</p>
                                 )}
                                 <p className="profile-session-date">
-                                    {s.playedAt?.toDate?.()?.toLocaleDateString() ?? 'Recent'}
+                                    {s.playedAt?.toDate?.() ? (() => {
+                                        const d = s.playedAt.toDate();
+                                        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+                                    })() : 'Recent'}
                                 </p>
                             </div>
                         </div>
@@ -131,6 +151,7 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
 
             {/* Logout */}
             <button className="profile-logout-btn" onClick={handleLogout}>🚪 Log Out</button>
+            </div>
 
             <BottomNav active="profile" onNavigate={onNavigate} />
 

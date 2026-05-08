@@ -18,13 +18,39 @@ export const PowerRevealScreen: FC<Props> = ({ power, onContinue, onBack }) => {
 
     return (
         <div className="power-root">
+            {/* Animated background objects */}
+            <div className="power-bg">
+                {['⚡','🎯','💥','🔥','✨','⭐','💎','🎲'].map((icon, i) => (
+                    <div key={i} className="power-float-icon" style={{
+                        left: `${(i * 14 + 5) % 92}%`,
+                        top: `${(i * 19 + 8) % 88}%`,
+                        animationDelay: `${i * 0.5}s`,
+                        fontSize: `${1.1 + (i % 3) * 0.4}rem`,
+                        opacity: 0.12 + (i % 3) * 0.04
+                    }}>{icon}</div>
+                ))}
+                <div className="power-orb power-orb-1" />
+                <div className="power-orb power-orb-2" />
+                <div className="power-orb power-orb-3" />
+            </div>
+
+            {/* Fixed back button */}
             {onBack && (
-                <button onClick={onBack} style={{position:'fixed',top:16,left:16,background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,color:'#fff',width:36,height:36,cursor:'pointer',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',zIndex:10}}>←</button>
+                <div className="power-topbar">
+                    <button onClick={onBack} className="power-back-btn">← <span>Back</span></button>
+                </div>
             )}
+
             <div className="power-card">
-                <span className="power-badge">Your Power</span>
+                <span className="power-badge">
+                    <span className="power-badge-pulse" />
+                    Step 2 of 3
+                </span>
+
+                <h3 className="power-section-title">Your Power</h3>
 
                 <div className="power-img-wrap">
+                    <div className="power-img-ring" />
                     <img src={power.img} alt={power.name} className="power-img" />
                 </div>
 
@@ -32,7 +58,9 @@ export const PowerRevealScreen: FC<Props> = ({ power, onContinue, onBack }) => {
                 <p className="power-desc">
                     {POWER_DESC[power.name] ?? power.description ?? "A mysterious power awaits!"}
                 </p>
-                <div style={{width:'60px',height:'2px',background:'linear-gradient(90deg,transparent,rgba(255,215,0,0.6),transparent)',margin:'0 auto 24px',borderRadius:2}}/>
+
+                <div className="power-divider" />
+
                 <button className="power-btn" onClick={onContinue}>
                     ⚡ Start Round 1
                 </button>

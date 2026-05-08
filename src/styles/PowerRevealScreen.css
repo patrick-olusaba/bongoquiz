@@ -1,86 +1,119 @@
 /* PowerRevealScreen.css */
 
-/* ── Entrance animations ── */
-@keyframes powerCardIn {
-    from { opacity: 0; transform: translateY(32px) scale(0.95); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes powerBadgeIn {
-    from { opacity: 0; transform: scale(0.7); }
-    to   { opacity: 1; transform: scale(1); }
-}
-@keyframes powerNameIn {
-    from { opacity: 0; transform: translateY(12px); letter-spacing: 6px; }
-    to   { opacity: 1; transform: translateY(0); letter-spacing: -0.5px; }
-}
-@keyframes powerDescIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes powerGlow {
-    0%, 100% { box-shadow: 0 0 40px rgba(255,215,0,0.2), inset 0 0 20px rgba(255,215,0,0.05); }
-    50%       { box-shadow: 0 0 70px rgba(255,215,0,0.45), inset 0 0 30px rgba(255,215,0,0.1); }
-}
+@keyframes powerCardIn  { from { opacity:0; transform:translateY(32px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes powerBadgeIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+@keyframes powerNameIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes powerDescIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes powerGlow    { 0%,100% { box-shadow:0 0 40px rgba(255,215,0,0.2),inset 0 0 20px rgba(255,215,0,0.05); } 50% { box-shadow:0 0 80px rgba(255,215,0,0.5),inset 0 0 30px rgba(255,215,0,0.12); } }
+@keyframes powerFloat   { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-12px) rotate(2deg); } }
+@keyframes bsFloat      { 0%,100% { transform:translateY(0) rotate(-5deg) scale(1); } 50% { transform:translateY(-20px) rotate(5deg) scale(1.1); } }
+@keyframes orbDrift1    { 0%,100% { transform:translate(0,0); } 50% { transform:translate(60px,40px); } }
+@keyframes orbDrift2    { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-40px,-30px); } }
+@keyframes orbDrift3    { 0%,100% { transform:translate(0,0); } 50% { transform:translate(30px,-50px); } }
+@keyframes badgePulse   { 0%,100% { opacity:1; box-shadow:0 0 6px #ffd200; } 50% { opacity:0.5; box-shadow:0 0 14px #ffd200; } }
+@keyframes ringPulse    { 0%,100% { transform:scale(1); opacity:0.4; } 50% { transform:scale(1.15); opacity:0.8; } }
 
+/* ── Root ── */
 .power-root {
-    min-height: 100svh;
+    height: 100svh;
     width: 100vw;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(ellipse at 30% 40%, #0f0035 0%, #000 45%, #0a001a 100%);
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: radial-gradient(ellipse at 30% 20%, #1a0050 0%, #0a0020 40%, #000 100%);
     position: relative;
     overflow: hidden;
     box-sizing: border-box;
 }
 
-/* Ambient orbs behind the card */
-.power-root::before,
-.power-root::after {
-    content: '';
+/* ── Animated background ── */
+.power-bg {
     position: fixed;
-    border-radius: 50%;
+    inset: 0;
     pointer-events: none;
     z-index: 0;
+    overflow: hidden;
 }
-.power-root::before {
+
+.power-float-icon {
+    position: absolute;
+    animation: bsFloat 5s ease-in-out infinite;
+    user-select: none;
+}
+
+.power-orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+.power-orb-1 {
     width: 500px; height: 500px;
     top: -100px; left: -100px;
     background: radial-gradient(circle, rgba(123,97,255,0.18) 0%, transparent 70%);
     animation: orbDrift1 14s ease-in-out infinite;
 }
-.power-root::after {
+.power-orb-2 {
     width: 400px; height: 400px;
     bottom: -80px; right: -80px;
     background: radial-gradient(circle, rgba(255,107,107,0.15) 0%, transparent 70%);
     animation: orbDrift2 11s ease-in-out infinite;
 }
-@keyframes orbDrift1 {
-    0%, 100% { transform: translate(0,0); }
-    50%       { transform: translate(60px, 40px); }
-}
-@keyframes orbDrift2 {
-    0%, 100% { transform: translate(0,0); }
-    50%       { transform: translate(-40px, -30px); }
+.power-orb-3 {
+    width: 300px; height: 300px;
+    top: 40%; left: 60%;
+    background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%);
+    animation: orbDrift3 9s ease-in-out infinite;
 }
 
+/* ── Fixed top bar ── */
+.power-topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background: rgba(10, 0, 30, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+.power-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+.power-back-btn:hover { background: rgba(255,255,255,0.15); }
+
+/* ── Card ── */
 .power-card {
     position: relative;
     z-index: 1;
     background: linear-gradient(160deg, rgba(255,215,0,0.08) 0%, rgba(123,97,255,0.06) 50%, rgba(255,255,255,0.02) 100%);
     backdrop-filter: blur(20px);
     border-radius: 28px;
-    border: 1px solid rgba(255,215,0,0.2);
-    padding: 40px;
-    max-width: 500px;
-    width: 100%;
+    border: 1px solid rgba(255,215,0,0.25);
+    padding: 40px 32px;
+    max-width: 420px;
+    width: calc(100% - 32px);
     box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(255,215,0,0.08), inset 0 1px 0 rgba(255,255,255,0.1);
     text-align: center;
-    animation: powerCardIn 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+    animation: powerCardIn 0.5s cubic-bezier(0.34,1.2,0.64,1) both;
 }
 
+/* ── Badge ── */
 .power-badge {
     display: inline-flex;
     align-items: center;
@@ -89,81 +122,94 @@
     border: 1px solid rgba(255,215,0,0.4);
     border-radius: 100px;
     padding: 5px 16px;
-    font-size: 0.78rem;
-    font-weight: 800;
+    font-size: 0.72rem;
+    font-weight: 900;
     color: #ffd200;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     text-transform: uppercase;
     margin-bottom: 20px;
     animation: powerBadgeIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.15s both;
 }
-.power-badge::before {
-    content: '';
+
+.power-badge-pulse {
+    display: inline-block;
     width: 7px; height: 7px;
     border-radius: 50%;
     background: #ffd200;
     box-shadow: 0 0 8px #ffd200;
-    display: inline-block;
     animation: badgePulse 1.5s ease-in-out infinite;
 }
-@keyframes badgePulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 6px #ffd200; }
-    50%       { opacity: 0.5; box-shadow: 0 0 14px #ffd200; }
+
+.power-section-title {
+    font-size: 0.75rem;
+    font-weight: 900;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 0 0 16px;
 }
 
+/* ── Image ── */
 .power-img-wrap {
-    width: 180px;
-    height: 180px;
-    margin: 0 auto 28px;
+    width: 160px; height: 160px;
+    margin: 0 auto 24px;
     background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(123,97,255,0.12));
     border: 2px solid rgba(255,215,0,0.3);
-    border-radius: 18px;
+    border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     animation: powerGlow 3s ease-in-out infinite;
     position: relative;
 }
-.power-img-wrap::after {
-    content: '';
+
+.power-img-ring {
     position: absolute;
-    inset: -8px;
-    border-radius: 36px;
-    background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
+    inset: -10px;
+    border-radius: 34px;
+    border: 1px solid rgba(255,215,0,0.2);
+    animation: ringPulse 2.5s ease-in-out infinite;
     pointer-events: none;
 }
 
 .power-img {
-    width: 148px;
-    height: 148px;
+    width: 130px; height: 130px;
     border-radius: 18px;
-
     object-fit: contain;
-    animation: float 2s ease-in-out infinite;
+    animation: powerFloat 2.5s ease-in-out infinite;
     position: relative;
     z-index: 1;
 }
 
+/* ── Text ── */
 .power-name {
-    font-size: 2rem;
+    font-size: 1.9rem;
     font-weight: 900;
     background: linear-gradient(135deg, #fff 0%, #FFD700 50%, #FF9F1C 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 12px;
+    margin: 0 0 10px;
     letter-spacing: -0.5px;
     animation: powerNameIn 0.45s ease 0.25s both;
 }
 
 .power-desc {
-    color: rgba(255,255,255,0.6);
-    font-size: 1rem;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.95rem;
     line-height: 1.65;
-    margin-bottom: 28px;
+    margin: 0 0 20px;
     animation: powerDescIn 0.4s ease 0.35s both;
 }
 
+.power-divider {
+    width: 60px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.6), transparent);
+    margin: 0 auto 24px;
+    border-radius: 2px;
+}
+
+/* ── Button ── */
 .power-btn {
     background: linear-gradient(135deg, #11998e, #38ef7d);
     border: none;
@@ -172,52 +218,21 @@
     cursor: pointer;
     font-family: inherit;
     font-size: 1rem;
-    font-weight: 800;
+    font-weight: 900;
     padding: 14px 40px;
+    letter-spacing: 1px;
     box-shadow: 0 4px 24px rgba(56,239,125,0.45);
     transition: transform 0.2s, box-shadow 0.2s;
     animation: powerDescIn 0.4s ease 0.45s both;
-    letter-spacing: 0.5px;
+    width: 100%;
 }
-.power-btn:hover  { transform: scale(1.05) translateY(-2px); box-shadow: 0 8px 32px rgba(56,239,125,0.55); }
+.power-btn:hover  { transform: scale(1.03) translateY(-2px); box-shadow: 0 8px 32px rgba(56,239,125,0.55); }
 .power-btn:active { transform: scale(0.98); }
 
-@keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-9px); }
-}
-
-/* ═══════════════════════════════════════════════════
-   RESPONSIVE — PowerRevealScreen.css
-═══════════════════════════════════════════════════ */
-
 @media (max-width: 600px) {
-    .power-root {
-        align-items: flex-start;
-        padding: 0;
-        overflow-y: auto;
-    }
-    .power-card {
-        min-height: 100svh;
-        width: 100%;
-        max-width: 100%;
-        border-radius: 0;
-        padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
+    .power-card { padding: 80px 20px 32px; border-radius: 0; width: 100%; max-width: 100%; min-height: 100svh; box-sizing: border-box; justify-content: center; display: flex; flex-direction: column; align-items: center; }
+    .power-root { justify-content: flex-start; }
     .power-img-wrap { width: 130px; height: 130px; }
     .power-img      { width: 105px; height: 105px; }
-    .power-name     { font-size: 1.7rem; }
-    .power-desc     { font-size: 0.95rem; margin-bottom: 20px; }
-}
-
-@media (max-width: 375px) {
-    .power-img-wrap { width: 110px; height: 110px; }
-    .power-img      { width: 88px; height: 88px; }
-    .power-name     { font-size: 1.4rem; }
-    .power-desc     { font-size: 0.88rem; }
+    .power-name     { font-size: 1.6rem; }
 }

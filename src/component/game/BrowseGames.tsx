@@ -2,11 +2,13 @@ import { FC } from 'react';
 import bongoPoster from '../../assets/gamesposter/bongoquizb.png';
 import biblePoster from '../../assets/gamesposter/Bible-IMG.png';
 import biologyPoster from '../../assets/gamesposter/biologyquizposter.png';
+import mathPoster from '../../assets/gamesposter/MathQuiz.png';
 import '../../styles/HomeScreen.css';
 
 const GAMES = [
     { label: 'Bible Quiz', logo: biblePoster, path: '/bible-quiz', tag: 'NEW' },
     { label: 'Biology Quiz', logo: biologyPoster, path: '/biology-quiz', tag: 'NEW' },
+    { label: 'Math Quiz', logo: mathPoster, path: '/math-quiz', tag: 'NEW' },
     { label: 'Bongo Quiz', logo: bongoPoster, path: '/', tag: 'HOT' },
 ];
 

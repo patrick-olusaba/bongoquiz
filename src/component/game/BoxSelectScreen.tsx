@@ -81,28 +81,64 @@ export const BoxSelectScreen: FC<Props> = ({ onPowerSelected, onBack }) => {
 
     return (
         <div className="boxselect-root">
+            {/* Animated background */}
+            <div className="boxselect-bg">
+                {[...Array(12)].map((_, i) => (
+                    <div key={i} className="boxselect-float-icon" style={{
+                        left: `${(i * 13 + 5) % 95}%`,
+                        top: `${(i * 17 + 10) % 90}%`,
+                        animationDelay: `${i * 0.4}s`,
+                        fontSize: `${1.2 + (i % 3) * 0.5}rem`,
+                        opacity: 0.15 + (i % 3) * 0.05
+                    }}>
+                        {['🎁', '⭐', '✨', '🎲', '💎'][i % 5]}
+                    </div>
+                ))}
+                {[...Array(8)].map((_, i) => (
+                    <div key={`orb-${i}`} className="boxselect-orb" style={{
+                        left: `${(i * 20 + 10) % 90}%`,
+                        top: `${(i * 25 + 15) % 85}%`,
+                        animationDelay: `${i * 0.6}s`,
+                        width: `${60 + (i % 3) * 40}px`,
+                        height: `${60 + (i % 3) * 40}px`
+                    }} />
+                ))}
+            </div>
+
+            {/* Fixed top bar */}
             {onBack && (
-                <div style={{width:'100%', maxWidth:920, display:'flex', alignItems:'center', gap:10}}>
-                    <button onClick={onBack} style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,color:'#fff',width:36,height:36,cursor:'pointer',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>←</button>
-                    <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.85rem'}}>Back to Home</span>
+                <div className="boxselect-topbar">
+                    <button onClick={onBack} className="boxselect-back-btn">
+                        ← <span>Back to Home</span>
+                    </button>
                 </div>
             )}
-            <div className="boxselect-header">
-                {/*<span className="boxselect-badge">Step 1 of 3</span>*/}
-                <h2 className="boxselect-title">🎁 Choose Your Power Box</h2>
-                <p className="boxselect-subtitle">Each box hides a power that affects Rounds 1 &amp; 2. Tap any box to reveal!</p>
-            </div>
 
-            <div className="bingo-canvas-container boxselect-canvas-wrap">
-                <BongoCanvas
-                    cells={cells}
-                    onCellChange={setCells}
-                    onCellClick={handleCellClick}
-                    onRefreshGrid={reshufflePrizes}
-                />
-            </div>
+            {/* Content wrapper */}
+            <div className="boxselect-content">
+                <div className="boxselect-header">
+                    <div className="boxselect-badge">
+                        <span className="boxselect-badge-pulse" />
+                        Step 1 of 3
+                    </div>
+                    <h2 className="boxselect-title">
+                        <span className="boxselect-title-icon">🎁</span>
+                        Choose Your Power Box
+                    </h2>
+                    <p className="boxselect-subtitle">Each box hides a power that affects Rounds 1 & 2. Tap any box to reveal!</p>
+                </div>
 
-            <p className="boxselect-hint">Ctrl+Z to reshuffle · Ctrl+1–8 to open by number</p>
+                <div className="bingo-canvas-container boxselect-canvas-wrap">
+                    <BongoCanvas
+                        cells={cells}
+                        onCellChange={setCells}
+                        onCellClick={handleCellClick}
+                        onRefreshGrid={reshufflePrizes}
+                    />
+                </div>
+
+                <p className="boxselect-hint">💡 Tip: Each box contains a unique power-up!</p>
+            </div>
         </div>
     );
 };

@@ -1,16 +1,17 @@
 .profile-page {
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
     font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
     color: #fff;
     max-width: 480px;
     margin: 0 auto;
+    overflow: hidden;
 }
 
 .profile-topbar {
-    position: sticky;
-    top: 0;
+    flex-shrink: 0;
     z-index: 10;
     display: flex;
     align-items: center;
@@ -112,6 +113,14 @@
 .profile-stat-value { font-size: 1.2rem; font-weight: 900; color: #FFD700; }
 .profile-stat-label { font-size: 0.65rem; color: rgba(255,255,255,0.45); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
+/* Scrollable content */
+.profile-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+
 /* Recent Games */
 .profile-section {
     padding: 0 16px 24px;
@@ -127,14 +136,9 @@
 }
 
 .profile-sessions-scroll {
-    max-height: 340px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(168,85,247,0.4) transparent;
+    overflow-y: visible;
     padding-right: 4px;
 }
-.profile-sessions-scroll::-webkit-scrollbar { width: 4px; }
-.profile-sessions-scroll::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.4); border-radius: 4px; }
 
 .profile-empty {
     color: rgba(255,255,255,0.3);
