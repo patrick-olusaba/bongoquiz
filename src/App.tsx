@@ -4,6 +4,7 @@ import './App.css';
 import mainLogo from './assets/logo.png';
 import logoBg from './assets/bongo-logo.png';
 import { BongoMain }       from "./component/game/BongoMain.tsx";
+import { PWAInstallBanner } from "./component/PWAInstallBanner.tsx";
 import { AdminLogin, KCSE_EMAIL } from "./component/admin/AdminLogin.tsx";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase.ts";
@@ -79,6 +80,7 @@ function App() {
 
     return (
         <Suspense fallback={<LoadingScreen />}>
+            <PWAInstallBanner />
             <Routes>
                 <Route path="/"            element={<BongoMain />} />
                 <Route path="/docs"        element={<GameInfoDocs />} />
