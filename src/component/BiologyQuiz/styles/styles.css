@@ -415,7 +415,7 @@ body {
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
-  min-height: 200px;
+  min-height: unset;
 }
 
 .question-card::before {

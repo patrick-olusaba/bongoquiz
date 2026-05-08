@@ -236,6 +236,14 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                         🔄 Wrong — <strong>Second Chance</strong>! Try once more.
                     </div>
                 )}
+                {hasSecondChance && !scPending && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, margin:'4px 0', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)' }}>
+                        <span>🎯 Shots:</span>
+                        <span style={{ fontSize:'1rem', filter: scUsed ? 'grayscale(1) opacity(0.3)' : 'none' }}>🟢</span>
+                        <span style={{ fontSize:'1rem', filter: scUsed ? 'none' : 'grayscale(1) opacity(0.3)' }}>🟢</span>
+                        <span style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.72rem' }}>{scUsed ? '1 shot left' : '2 shots per question'}</span>
+                    </div>
+                )}
                 {hasNoPenalty && (
                     <div className="game-banner game-banner--success">
                         🛡️ <strong>No Penalty</strong> — no deductions for wrong answers or passes!
@@ -248,9 +256,15 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                     const isElim = eliminated.includes(i);
                     let cls = isElim ? "game-option game-option--disabled" : "game-option";
                     if (answered !== null) {
-                        if (i === q.answer)      cls = "game-option game-option--correct";
-                        else if (i === answered) cls = "game-option game-option--wrong";
-                        else                     cls = "game-option game-option--disabled";
+                        if (scPending) {
+                            // First wrong attempt with Second Chance — only mark wrong, don't reveal correct
+                            if (i === answered) cls = "game-option game-option--wrong";
+                            else                cls = "game-option game-option--disabled";
+                        } else {
+                            if (i === q.answer)      cls = "game-option game-option--correct";
+                            else if (i === answered) cls = "game-option game-option--wrong";
+                            else                     cls = "game-option game-option--disabled";
+                        }
                     }
                     return (
                         <button key={i} className={cls}
