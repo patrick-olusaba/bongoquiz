@@ -24,6 +24,7 @@ import { DeductionModal }          from "./DeductionModal.tsx";
 import { SessionSummary }          from "./SessionSummary.tsx";
 import { GameHistory }             from "./GameHistory.tsx";
 import { clearQuestionsCache }     from "../../hooks/useQuestions.ts";
+import { SupportChat }             from "../support/SupportChat.tsx";
 
 // ─── R1 score modifier ────────────────────────────────────────────────────────
 function applyR1Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
@@ -239,6 +240,7 @@ export const BongoMain: FC = () => {
             }} />
             {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
             {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
+            <SupportChat />
         </>;
 
     if (screen === "box_select")
@@ -398,5 +400,6 @@ export const BongoMain: FC = () => {
         }} />
         {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
         {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
+        <SupportChat />
     </>;
 };

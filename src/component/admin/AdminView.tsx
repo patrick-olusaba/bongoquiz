@@ -82,7 +82,7 @@ function StatusBadge({ status }: { status: string }) {
 function Dashboard() {
     const [data, setData] = useState<any>(null);
     const [live, setLive] = useState<Record<string, number>>({ bongo: 0, bible: 0, bio: 0, math: 0, gen: 0 });
-    const [peak, setPeak] = useState<{ total: number; bongo: number; bible: number; bio: number; at: Date; } | null>(() => {
+    const [peak, setPeak] = useState<{ total: number; bongo: number; bible: number; bio: number; math: number; at: Date; } | null>(() => {
         const saved = localStorage.getItem("admin_peak_live");
         if (!saved) return null;
         const p = JSON.parse(saved);
@@ -96,14 +96,15 @@ function Dashboard() {
             { key: "bongo", col: "gameSessions",    field: "playedAt" },
             { key: "bible", col: "bibleQuizSessions", field: "playedAt" },
             { key: "bio",   col: "bioQuizSessions",  field: "playedAt" },
+            { key: "math",  col: "mathQuizSessions", field: "playedAt" },
         ].map(({ key, col, field }) =>
             onSnapshot(query(collection(db, col), where(field, ">=", fiveMinAgo())),
                 snap => setLive(prev => {
                     const next = { ...prev, [key]: snap.size };
-                    const total = next.bongo + next.bible + next.bio;
+                    const total = next.bongo + next.bible + next.bio + next.math;
                     setPeak(p => {
                         if (!p || total > p.total) {
-                            const newPeak = { total, bongo: next.bongo, bible: next.bible, bio: next.bio, at: new Date() };
+                            const newPeak = { total, bongo: next.bongo, bible: next.bible, bio: next.bio, math: next.math, at: new Date() };
                             localStorage.setItem("admin_peak_live", JSON.stringify(newPeak));
                             return newPeak;
                         }
@@ -323,6 +324,7 @@ function Dashboard() {
                     { label: "Bongo Quiz",       color: "#4361ee", count: live.bongo },
                     { label: "Bible Quiz",        color: "#059669", count: live.bible },
                     { label: "Biology Quiz",      color: "#7c3aed", count: live.bio   },
+                    { label: "Math Quiz",         color: "#d97706", count: live.math  },
                 ].map(({ label, color, count }) => (
                     <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8" }}>
                         <span style={{ fontSize: "0.85rem", color: "#444" }}>{label}</span>
@@ -333,7 +335,7 @@ function Dashboard() {
                     </div>
                 ))}
                 <div style={{ marginTop: 10, textAlign: "center", fontSize: "1.4rem", fontWeight: 800, color: "#10b981" }}>
-                    {live.bongo + live.bible + live.bio} <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 400 }}>total active</span>
+                    {live.bongo + live.bible + live.bio + live.math} <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 400 }}>total active</span>
                 </div>
                 <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
             </div>
@@ -353,6 +355,7 @@ function Dashboard() {
                         { label: "Bongo Quiz",  color: "#4361ee", count: peak.bongo },
                         { label: "Bible Quiz",  color: "#059669", count: peak.bible },
                         { label: "Biology Quiz",color: "#7c3aed", count: peak.bio   },
+                        { label: "Math Quiz",   color: "#d97706", count: peak.math ?? 0 },
                     ].map(({ label, color, count }) => (
                         <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                             <span style={{ fontSize: "0.78rem", color: "#444", minWidth: 110 }}>{label}</span>

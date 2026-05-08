@@ -137,6 +137,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // ── Support Chat ────────────────────────────────────────────────────────────
+    // Anyone can create a chat and read/write their own messages (no auth required)
+    match /supportChats/{chatId} {
+      allow read, create: if true;
+      allow update:       if true;
+      match /messages/{msgId} {
+        allow read, create: if true;
+        allow update: if true;  // admin marks seenByAdmin
+        allow delete: if false;
+      }
+      match /meta/{doc} {
+        allow read, write: if true;
+      }
+    }
+
     // ── Biology Quiz ────────────────────────────────────────────────────────────
     match /bioQuizQuestions/{id} {
       allow read:  if true;
