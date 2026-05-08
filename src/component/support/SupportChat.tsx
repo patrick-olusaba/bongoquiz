@@ -5,6 +5,7 @@ import {
     doc, onSnapshot as docSnap, serverTimestamp, setDoc, updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase.ts";
+import { PlayerNameModal } from "../game/Playernamemodal.tsx";
 
 interface Msg { id: string; sender: "player" | "admin"; text: string; timestamp: number; seenByAdmin?: boolean; }
 
@@ -13,7 +14,8 @@ const AUTO_REPLY_DELAY = 10_000; // 10s — if no admin reply, send auto-message
 export function SupportChat() {
     const playerName = useRef(localStorage.getItem("bongo_player_name") || "");
     const playerId   = useRef(localStorage.getItem("bongo_player_phone") || "");
-    const isLoggedIn = !!playerName.current && !!playerId.current;
+    const [isLoggedIn, setIsLoggedIn] = useState(!!playerName.current && !!playerId.current);
+    const [showLogin, setShowLogin]   = useState(false);
 
     const [open, setOpen]               = useState(false);
     const [chatId, setChatId]           = useState<string | null>(() => localStorage.getItem(`bq_chat_${playerId.current}`));
@@ -186,9 +188,10 @@ export function SupportChat() {
                             <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.82rem", marginBottom: 10 }}>
                                 🔒 Please log in to send a message
                             </p>
-                            <a href="/" style={{ display: "inline-block", background: "linear-gradient(135deg,#4361ee,#7209b7)", color: "#fff", borderRadius: 8, padding: "8px 20px", fontSize: "0.85rem", fontWeight: 700, textDecoration: "none" }}>
+                            <button onClick={() => { setShowLogin(true); setOpen(false); }}
+                                style={{ background: "linear-gradient(135deg,#4361ee,#7209b7)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                                 Log In
-                            </a>
+                            </button>
                         </div>
                     ) : resolved ? (
                         <div style={{ padding: 10, textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
@@ -210,6 +213,20 @@ export function SupportChat() {
                         </div>
                     )}
                 </div>
+            )}
+            {showLogin && (
+                <PlayerNameModal
+                    currentName=""
+                    currentPhone=""
+                    onSave={(name, phone) => {
+                        playerName.current = name;
+                        playerId.current   = phone;
+                        setIsLoggedIn(true);
+                        setShowLogin(false);
+                        setOpen(true);
+                    }}
+                    onClose={() => setShowLogin(false)}
+                />
             )}
         </>
     );
