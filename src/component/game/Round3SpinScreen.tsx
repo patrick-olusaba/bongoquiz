@@ -1,7 +1,7 @@
 // Round3SpinScreen.tsx — 5 spins, question per spin, accumulate or lose
 import { type FC, useEffect, useRef, useState } from "react";
 import { R3_QUESTIONS, shuffle, type Question } from "../../types/gametypes.ts";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import { useSoundFX } from "../../hooks/Usesoundfx.ts";
 import wheelImg from "../../assets/wheel.png";
@@ -293,17 +293,12 @@ export const Round3SpinScreen: FC<Props> = ({ currentScore, onComplete }) => {
     const questionRef    = useRef(0);
 
     useEffect(() => {
-        getDocs(collection(db, "questions"))
+        getDocs(query(collection(db, "questions"), where("round", "==", "r3")))
             .then(snap => {
                 const qs = snap.docs.map(d => {
                     const data = d.data();
-                    // answer may be stored as "A"/"B"/"C"/"D" or 0/1/2/3
-                    const raw = data.answer;
-                    const answer = typeof raw === 'string'
-                        ? Math.max(0, 'ABCD'.indexOf(raw.toUpperCase()))
-                        : Number(raw);
-                    return { q: data.question ?? data.q, options: data.options, answer } as Question;
-                }).filter(q => q.q && q.options?.length === 4);
+                    return { q: data.question ?? data.q, options: data.options, answer: data.correct } as Question;
+                }).filter(q => q.q && q.options?.length === 4 && typeof q.answer === 'number');
                 if (qs.length >= 5) setQuestions(shuffle(qs));
             })
             .catch(() => {});
