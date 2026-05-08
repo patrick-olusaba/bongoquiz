@@ -132,13 +132,15 @@ export function useQuiz() {
   const doStartGame = async () => {
     let questions: Question[] = [];
     try {
-      const snap = await getDocs(collection(getFirestore(), 'mathQuizQuestions'));
+      const { getDocsFromServer } = await import('firebase/firestore');
+      const snap = await getDocsFromServer(collection(getFirestore(), 'mathQuizQuestions'));
       if (!snap.empty) {
         const all = snap.docs.map(d => {
           const data = d.data();
           const correct_answer = data.correct_answer ?? data.options?.[data.answer] ?? '';
           return { id: d.id, ...data, correct_answer } as Question;
         }).filter(q => q.question?.trim());
+        // Fisher-Yates shuffle for different questions every session
         for (let i = all.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [all[i], all[j]] = [all[j], all[i]];
