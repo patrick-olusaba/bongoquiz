@@ -170,8 +170,8 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     }, []);
 
     const rounds = [
-        { num: "01", label: "Quickfire", icon: "⚡", desc: "90s · 100 pts per answer · race the clock", color: "#00e5ff", glow: "drop-shadow(0 0 12px rgba(0,229,255,0.6))", footerIcon: "⏱", footerLabel: "90s" },
-        { num: "02", label: "Categories", icon: "🗂️", desc: "40s · 10 questions · powers apply", color: "#c084fc", glow: "drop-shadow(0 0 12px rgba(192,132,252,0.6))", footerIcon: "⏱", footerLabel: "40s" },
+        { num: "01", label: "Quickfire", icon: "⚡", desc: "100 pts per answer · race the clock", color: "#00e5ff", glow: "drop-shadow(0 0 12px rgba(0,229,255,0.6))", footerIcon: "⏱", footerLabel: "90s" },
+        { num: "02", label: "Categories", icon: "🗂️", desc: "10 questions · powers apply", color: "#c084fc", glow: "drop-shadow(0 0 12px rgba(192,132,252,0.6))", footerIcon: "⏱", footerLabel: "40s" },
         { num: "03", label: "Spin & Win", icon: "🎡", desc: "Spin the wheel · answer to claim your bonus", color: "#e2e8f0", glow: "drop-shadow(0 0 12px rgba(226,232,240,0.4))", footerIcon: "🎡", footerLabel: "SPIN" },
     ];
 
@@ -264,6 +264,10 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     }}>
                         <span className="menu-item-icon">🔗</span>
                         <div><div className="menu-item-label">Share</div><div className="menu-item-sub">Invite friends to play</div></div>
+                    </button>
+                    <button className="menu-item" onClick={() => { setMenuOpen(false); window.location.href = "/contact"; }}>
+                        <span className="menu-item-icon">🎧</span>
+                        <div><div className="menu-item-label">Contact Support</div><div className="menu-item-sub">Live chat, email & WhatsApp</div></div>
                     </button>
                     {/*<button className="menu-item" onClick={toggleSound}>*/}
                     {/*    <span className="menu-item-icon">{soundOn ? '🔊' : '🔇'}</span>*/}
@@ -390,6 +394,65 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     </button>
                 </div>
             </a> */}
+
+            {/* ── Footer ── */}
+            <footer style={{ background: "#0d0d1a", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "32px 24px 100px", marginTop: 16, width: "100%", boxSizing: "border-box", alignSelf: "stretch" }}>
+                {/* Logo + tagline */}
+                <div style={{ textAlign: "center", marginBottom: 28 }}>
+                    <div style={{ fontWeight: 900, fontSize: "1.2rem", color: "#FFD700", letterSpacing: 1 }}>
+                        <img className="bongo-footer-logo" src={logoBg} alt=""/>
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem", marginTop: 4 }}>Test your knowledge.</div>
+                </div>
+
+                {/* 3-column grid — collapses to 1 col on small screens via minmax */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "24px 16px", maxWidth: 900, margin: "0 auto 28px" }}>
+                    {/* Support */}
+                    <div>
+                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Support</div>
+                        {[
+                            { label: "Contact Us", action: () => window.location.href = "/contact" },
+                            { label: "Live Chat",  action: () => window.dispatchEvent(new CustomEvent("bongo:open-chat")) },
+                            { label: "FAQs",       action: () => window.location.href = "/contact" },
+                        ].map(l => (
+                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                        ))}
+                    </div>
+
+                    {/* Quick Links */}
+                    <div>
+                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Quick Links</div>
+                        {[
+                            // { label: "How to Play", action: () => window.location.href = "/docs" },
+                            { label: "Leaderboard", action: () => window.dispatchEvent(new CustomEvent("bongo:goto-leaderboard")) },
+                            { label: "Games",       action: () => window.dispatchEvent(new CustomEvent("bongo:goto-games")) },
+                        ].map(l => (
+                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                        ))}
+                    </div>
+
+                    {/* Legal */}
+                    <div>
+                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Legal</div>
+                        {[
+                            { label: "Terms & Conditions", action: () => window.location.href = "/terms" },
+                            { label: "Privacy Policy",     action: () => window.location.href = "/privacy" },
+                            { label: "Responsible Play",   action: () => window.location.href = "/responsible" },
+                        ].map(l => (
+                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Responsible gaming notice */}
+                <div style={{ textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20, maxWidth: 900, margin: "0 auto" }}>
+                    <div style={{ color: "#FFD700", fontSize: "0.72rem", fontWeight: 700, marginBottom: 6, letterSpacing: "0.05em" }}>18+ · PLAY RESPONSIBLY</div>
+                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.68rem", lineHeight: 1.6, maxWidth: 400, margin: "0 auto 12px" }}>
+                        Bongo Quiz is a skill-based trivia game. Participation is open to persons aged 18 and above.
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.65rem" }}>© {new Date().getFullYear()} Bongo Quiz. All Rights Reserved.</div>
+                </div>
+            </footer>
         </div>
     );
 };

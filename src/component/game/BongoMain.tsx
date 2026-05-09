@@ -1,7 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
 import { type FC, useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getFirestore, collection, query, where, limit, getDocs, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, query, where, limit, getDocs,  onSnapshot } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 import type { RoundRecord } from "../../types/sessionTypes.ts";
@@ -26,45 +26,6 @@ import { GameHistory }             from "./GameHistory.tsx";
 import { clearQuestionsCache }     from "../../hooks/useQuestions.ts";
 import { SupportChat }             from "../support/SupportChat.tsx";
 
-// ─── R1 score modifier ────────────────────────────────────────────────────────
-function applyR1Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
-    let s = rawScore;
-    switch (power.name) {
-        case "Disqualified":               return 0;
-        case "Double Points":              s *= 2; break;
-        case "Double Or Nothing":          s = correct === total ? s * 2 : 0; break;
-        case "Point Gamble":               s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2); break;
-        case "Point Chance Brain":         s = Math.random() > 0.5 ? s * 2 : s; break;
-        case "Insurance":                  if (correct > 0) s = Math.max(s, 500); break;
-        case "Mirror Effect":              s = Math.floor(s * 1.5); break;
-        case "Sudden Death Disqualified":  if (correct < total) s = Math.floor(s / 2); break;
-        case "Steal A Point":              s += 200; break;
-        case "Swap Fate":                  s = Math.floor(s * 1.25); break;
-        default: break;
-    }
-    return Math.round(s);
-}
-
-// ─── R2 score modifier ────────────────────────────────────────────────────────
-// rawScore already includes correct/wrong/pass deltas from the screen
-function applyR2Power(rawScore: number, correct: number, total: number, power: PrizeItem): number {
-    let s = rawScore; // Allow negative scores
-    switch (power.name) {
-        case "Disqualified":               return 0;
-        // Double Points already handled in screen (ptsCorrect × 2)
-        case "Double Or Nothing":          s = correct === total ? s * 2 : 0; break;
-        case "Point Gamble":               s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2); break;
-        case "Point Chance Brain":         s = Math.random() > 0.5 ? s * 2 : s; break;
-        case "Insurance":                  if (correct > 0) s = Math.max(s, 1000); break;
-        case "Mirror Effect":              s = Math.floor(s * 1.5); break;
-        case "Sudden Death Disqualified":  if (correct < total) s = 0; break;
-        case "Steal A Point":              s += 500; break;
-        case "Swap Fate":                  s = Math.floor(s * 1.25); break;
-        default: break;
-    }
-    return Math.round(s);
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export const BongoMain: FC = () => {
     const [screen,      setScreen]      = useState<GameScreen>(() => {
@@ -82,7 +43,15 @@ export const BongoMain: FC = () => {
     useEffect(() => {
         const handler = () => { setScreen("home"); setTriggerPlay(true); };
         window.addEventListener('trigger-play', handler);
-        return () => window.removeEventListener('trigger-play', handler);
+        const toLeaderboard = () => setScreen("leaderboard");
+        const toGames = () => setScreen("games");
+        window.addEventListener('bongo:goto-leaderboard', toLeaderboard);
+        window.addEventListener('bongo:goto-games', toGames);
+        return () => {
+            window.removeEventListener('trigger-play', handler);
+            window.removeEventListener('bongo:goto-leaderboard', toLeaderboard);
+            window.removeEventListener('bongo:goto-games', toGames);
+        };
     }, []);
 
     // Check on mount if this phone has a paid R1R2 session that was never played
@@ -311,8 +280,10 @@ export const BongoMain: FC = () => {
     if (screen === "round1" && power)
         return <Round1Screen
             power={power}
-            onComplete={(rawScore, correct, total, timeLeft, maxStreak, questions) => {
-                const final = applyR1Power(rawScore, correct, total, power);
+            onComplete={async (rawScore, correct, total, timeLeft, maxStreak, questions) => {
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                const { data } = await calcScore({ round: 1, rawScore, correct, total, powerName: power.name });
+                const final = data.score;
                 setR1Score(final); setR1TimeLeft(timeLeft);
                 setR1MaxStreak(maxStreak); setR1Correct(correct); setR1Total(total);
                 setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: final }]);
@@ -332,8 +303,10 @@ export const BongoMain: FC = () => {
         return <Round2QuestionScreen
             power={power}
             r1Score={r1Score}
-            onComplete={(rawScore, correct, total, questions) => {
-                const final = applyR2Power(rawScore, correct, total, power);
+            onComplete={async (rawScore, correct, total, questions) => {
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                const { data } = await calcScore({ round: 2, rawScore, correct, total, powerName: power.name });
+                const final = data.score;
                 setR2Score(final); setR2Correct(correct); setR2Total(total);
                 setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: final, category: r2Category }]);
                 setScreen("round2_result");

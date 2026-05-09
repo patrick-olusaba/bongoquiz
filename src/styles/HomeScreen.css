@@ -12,6 +12,12 @@
     background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
 }
 
+/* Allow the home page to scroll so the footer is reachable */
+body:has(.home-root) {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
 .bongo-top-bar {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -357,7 +363,7 @@
     position: relative;
     z-index: 2;
     width: 100%;
-    max-width: 480px;
+    max-width: 520px;
     padding: calc(80px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
@@ -1035,75 +1041,91 @@
 ═══════════════════════════════════════════════════ */
 @media (min-width: 1024px) {
     .home-content {
-        max-width: 1200px;
-        padding: calc(80px + env(safe-area-inset-top)) 40px 60px;
+        max-width: 1280px;
+        width: 100%;
+        padding: calc(80px + env(safe-area-inset-top)) 48px 60px;
         display: grid;
-        grid-template-columns: 1fr 300px;
-        column-gap: 32px;
+        grid-template-columns: 1fr 320px;
+        column-gap: 36px;
         align-items: start;
     }
 
     /* Hero spans full width */
     .home-hero {
         grid-column: 1 / -1;
-        margin-bottom: 28px;
-        padding: 48px 56px;
-        min-height: 340px;
-        align-items: center;
+        margin-bottom: 32px;
+        padding: 52px 64px;
+        min-height: 360px;
+        border-radius: 24px;
     }
 
-    .home-hero-label { font-size: 1.4rem; }
-    .home-hero-rounds { font-size: 5.5rem; }
-    .home-hero-sub { font-size: 1rem; margin: 10px 0 4px; }
-    .home-hero-win { font-size: 3.5rem; margin-bottom: 24px; }
-    .home-btn { font-size: 1.2rem; padding: 16px 40px; }
-    .home-hint { font-size: 0.85rem; margin-top: 12px; }
+    .home-hero-label  { font-size: 1.3rem; letter-spacing: 2px; }
+    .home-hero-rounds { font-size: 6rem; }
+    .home-hero-sub    { font-size: 1rem; margin: 12px 0 4px; }
+    .home-hero-win    { font-size: 3.8rem; margin-bottom: 28px; }
+    .home-btn         { font-size: 1.15rem; padding: 16px 44px; }
+    .home-hint        { font-size: 0.85rem; margin-top: 14px; }
 
-    .home-hero-wheel {
-        max-width: 380px;
-        width: 40%;
-    }
+    .home-hero-wheel  { max-width: 420px; width: 38%; }
 
-    /* Rounds grid — left column */
-    .home-rounds {
+    /* Player bar — left column row 2 */
+    .home-player-bar {
         grid-column: 1;
         grid-row: 2;
+        flex-direction: row;
+        justify-content: flex-start;
+        margin-bottom: 20px;
     }
 
-    .home-round-card { padding: 20px 16px 0; }
-    .home-round-icon { font-size: 2.8rem; }
-    .home-round-label { font-size: 1.1rem; }
-    .home-round-desc { font-size: 0.8rem; }
+    /* Rounds grid — left column row 3 */
+    .home-rounds {
+        grid-column: 1;
+        grid-row: 3;
+        gap: 20px;
+    }
 
-    /* Browse games — right column sidebar */
+    .home-round-card  { padding: 22px 18px 0; border-radius: 18px; }
+    .home-round-icon  { font-size: 2.8rem; }
+    .home-round-label { font-size: 1.05rem; }
+    .home-round-desc  { font-size: 0.78rem; }
+
+    /* Browse games — right column, spans rows 2-3 */
     .home-browse-games {
         grid-column: 2;
         grid-row: 2 / 4;
         margin-top: 0;
         position: sticky;
         top: 80px;
+        padding: 20px;
     }
 
     .home-browse-grid {
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
     }
 
     .home-browse-item {
         flex-direction: row;
         width: 100%;
-        gap: 12px;
+        gap: 14px;
+        align-items: center;
     }
 
     .home-browse-img-wrap {
-        width: 72px;
-        height: 72px;
+        width: 68px;
+        height: 68px;
         flex-shrink: 0;
-        aspect-ratio: unset;
     }
 
     .home-browse-label {
-        font-size: 0.85rem;
+        font-size: 0.88rem;
+        font-weight: 700;
         text-align: left;
+        white-space: normal;
     }
+}
+
+.bongo-footer-logo{
+    width:60px;
+    height:40px;
 }

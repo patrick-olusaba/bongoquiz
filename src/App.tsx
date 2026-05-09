@@ -14,7 +14,11 @@ const AdminView     = lazy(() => import("./component/admin/AdminView.tsx").then(
 const SummaryView   = lazy(() => import("./component/summary/SummaryView.tsx").then(m => ({ default: m.SummaryView })));
 const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPapers.tsx").then(m => ({ default: m.KCSEPastPapers })));
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
-const SupportView   = lazy(() => import("./component/support/SupportView.tsx").then(m => ({ default: m.SupportView })));
+const SupportView    = lazy(() => import("./component/support/SupportView.tsx").then(m => ({ default: m.SupportView })));
+const ContactSupport = lazy(() => import("./component/support/ContactSupport.tsx").then(m => ({ default: m.ContactSupport })));
+const TermsPage      = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.TermsPage })));
+const PrivacyPage    = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.PrivacyPage })));
+const ResponsiblePlayPage = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.ResponsiblePlayPage })));
 const BibleQuiz     = lazy(() => import("./component/BibleQuiz/App.tsx"));
 const BiologyQuiz   = lazy(() => import("./component/BiologyQuiz/App.tsx"));
 const MathQuiz      = lazy(() => import("./component/MathQuiz/App.tsx"));
@@ -93,6 +97,10 @@ function App() {
                 <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
                 <Route path="/support"     element={<SupportView />} />
+                <Route path="/contact"     element={<ContactSupport />} />
+                <Route path="/terms"       element={<TermsPage />} />
+                <Route path="/privacy"     element={<PrivacyPage />} />
+                <Route path="/responsible" element={<ResponsiblePlayPage />} />
             </Routes>
         </Suspense>
     );

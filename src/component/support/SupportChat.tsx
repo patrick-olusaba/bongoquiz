@@ -26,6 +26,13 @@ export function SupportChat() {
             setIsLoggedIn(!!playerName.current && !!playerId.current);
         }
     }, [open]);
+
+    // Allow ContactSupport page to open the chat via custom event
+    useEffect(() => {
+        const handler = () => setOpen(true);
+        window.addEventListener("bongo:open-chat", handler);
+        return () => window.removeEventListener("bongo:open-chat", handler);
+    }, []);
     const [chatId, setChatId]           = useState<string | null>(() => localStorage.getItem(`bq_chat_${playerId.current}`));
     const [msgs, setMsgs]               = useState<Msg[]>([]);
     const [text, setText]               = useState("");

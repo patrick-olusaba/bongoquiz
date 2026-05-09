@@ -689,3 +689,41 @@ export const saveGenQuizSession = functions.https.onCall(
         return { success: true };
     }
 );
+
+/**
+ * calculateScore — callable Cloud Function.
+ * Applies power modifiers server-side so the logic is never exposed in the frontend.
+ */
+export const calculateScore = functions.https.onCall(async (data: {
+    round: 1 | 2;
+    rawScore: number;
+    correct: number;
+    total: number;
+    powerName: string;
+}) => {
+    const { round, correct, total, powerName } = data;
+    let s = typeof data.rawScore === "number" ? data.rawScore : 0;
+
+    if (round === 1) {
+        switch (powerName) {
+            case "Double Points":      s *= 2; break;
+            case "Point Gamble":       s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2); break;
+            case "Point Chance Brain": s = Math.random() > 0.5 ? s * 2 : s; break;
+            case "Insurance":          if (correct > 0) s = Math.max(s, 500); break;
+            case "Mirror Effect":      s = Math.floor(s * 1.5); break;
+            case "Steal A Point":      s += 200; break;
+            case "Swap Fate":          s = Math.floor(s * 1.25); break;
+        }
+    } else if (round === 2) {
+        switch (powerName) {
+            case "Point Gamble":       s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2); break;
+            case "Point Chance Brain": s = Math.random() > 0.5 ? s * 2 : s; break;
+            case "Insurance":          if (correct > 0) s = Math.max(s, 1000); break;
+            case "Mirror Effect":      s = Math.floor(s * 1.5); break;
+            case "Steal A Point":      s += 500; break;
+            case "Swap Fate":          s = Math.floor(s * 1.25); break;
+        }
+    }
+
+    return { score: Math.round(s) };
+});
