@@ -177,40 +177,63 @@ export function AdminSupport() {
         .filter(c => !search || c.playerName.toLowerCase().includes(search.toLowerCase()) || c.playerId.includes(search));
 
     return (
-        <div style={{ display: "flex", height: "calc(100vh - 120px)", border: "1px solid #e8eaf0", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+        <div style={{ display: "flex", height: "calc(100vh - 120px)", border: "1px solid #e8eaf0", borderRadius: 10, overflow: "hidden", background: "#fff", position: "relative" }}>
+        <style>{`
+          @media (max-width: 639px) {
+            .sa-list  { width: 100% !important; border-right: none !important; display: flex !important; flex-direction: column; position: absolute; inset: 0; z-index: 1; transition: transform .25s; }
+            .sa-list.hidden  { transform: translateX(-100%); }
+            .sa-convo { position: absolute; inset: 0; z-index: 2; display: flex !important; flex-direction: column; transition: transform .25s; }
+            .sa-convo.hidden { transform: translateX(100%); }
+            .sa-back  { display: flex !important; }
+          }
+          .sa-back { display: none; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-size: .82rem; color: #4361ee; font-family: inherit; padding: 0; }
+        `}</style>
 
             {/* ── Chat list ── */}
-            <div style={{ width: 260, borderRight: "1px solid #e8eaf0", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-                <div style={{ padding: "12px 14px 8px", borderBottom: "1px solid #e8eaf0" }}>
-                    <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#1a1a2e", marginBottom: 8 }}>
-                        💬 Chats
-                        {totalUnread > 0 && <span style={{ marginLeft: 6, background: "#ef4444", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: "0.7rem" }}>{totalUnread}</span>}
+            <div className={`sa-list${sel ? " hidden" : ""}`} style={{ width: 280, borderRight: "1px solid #e8eaf0", display: "flex", flexDirection: "column", flexShrink: 0, background: "#fafafa" }}>
+                {/* Header */}
+                <div style={{ padding: "14px 16px 10px", background: "linear-gradient(135deg,#4361ee,#7209b7)", color: "#fff" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, fontSize: "1rem" }}>Support Chats</span>
+                        {totalUnread > 0 && <span style={{ background: "#ef4444", color: "#fff", borderRadius: 10, padding: "2px 8px", fontSize: "0.7rem", fontWeight: 700 }}>{totalUnread} new</span>}
                     </div>
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search name or phone…"
-                        style={{ width: "100%", padding: "6px 10px", borderRadius: 7, border: "1px solid #e0e0f0", fontSize: "0.78rem", fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-                    <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
-                        {(["open", "resolved", "all"] as const).map(f => (
-                            <button key={f} onClick={() => setFilter(f)}
-                                style={{ flex: 1, padding: "4px 0", borderRadius: 6, border: "none", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600, fontFamily: "inherit", background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#888" }}>
-                                {f.charAt(0).toUpperCase() + f.slice(1)}
-                            </button>
-                        ))}
-                    </div>
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
+                        style={{ width: "100%", padding: "7px 12px", borderRadius: 20, border: "none", fontSize: "0.8rem", fontFamily: "inherit", outline: "none", boxSizing: "border-box", background: "rgba(255,255,255,0.95)", color: "#1a1a2e" }} />
+                </div>
+                {/* Filter tabs */}
+                <div style={{ display: "flex", borderBottom: "1px solid #e8eaf0", background: "#fff" }}>
+                    {(["open", "resolved", "all"] as const).map(f => (
+                        <button key={f} onClick={() => setFilter(f)}
+                            style={{ flex: 1, padding: "8px 0", border: "none", borderBottom: filter === f ? "2px solid #4361ee" : "2px solid transparent", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, fontFamily: "inherit", background: "transparent", color: filter === f ? "#4361ee" : "#999", transition: "color .15s" }}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                    ))}
                 </div>
 
                 <div style={{ flex: 1, overflowY: "auto" }}>
-                    {visible.length === 0 && <p style={{ padding: 14, color: "#aaa", fontSize: "0.8rem" }}>No chats found</p>}
+                    {visible.length === 0 && <p style={{ padding: 16, color: "#bbb", fontSize: "0.8rem", textAlign: "center" }}>No chats found</p>}
                     {visible.map(c => {
                         const u = unread[c.id] ?? 0;
+                        const initials = c.playerName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                        const isActive = sel?.id === c.id;
                         return (
                             <button key={c.id} onClick={() => setSel(c)}
-                                style={{ width: "100%", textAlign: "left", padding: "10px 14px", background: sel?.id === c.id ? "#f0f4ff" : "transparent", border: "none", borderBottom: "1px solid #f0f0f8", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: c.status === "open" ? (u > 0 ? "#ef4444" : "#4361ee") : "#ccc" }} />
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{ fontWeight: u > 0 ? 700 : 600, fontSize: "0.82rem", color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.playerName}</div>
-                                    <div style={{ fontSize: "0.7rem", color: "#aaa" }}>{waitTime(c.createdAt)}</div>
+                                style={{ width: "100%", textAlign: "left", padding: "10px 14px", background: isActive ? "#ede9fe" : "transparent", border: "none", borderBottom: "1px solid #f0f0f8", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "background .15s" }}>
+                                {/* Avatar */}
+                                <div style={{ width: 40, height: 40, borderRadius: "50%", background: c.status === "open" ? "linear-gradient(135deg,#4361ee,#7209b7)" : "#e0e0e0", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", fontWeight: 700, flexShrink: 0, position: "relative" }}>
+                                    {initials}
+                                    {c.status === "open" && <span style={{ position: "absolute", bottom: 1, right: 1, width: 9, height: 9, borderRadius: "50%", background: u > 0 ? "#ef4444" : "#22c55e", border: "1.5px solid #fff" }} />}
                                 </div>
-                                {u > 0 && <span style={{ background: "#ef4444", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.68rem", fontWeight: 700, flexShrink: 0 }}>{u}</span>}
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <span style={{ fontWeight: u > 0 ? 700 : 600, fontSize: "0.84rem", color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.playerName}</span>
+                                        <span style={{ fontSize: "0.65rem", color: "#bbb", flexShrink: 0, marginLeft: 4 }}>{waitTime(c.createdAt)}</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+                                        <span style={{ fontSize: "0.72rem", color: c.status === "open" ? "#7209b7" : "#aaa", fontWeight: 500 }}>{c.status === "open" ? "● Open" : "✓ Resolved"}</span>
+                                        {u > 0 && <span style={{ background: "#ef4444", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: "0.65rem", fontWeight: 700 }}>{u}</span>}
+                                    </div>
+                                </div>
                             </button>
                         );
                     })}
@@ -218,7 +241,7 @@ export function AdminSupport() {
             </div>
 
             {/* ── Conversation ── */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div className={`sa-convo${!sel ? " hidden" : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff" }}>
                 {!sel ? (
                     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: "0.85rem" }}>
                         Select a conversation to reply
@@ -227,7 +250,9 @@ export function AdminSupport() {
                     <>
                         {/* Header */}
                         <div style={{ padding: "10px 16px", borderBottom: "1px solid #e8eaf0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                <button className="sa-back" onClick={() => setSel(null)}>← Back</button>
+                                <div style={{ minWidth: 0 }}>
                                 <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#1a1a2e" }}>{sel.playerName}</div>
                                 <div style={{ display: "flex", gap: 12, marginTop: 2, flexWrap: "wrap" }}>
                                     <button onClick={copyPhone} title="Click to copy"
@@ -236,6 +261,7 @@ export function AdminSupport() {
                                     </button>
                                     <span style={{ fontSize: "0.72rem", color: "#888" }}>🏆 {points === null ? "…" : `${points.toLocaleString()} pts`}</span>
                                     <span style={{ fontSize: "0.72rem", color: "#aaa" }}>⏱ Waiting {waitTime(sel.createdAt)}</span>
+                                </div>
                                 </div>
                             </div>
                             {sel.status === "open" ? (
@@ -298,16 +324,18 @@ export function AdminSupport() {
                                         ))}
                                     </div>
                                 )}
-                                <div style={{ padding: 10, display: "flex", gap: 8, alignItems: "flex-end" }}>
+                                <div style={{ padding: "10px 12px", display: "flex", gap: 8, alignItems: "center", background: "#f8f8ff" }}>
                                     <button onClick={() => setShowQuick(s => !s)} title="Quick replies"
-                                        style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e0e0f0", background: showQuick ? "#eef0ff" : "#fff", cursor: "pointer", fontSize: "0.85rem", flexShrink: 0 }}>
+                                        style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: showQuick ? "linear-gradient(135deg,#4361ee,#7209b7)" : "#ede9fe", cursor: "pointer", fontSize: "1rem", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
                                         ⚡
                                     </button>
-                                    <textarea value={reply} onChange={e => handleReplyChange(e.target.value)} onKeyDown={onKey}
-                                        placeholder="Type a reply… (Enter to send)" rows={2}
-                                        style={{ flex: 1, resize: "none", border: "1px solid #ddd", borderRadius: 8, padding: "8px 10px", fontSize: "0.85rem", fontFamily: "inherit", outline: "none" }} />
+                                    <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#fff", borderRadius: 24, border: "1px solid #e0e0f0", padding: "6px 14px", boxShadow: "0 1px 3px rgba(0,0,0,.06)" }}>
+                                        <textarea value={reply} onChange={e => handleReplyChange(e.target.value)} onKeyDown={onKey}
+                                            placeholder="Type a reply…" rows={1}
+                                            style={{ flex: 1, resize: "none", border: "none", background: "transparent", fontSize: "0.88rem", fontFamily: "inherit", outline: "none", lineHeight: 1.5, maxHeight: 96, overflowY: "auto" }} />
+                                    </div>
                                     <button onClick={() => sendReply()} disabled={!reply.trim() || sending}
-                                        style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#4361ee,#7209b7)", color: "#fff", cursor: "pointer", fontSize: "1rem", opacity: !reply.trim() ? 0.4 : 1, flexShrink: 0 }}>
+                                        style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: reply.trim() ? "linear-gradient(135deg,#4361ee,#7209b7)" : "#e0e0f0", color: reply.trim() ? "#fff" : "#aaa", cursor: reply.trim() ? "pointer" : "default", fontSize: "1rem", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}>
                                         ➤
                                     </button>
                                 </div>
