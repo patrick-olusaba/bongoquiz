@@ -5,13 +5,13 @@ interface Props {
   score: number;
   correctCount: number;
   wrongCount: number;
-  onPlayAgain: () => void;
-  onBackToMenu: () => void;
+  // onPlayAgain: () => void;
+  // onBackToMenu: () => void;
   leaderboard: LeaderboardEntry[];
   playerName: string;
 }
 
-export const Results: React.FC<Props> = ({ score, correctCount, wrongCount, onPlayAgain, onBackToMenu, leaderboard, playerName }) => {
+export const Results: React.FC<Props> = ({ score, correctCount, wrongCount, leaderboard, playerName }) => {
   const sorted = [...leaderboard].sort((a, b) => b.score - a.score).slice(0, 10);
   const playerRank = sorted.findIndex(e => e.name === playerName) + 1;
   const podium = sorted.slice(0, 3);
@@ -81,10 +81,11 @@ export const Results: React.FC<Props> = ({ score, correctCount, wrongCount, onPl
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onPlayAgain} style={{ flex: 1, border: 'none', borderRadius: 50, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.92rem', fontWeight: 800, padding: '12px 16px', background: 'linear-gradient(135deg,#00DC64,#00a84a)', color: '#fff', boxShadow: '0 4px 20px rgba(0,220,100,0.4)' }}>🔄 Play Again</button>
-          <button onClick={onBackToMenu} style={{ flex: 1, borderRadius: 50, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.92rem', fontWeight: 800, padding: '12px 16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>🏠 Home</button>
-        </div>
+        {/*<div style={{ display: 'flex', gap: 10 }}>*/}
+        {/*  <button onClick={onPlayAgain} style={{ flex: 1, border: 'none', borderRadius: 50, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.92rem', fontWeight: 800, padding: '12px 16px', background: 'linear-gradient(135deg,#00DC64,#00a84a)', color: '#fff', boxShadow: '0 4px 20px rgba(0,220,100,0.4)' }}>🔄 Play Again</button>*/}
+        {/*  <button onClick={onBackToMenu} style={{ flex: 1, borderRadius: 50, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.92rem', fontWeight: 800, padding: '12px 16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }}>🏠 Home</button>*/}
+        {/*</div>*/}
+
       </div>
       <style>{`
         @keyframes mathLbIn      { from{transform:translateY(40px) scale(0.96);opacity:0} to{transform:translateY(0) scale(1);opacity:1} }

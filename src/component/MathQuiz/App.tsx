@@ -51,7 +51,7 @@ export default function App() {
           <div className="center-content">
             <Results
               score={q.score} correctCount={q.correctCount} wrongCount={q.wrongCount}
-              onPlayAgain={q.handlePlayAgain} onBackToMenu={q.handleBackToMenu}
+              // onPlayAgain={q.handlePlayAgain} onBackToMenu={q.handleBackToMenu}
               leaderboard={q.leaderboard} playerName={q.playerName}
             />
           </div>
