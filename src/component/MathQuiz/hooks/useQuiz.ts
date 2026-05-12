@@ -163,6 +163,8 @@ export function useQuiz() {
     audioSystem.playGameOver();
     const newEntry: LeaderboardEntry = { id: Math.random().toString(36).substr(2, 9), name: playerName || 'Anonymous', phone: playerPhone || '', score, date: new Date().toISOString() };
     setLeaderboard(prev => { const updated = [...prev, newEntry]; localStorage.setItem(STORAGE_LB, JSON.stringify(updated)); return updated; });
+    const prev = parseInt(localStorage.getItem('math_best_score') ?? '0');
+    if (score > prev) localStorage.setItem('math_best_score', String(score));
     const phone = playerPhone || localStorage.getItem(STORAGE_PHONE) || '';
     if (/^07\d{8}$/.test(phone)) {
       httpsCallable(getFunctions(), 'saveMathQuizSession')({ name: playerName || 'Anonymous', phone, score, correct: correctCount, wrong: wrongCount, passed: 0, total: correctCount + wrongCount })

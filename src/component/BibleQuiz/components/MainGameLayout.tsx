@@ -388,7 +388,7 @@ export const MainGameLayout = () => {
                         player={player}
                         onStartGame={startNewGame}
                         onShowTutorial={() => setGameState(prev => ({ ...prev, currentScreen: 'tutorial' }))}
-                        onLeaderboard={() => setGameState(prev => ({ ...prev, currentScreen: 'leaderboard' }))}
+                        // onLeaderboard={() => setGameState(prev => ({ ...prev, currentScreen: 'leaderboard' }))}
                     />
                 );
 

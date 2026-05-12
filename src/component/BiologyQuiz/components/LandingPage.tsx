@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '../../../firebase.ts';
-import { Trophy, User, Menu, X, HelpCircle, ScrollText, Link as LinkIcon, Copy, MessageCircle, Check, User as UserIcon } from 'lucide-react';
+import { User, Menu, X, HelpCircle, ScrollText, Link as LinkIcon, Copy, MessageCircle, Check, User as UserIcon } from 'lucide-react';
 import type { LeaderboardEntry } from '../types';
 import { EditProfileModal } from './EditProfileModal';
 import logo from '../assets/logo2.png';
@@ -50,6 +50,11 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [activeModal, setActiveModal] = useState<'none' | 'howToPlay' | 'leaderboard' | 'history' | 'share'>('none');
+
+    const phone254 = playerPhone ? playerPhone.replace(/^0/, '254') : '';
+    const myEntry = leaderboard.find((d: any) => String(d.msisdn) === phone254 || String(d.msisdn) === playerPhone || d.phone === playerPhone);
+    const totalPoints = myEntry?.score ?? 0;
+    const personalBest = parseInt(localStorage.getItem('bio_best_score') ?? '0');
 
     useEffect(() => {
         const handler = () => setActiveModal('leaderboard');
@@ -109,7 +114,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
     };
 
     const topPlayers = [...leaderboard].sort((a, b) => b.score - a.score);
-    const playerHistory = leaderboard.filter(e => e.name === playerName && e.phone === playerPhone).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // const playerHistory = leaderboard.filter(e => e.name === playerName && e.phone === playerPhone).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <>
@@ -124,15 +129,29 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
 
             {/* Top Nav Bar */}
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1.5rem', alignItems: 'center', zIndex: 40, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <img src={logo} alt="Biology Quiz Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />
+                    {playerPhone && /^07\d{8}$/.test(playerPhone) && totalPoints > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, padding: '3px 10px' }}>
+                            <span style={{ fontSize: '0.9rem' }}>🪙</span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{totalPoints.toLocaleString()}</span>
+                        </div>
+                    )}
                 </div>
-                <button
-                    onClick={() => setIsMenuOpen(true)}
-                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.75rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}
-                >
-                    <Menu size={20} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {personalBest > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 20, padding: '3px 10px' }}>
+                            <span style={{ fontSize: '0.9rem' }}>🏆</span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{personalBest.toLocaleString()}</span>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setIsMenuOpen(true)}
+                        style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.75rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}
+                    >
+                        <Menu size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* Slide-out Menu */}
@@ -171,13 +190,13 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
                                         <p>Learn the rules</p>
                                     </div>
                                 </div>
-                                <div className="menu-item" onClick={() => { setIsMenuOpen(false); setActiveModal('leaderboard'); }}>
-                                    <div className="menu-icon trophy"><Trophy size={24} /></div>
-                                    <div className="menu-text">
-                                        <span>Leaderboard</span>
-                                        <p>See top players</p>
-                                    </div>
-                                </div>
+                                {/*<div className="menu-item" onClick={() => { setIsMenuOpen(false); setActiveModal('leaderboard'); }}>*/}
+                                {/*    <div className="menu-icon trophy"><Trophy size={24} /></div>*/}
+                                {/*    <div className="menu-text">*/}
+                                {/*        <span>Leaderboard</span>*/}
+                                {/*        <p>See top players</p>*/}
+                                {/*    </div>*/}
+                                {/*</div>*/}
                                 <div className="menu-item" onClick={() => { setIsMenuOpen(false); setIsEditing(true); }}>
                                     <div className="menu-icon user"><User size={24} /></div>
                                     <div className="menu-text">

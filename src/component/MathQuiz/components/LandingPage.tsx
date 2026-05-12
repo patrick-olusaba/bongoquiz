@@ -27,6 +27,11 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
   const [historyLoading, setHistoryLoading]   = useState(false);
   const [ripples, setRipples]           = useState<{id:number,x:number,y:number}[]>([]);
 
+  const phone254 = playerPhone ? playerPhone.replace(/^0/, '254') : '';
+  const myEntry = leaderboard.find((d: any) => String(d.msisdn) === phone254 || String(d.msisdn) === playerPhone || d.phone === playerPhone);
+  const totalPoints = myEntry?.score ?? 0;
+  const personalBest = parseInt(localStorage.getItem('math_best_score') ?? '0');
+
   useEffect(() => {
     const h = () => setShowLb(true);
     window.addEventListener('show-leaderboard', h);
@@ -89,17 +94,33 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
 
       {/* Top bar */}
       <div style={{ position: 'relative', zIndex: 2, width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem 0.5rem' }}>
-        {/* MathQuiz Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#4ade80,#22d3ee)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1rem', color: '#000', boxShadow: '0 0 12px rgba(74,222,128,0.5)' }}>∑</div>
-          <div style={{ lineHeight: 1 }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#4ade80', letterSpacing: 1 }}>Math</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#facc15', letterSpacing: 3, textTransform: 'uppercase' }}>Quiz</div>
+        {/* MathQuiz Logo + coins */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#4ade80,#22d3ee)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1rem', color: '#000', boxShadow: '0 0 12px rgba(74,222,128,0.5)' }}>∑</div>
+            <div style={{ lineHeight: 1 }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#4ade80', letterSpacing: 1 }}>Math</div>
+              <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#facc15', letterSpacing: 3, textTransform: 'uppercase' }}>Quiz</div>
+            </div>
           </div>
+          {playerPhone && /^07\d{8}$/.test(playerPhone) && totalPoints > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, padding: '3px 10px' }}>
+              <span style={{ fontSize: '0.9rem' }}>🪙</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{totalPoints.toLocaleString()}</span>
+            </div>
+          )}
         </div>
-        <button onClick={() => setIsMenuOpen(true)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 10px', color: '#fff', cursor: 'pointer' }}>
-          <Menu size={20} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {personalBest > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 20, padding: '3px 10px' }}>
+              <span style={{ fontSize: '0.9rem' }}>🏆</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{personalBest.toLocaleString()}</span>
+            </div>
+          )}
+          <button onClick={() => setIsMenuOpen(true)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '8px 10px', color: '#fff', cursor: 'pointer' }}>
+            <Menu size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -166,7 +187,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
             <button onClick={() => setIsMenuOpen(false)} style={{ alignSelf: 'flex-end', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
             {[
               { icon: <HelpCircle size={16} />, label: 'How to Play', action: () => { setShowHtp(true); setIsMenuOpen(false); } },
-              { icon: <Trophy size={16} />, label: 'Leaderboard', action: () => { setShowLb(true); setIsMenuOpen(false); } },
+              // { icon: <Trophy size={16} />, label: 'Leaderboard', action: () => { setShowLb(true); setIsMenuOpen(false); } },
               { icon: <User size={16} />, label: 'Edit Profile', action: () => { setIsEditing(true); setIsMenuOpen(false); } },
               { icon: <ScrollText size={16} />, label: 'Game History', action: () => {
                 setIsMenuOpen(false);

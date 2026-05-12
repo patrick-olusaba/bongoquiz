@@ -11,10 +11,10 @@ interface MainMenuProps {
   player: Player;
   onStartGame: () => void;
   onShowTutorial: () => void;
-  onLeaderboard: () => void;
+  // onLeaderboard: () => void;
 }
 
-const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLeaderboard }) => {
+const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -23,6 +23,19 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
   const [name, setName]   = useState(() => localStorage.getItem("bongo_player_name") ?? "");
   const [phone, setPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
   const personalBest = parseInt(localStorage.getItem("bible_best_score") ?? "0");
+  const [totalPoints, setTotalPoints] = useState(() => parseInt(localStorage.getItem("bongo_total_points") ?? "0"));
+
+  useEffect(() => {
+    const p = localStorage.getItem("bongo_player_phone") ?? "";
+    if (!p || !/^07\d{8}$/.test(p)) return;
+    const p254 = p.replace(/^0/, "254");
+    fetch("https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard")
+      .then(r => r.json())
+      .then((data: any[]) => {
+        const entry = data.find((d: any) => String(d.msisdn) === p254 || String(d.msisdn) === p);
+        if (entry) { setTotalPoints(entry.score ?? 0); localStorage.setItem("bongo_total_points", String(entry.score ?? 0)); }
+      }).catch(() => {});
+  }, []);
 
   const handlePlay = () => {
     const p = localStorage.getItem("bongo_player_phone") ?? "";
@@ -67,11 +80,27 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
   return (
     <div className="mm-root">
       {/* Top bar */}
-      <div className="mm-topbar">
-        <img src={biblequizLogo} alt="Bible Quiz" className="mm-topbar-logo" />
-        <button className="mm-topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-          <span /><span /><span />
-        </button>
+      <div className="mm-topbar" style={{ justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={biblequizLogo} alt="Bible Quiz" className="mm-topbar-logo" />
+          {phone && /^07\d{8}$/.test(phone) && totalPoints > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, padding: '3px 10px' }}>
+              <span style={{ fontSize: '0.9rem' }}>🪙</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{totalPoints.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {personalBest > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 20, padding: '3px 10px' }}>
+              <span style={{ fontSize: '0.9rem' }}>🏆</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ffd200' }}>{personalBest.toLocaleString()}</span>
+            </div>
+          )}
+          <button className="mm-topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+            <span /><span /><span />
+          </button>
+        </div>
       </div>
 
       {/* Drawer backdrop */}
@@ -89,10 +118,10 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial, onLe
             <span className="mm-drawer-icon">❓</span>
             <div><div className="mm-drawer-label">How to Play</div><div className="mm-drawer-sub">Learn the rules</div></div>
           </button>
-          <button className="mm-drawer-item" onClick={() => { setMenuOpen(false); onLeaderboard(); }}>
-            <span className="mm-drawer-icon">🏆</span>
-            <div><div className="mm-drawer-label">Leaderboard</div><div className="mm-drawer-sub">See top players</div></div>
-          </button>
+          {/*<button className="mm-drawer-item" onClick={() => { setMenuOpen(false); onLeaderboard(); }}>*/}
+          {/*  <span className="mm-drawer-icon">🏆</span>*/}
+          {/*  <div><div className="mm-drawer-label">Leaderboard</div><div className="mm-drawer-sub">See top players</div></div>*/}
+          {/*</button>*/}
           <button className="mm-drawer-item" onClick={() => {
             const text = `📖 Play Bible Quiz — test your knowledge of the Scriptures!\n${window.location.href}`;
             if (navigator.share) navigator.share({ title: "Bible Quiz", text, url: window.location.href }).catch(() => {});

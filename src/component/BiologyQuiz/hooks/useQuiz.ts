@@ -228,6 +228,9 @@ export function useQuiz() {
             .map(([, v], i) => ({ id: String(i), name: v.name, phone: v.phone, score: v.score, date: new Date().toISOString() }));
           setLeaderboard(entries);
           localStorage.setItem('biologyLeaderboard', JSON.stringify(entries));
+          // Update personal best
+          const prev = parseInt(localStorage.getItem('bio_best_score') ?? '0');
+          if (score > prev) localStorage.setItem('bio_best_score', String(score));
         });
       }).catch(() => {});
     }
