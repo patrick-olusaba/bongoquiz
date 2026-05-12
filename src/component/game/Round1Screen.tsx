@@ -8,7 +8,7 @@ import '../../styles/game.css';
 
 interface Props {
     power: PrizeItem;
-    onComplete: (rawScore: number, correct: number, total: number, timeLeft: number, maxStreak: number, questions: import("../../types/sessionTypes.ts").QuestionRecord[]) => void;
+    onComplete: (rawScore: number, correct: number, total: number, timeLeft: number, maxStreak: number, questions: import("../../types/sessionTypes.ts").QuestionRecord[]) => void | Promise<void>;
 }
 
 const POINTS_CORRECT = 100;

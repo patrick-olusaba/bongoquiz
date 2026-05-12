@@ -280,14 +280,24 @@ export const BongoMain: FC = () => {
     if (screen === "round1" && power)
         return <Round1Screen
             power={power}
-            onComplete={async (rawScore, correct, total, timeLeft, maxStreak, questions) => {
-                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
-                const { data } = await calcScore({ round: 1, rawScore, correct, total, powerName: power.name });
-                const final = data.score;
-                setR1Score(final); setR1TimeLeft(timeLeft);
+            onComplete={(rawScore, correct, total, timeLeft, maxStreak, questions) => {
+                // Navigate immediately so the timer expiry doesn't leave the user stuck
+                setR1TimeLeft(timeLeft);
                 setR1MaxStreak(maxStreak); setR1Correct(correct); setR1Total(total);
-                setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: final }]);
                 setScreen("round1_result");
+                // Calculate score in background and update when ready
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                calcScore({ round: 1, rawScore, correct, total, powerName: power.name })
+                    .then(({ data }) => {
+                        const final = data.score;
+                        setR1Score(final);
+                        setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: final }]);
+                    })
+                    .catch(() => {
+                        // Fallback to raw score if cloud function fails
+                        setR1Score(rawScore);
+                        setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: rawScore }]);
+                    });
             }}
         />;
 
@@ -303,13 +313,19 @@ export const BongoMain: FC = () => {
         return <Round2QuestionScreen
             power={power}
             r1Score={r1Score}
-            onComplete={async (rawScore, correct, total, questions) => {
-                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
-                const { data } = await calcScore({ round: 2, rawScore, correct, total, powerName: power.name });
-                const final = data.score;
-                setR2Score(final); setR2Correct(correct); setR2Total(total);
-                setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: final, category: r2Category }]);
+            onComplete={(rawScore, correct, total, questions) => {
+                setR2Correct(correct); setR2Total(total);
                 setScreen("round2_result");
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                calcScore({ round: 2, rawScore, correct, total, powerName: power.name })
+                    .then(({ data }) => {
+                        setR2Score(data.score);
+                        setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: data.score, category: r2Category }]);
+                    })
+                    .catch(() => {
+                        setR2Score(rawScore);
+                        setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: rawScore, category: r2Category }]);
+                    });
             }}
         />;
 

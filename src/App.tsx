@@ -6,7 +6,9 @@ import logoBg from './assets/bongo-logo.png';
 import { BongoMain }       from "./component/game/BongoMain.tsx";
 import { PWAInstallBanner } from "./component/PWAInstallBanner.tsx";
 import { AdminLogin, KCSE_EMAIL } from "./component/admin/AdminLogin.tsx";
-import { onAuthStateChanged } from "firebase/auth";
+import { AgentLogin } from "./component/support/AgentLogin.tsx";
+import type { Agent } from "./component/support/AgentLogin.tsx";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase.ts";
 
 const GameInfoDocs  = lazy(() => import("./component/docs/GameInfoDocs.tsx").then(m => ({ default: m.GameInfoDocs })));
@@ -16,6 +18,8 @@ const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPap
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
 const SupportView    = lazy(() => import("./component/support/SupportView.tsx").then(m => ({ default: m.SupportView })));
 const ContactSupport = lazy(() => import("./component/support/ContactSupport.tsx").then(m => ({ default: m.ContactSupport })));
+const AdminSupport   = lazy(() => import("./component/support/AdminSupport.tsx").then(m => ({ default: m.AdminSupport })));
+const SupportDashboard = lazy(() => import("./component/support/SupportDashboard.tsx").then(m => ({ default: m.SupportDashboard })));
 const TermsPage      = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.TermsPage })));
 const PrivacyPage    = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.PrivacyPage })));
 const ResponsiblePlayPage = lazy(() => import("./component/legal/LegalPages.tsx").then(m => ({ default: m.ResponsiblePlayPage })));
@@ -44,6 +48,34 @@ function KCSEAdminRoute() {
         </div>
     );
 }
+
+function SupportAdminRoute() {
+    const navigate = useNavigate();
+    const [agent, setAgent] = useState<Agent | null>(null);
+    const [tab, setTab] = useState<"chats" | "dashboard">("chats");
+
+    if (!agent) return <AgentLogin onLogin={setAgent} />;
+
+    return (
+        <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#f4f5fb", minHeight: "100vh" }}>
+            <style>{`html,body{overflow:auto!important;height:auto!important;display:block!important;place-items:unset!important}`}</style>
+            <div style={{ background: "#1a1a2e", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                <button onClick={() => navigate('/')} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.85rem", color: "#aaa", fontFamily: "inherit" }}>← Back</button>
+                <span style={{ fontWeight: 800, fontSize: "1rem", color: "#ffd200", flex: 1 }}>💬 Support Portal</span>
+                <button onClick={() => setTab("chats")} style={{ background: tab === "chats" ? "#4361ee" : "transparent", border: "none", borderRadius: 6, padding: "5px 14px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontFamily: "inherit" }}>Chats</button>
+                <button onClick={() => setTab("dashboard")} style={{ background: tab === "dashboard" ? "#4361ee" : "transparent", border: "none", borderRadius: 6, padding: "5px 14px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontFamily: "inherit" }}>Dashboard</button>
+                <span style={{ color: "#aaa", fontSize: "0.78rem" }}>{agent.name}</span>
+                <button onClick={() => { signOut(auth); setAgent(null); }} style={{ background: "#ef4444", border: "none", borderRadius: 6, padding: "5px 12px", color: "#fff", cursor: "pointer", fontSize: "0.78rem", fontFamily: "inherit" }}>Logout</button>
+            </div>
+            <div style={{ padding: 20 }}>
+                {tab === "chats"
+                    ? <AdminSupport agent={agent} />
+                    : <SupportDashboard agent={agent} />}
+            </div>
+        </div>
+    );
+}
+
 
 function SummaryRoute() {
     const { id } = useParams<{ id: string }>();
@@ -96,8 +128,9 @@ function App() {
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
                 <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
-                <Route path="/support"     element={<SupportView />} />
-                <Route path="/contact"     element={<ContactSupport />} />
+                <Route path="/support"        element={<SupportView />} />
+                <Route path="/contact"        element={<ContactSupport />} />
+                <Route path="/support-admin"  element={<SupportAdminRoute />} />
                 <Route path="/terms"       element={<TermsPage />} />
                 <Route path="/privacy"     element={<PrivacyPage />} />
                 <Route path="/responsible" element={<ResponsiblePlayPage />} />

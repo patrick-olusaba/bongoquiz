@@ -5,9 +5,10 @@ import {
     addDoc, doc, updateDoc, getDoc, setDoc, writeBatch, getDocs,
 } from "firebase/firestore";
 import { db } from "../../firebase.ts";
+import type { Agent } from "./AgentLogin.tsx";
 
-interface Chat { id: string; playerId: string; playerName: string; status: "open" | "resolved"; createdAt: any; lastMsgAt?: number; unreadCount?: number; }
-interface Msg  { id: string; sender: "player" | "admin"; text: string; timestamp: number; seenByAdmin?: boolean; isAutoReply?: boolean; }
+interface Chat { id: string; playerId: string; playerName: string; status: "open" | "resolved"; createdAt: any; lastMsgAt?: number; unreadCount?: number; assignedAgent?: string; assignedAgentName?: string; }
+interface Msg  { id: string; sender: "player" | "admin"; text: string; timestamp: number; seenByAdmin?: boolean; isAutoReply?: boolean; agentName?: string; }
 
 const QUICK_REPLIES = [
     "Thanks for reaching out! Let me look into this for you.",
@@ -36,7 +37,7 @@ function waitTime(ts: any): string {
     return h < 24 ? `${h}h ago` : `${Math.floor(h/24)}d ago`;
 }
 
-export function AdminSupport() {
+export function AdminSupport({ agent }: { agent: Agent }) {
     const [chats, setChats]         = useState<Chat[]>([]);
     const [unread, setUnread]       = useState<Record<string, number>>({}); // chatId -> unread count
     const [filter, setFilter]       = useState<"all" | "open" | "resolved">("open");
@@ -95,6 +96,10 @@ export function AdminSupport() {
     useEffect(() => {
         if (!sel) return;
         setMsgs([]);
+        // Assign this agent to the chat if not already assigned
+        if (!sel.assignedAgent) {
+            updateDoc(doc(db, "supportChats", sel.id), { assignedAgent: agent.uid, assignedAgentName: agent.name });
+        }
         const q = query(collection(db, "supportChats", sel.id, "messages"), orderBy("timestamp", "asc"));
         const unsub = onSnapshot(q, async snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Msg));
@@ -151,6 +156,7 @@ export function AdminSupport() {
         try {
             await addDoc(collection(db, "supportChats", sel.id, "messages"), {
                 sender: "admin", text, timestamp: Date.now(),
+                agentId: agent.uid, agentName: agent.name,
             });
         } finally { setSending(false); }
     };
@@ -287,7 +293,7 @@ export function AdminSupport() {
                                             opacity: m.isAutoReply ? 0.75 : 1, fontStyle: m.isAutoReply ? "italic" : "normal",
                                         }}>
                                             <div style={{ fontSize: "0.68rem", opacity: 0.6, marginBottom: 2 }}>
-                                                {m.sender === "admin" ? (m.isAutoReply ? "Auto-reply" : "Support") : sel.playerName}
+                                                {m.sender === "admin" ? (m.isAutoReply ? "Auto-reply" : (m.agentName ?? agent.name)) : sel.playerName}
                                             </div>
                                             {m.text}
                                         </div>

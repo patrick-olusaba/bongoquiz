@@ -137,6 +137,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // Agents — any authenticated user can read; only own doc can be written
+    match /agents/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // ── Support Chat ────────────────────────────────────────────────────────────
     // Anyone can create a chat and read/write their own messages (no auth required)
     match /supportChats/{chatId} {
