@@ -2,8 +2,8 @@
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "routes": [
-    { "src": "/api/summary/(?<id>[^/]+)", "dest": "http://142.93.47.187:2027/summary/$id" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/summary/:id", "destination": "http://142.93.47.187:2027/summary/:id" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

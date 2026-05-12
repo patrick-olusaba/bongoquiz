@@ -128,7 +128,6 @@ function App() {
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
                 <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
-                <Route path="/api/summary/:id" element={<SummaryRoute />} />
                 <Route path="/support"        element={<SupportView />} />
                 <Route path="/contact"        element={<ContactSupport />} />
                 <Route path="/support-admin"  element={<SupportAdminRoute />} />
