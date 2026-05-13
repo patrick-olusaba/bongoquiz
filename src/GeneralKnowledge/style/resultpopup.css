@@ -1,0 +1,148 @@
+@keyframes rpNewBest {
+  0%   { transform: translateY(-60px); opacity: 0; }
+  20%  { transform: translateY(0);     opacity: 1; }
+  80%  { transform: translateY(0);     opacity: 1; }
+  100% { transform: translateY(-60px); opacity: 0; }
+}
+@keyframes rpTrophyBounce {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%       { transform: translateY(-6px) rotate(3deg); }
+}
+@keyframes rpSlideIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rpScorePop {
+  from { opacity: 0; transform: scale(0.5) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes rpBreakdownIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rp-root {
+  min-height: 100svh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  background: radial-gradient(ellipse at 20% 50%, #0f0035 0%, #000 40%, #0a001a 100%);
+  box-sizing: border-box;
+}
+
+.rp-new-best-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: linear-gradient(90deg, #FFD700, #FF6B6B, #FFD700);
+  color: #000;
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 12px;
+  z-index: 50;
+  animation: rpNewBest 4s ease forwards;
+}
+
+.rp-card {
+  width: 100%;
+  max-width: 520px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 28px;
+  padding: 28px 24px 24px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  text-align: center;
+  animation: rpSlideIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  box-sizing: border-box;
+}
+
+.rp-trophy {
+  font-size: 2.8rem;
+  margin-bottom: 4px;
+  display: block;
+  animation: rpTrophyBounce 2s ease-in-out infinite;
+}
+
+.rp-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, #FFD700, #FF6B6B, #7B61FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 2px 0 16px;
+  letter-spacing: -0.5px;
+}
+
+.rp-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.rp-breakdown-cell {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 6px;
+  animation: rpBreakdownIn 0.4s ease both;
+}
+.rp-breakdown-cell:nth-child(1) { animation-delay: 0.1s; }
+.rp-breakdown-cell:nth-child(2) { animation-delay: 0.2s; }
+.rp-breakdown-cell:nth-child(3) { animation-delay: 0.3s; }
+.rp-breakdown-label { color: rgba(255,255,255,0.4); font-size: 0.68rem; margin-bottom: 4px; }
+.rp-breakdown-value { font-weight: 900; font-size: 1.3rem; }
+
+.rp-total-box {
+  background: rgba(255,215,0,0.06);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.rp-total-label {
+  color: rgba(255,255,255,0.35);
+  font-size: 0.78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.rp-total-value {
+  font-size: 3.4rem;
+  font-weight: 900;
+  color: #ffd200;
+  text-shadow: 0 0 30px rgba(255,210,0,0.4);
+  line-height: 1;
+  animation: rpScorePop 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;
+}
+.rp-rating { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin-top: 4px; }
+
+.rp-actions { display: flex; gap: 10px; }
+.rp-btn {
+  flex: 1;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 12px 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rp-btn:hover { transform: scale(1.04) translateY(-2px); }
+.rp-btn:active { transform: scale(0.98); }
+.rp-btn--play { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; box-shadow: 0 4px 20px rgba(102,126,234,0.4); }
+.rp-btn--menu { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+
+@media (max-width: 450px) {
+  .rp-card { padding: 16px 12px 14px; border-radius: 20px; }
+  .rp-title { font-size: 1.6rem; }
+  .rp-total-value { font-size: 2.4rem; }
+  .rp-breakdown-value { font-size: 1.05rem; }
+  .rp-btn { font-size: 0.84rem; padding: 10px; }
+}

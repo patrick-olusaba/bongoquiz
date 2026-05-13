@@ -165,7 +165,7 @@ function Dashboard() {
             getDocs(collection(db, "bioQuizSessions")),
             getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ"))),
             getDocs(collection(db, "genQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "GENQUIZ"))),
+            getDocs(query(collection(db, "payments"), where("game", "==", "GENERALKNOWLEDGE"))),
         ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR]) => {
             const bongoSessions  = snap(sessR).map((d: any) => d.data());
             const bongoPayments  = snap(payR).map((d: any) => d.data());
@@ -711,11 +711,12 @@ function GameSessions() {
         const phone07 = (p.phone ?? "").replace(/^254/, "0");
         setGranting(phone07);
         try {
-            await setDoc(doc(db, "grantedSessions", phone07), {
+            const isR3 = (p.trigger ?? "").toUpperCase() === "R3";
+            const coll = isR3 ? "grantedR3Sessions" : "grantedSessions";
+            await setDoc(doc(db, coll, phone07), {
                 phone: phone07, name: p.name ?? "", grantedAt: new Date(),
                 grantedBy: "admin", paymentId: p._id,
             });
-            // Remove from stuck list optimistically
             setPayments(prev => prev.filter(x => x._id !== p._id));
         } catch (e) {
             alert("Failed to grant session: " + e);
@@ -758,18 +759,19 @@ function GameSessions() {
                     These players paid but never started a game session. Click <strong>Grant Session</strong> to restore their access.
                 </div>
                 <Table
-                    heads={["Name", "Phone", "Amount", "Paid At", "Action"]}
+                    heads={["Name", "Phone", "Amount", "Round", "Paid At", "Action"]}
                     rows={stuckPlayers.length ? stuckPlayers.map(p => [
                         p.name  ?? "—",
                         (p.phone ?? "—").replace(/^254/, "0"),
                         p.amount != null ? `KSh ${p.amount}` : "—",
+                        p.trigger ?? "—",
                         p.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                         <div style={{ display: "flex", gap: 6 }}>
                             <button
                                 disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
                                 onClick={() => grantSession(p)}
                                 style={{ ...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1 }}>
-                                {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : "✓ Grant Session"}
+                                {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : `✓ Grant ${(p.trigger ?? "").toUpperCase() === "R3" ? "R3" : "Session"}`}
                             </button>
                             <button
                                 onClick={() => {

@@ -1,6 +1,6 @@
 // AdminMathQuiz.tsx — Math Quiz admin: questions, payments, sessions, leaderboard
 import { useState, useEffect, useRef } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch, query, where } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 
 interface BQQuestion {
@@ -356,7 +356,7 @@ function BQPayments() {
     const [search, setSearch] = useState("");
 
     useEffect(() => {
-        getDocs(collection(db, "genQuizPayments"))
+        getDocs(query(collection(db, "payments"), where("game", "==", "GENERALKNOWLEDGE")))
             .then(snap => setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() }))
                 .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))))
             .catch(() => {});

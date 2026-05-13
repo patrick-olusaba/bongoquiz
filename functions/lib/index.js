@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = void 0;
+exports.calculateScore = exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const http = __importStar(require("http"));
@@ -190,7 +190,6 @@ exports.deposit = functions.https.onRequest(async (req, res) => {
                 const byPhone = await db.collection("payments")
                     .where("phone", "==", phone)
                     .where("status", "==", "pending")
-                    .orderBy("createdAt", "desc")
                     .limit(1).get();
                 if (!byPhone.empty)
                     docRef = byPhone.docs[0].ref;
@@ -303,20 +302,35 @@ exports.stkCallback = functions.https.onRequest(async (req, res) => {
             }
         }
         const status = ResultCode === 0 ? "paid" : "failed";
-        // Try to update existing pending payment by checkoutRequestId
-        const existing = await db.collection("payments")
+        const updatePayload = {
+            status,
+            receipt,
+            trans_id: receipt, // DeductionModal listens for trans_id
+            resultCode: ResultCode,
+            resultDesc: ResultDesc,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        // 1. Try by checkoutRequestId
+        let matched = await db.collection("payments")
             .where("checkoutRequestId", "==", CheckoutRequestID)
             .limit(1).get();
-        if (!existing.empty) {
-            await existing.docs[0].ref.update({ status, receipt, resultCode: ResultCode, resultDesc: ResultDesc, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        // 2. Fall back to phone + pending (handles null checkoutRequestId)
+        if (matched.empty && phone) {
+            matched = await db.collection("payments")
+                .where("phone", "==", phone)
+                .where("status", "==", "pending")
+                .limit(1).get();
+        }
+        if (!matched.empty) {
+            await matched.docs[0].ref.update(updatePayload);
         }
         else {
-            // No matching pending record — create new
             await db.collection("payments").add({
                 checkoutRequestId: CheckoutRequestID,
                 merchantRequestId: MerchantRequestID,
                 phone, amount, receipt, transactionDate,
-                status, resultCode: ResultCode, resultDesc: ResultDesc,
+                trans_id: receipt,
+                ...updatePayload,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         }
@@ -751,4 +765,62 @@ exports.saveGenQuizSession = functions.https.onCall(async (data) => {
         await lbRef.set({ name, phone: data.phone, score: data.score, playedAt: admin.firestore.FieldValue.serverTimestamp() });
     }
     return { success: true };
+});
+/**
+ * calculateScore — callable Cloud Function.
+ * Applies power modifiers server-side so the logic is never exposed in the frontend.
+ */
+exports.calculateScore = functions.https.onCall(async (data) => {
+    const { round, correct, total, powerName } = data;
+    let s = typeof data.rawScore === "number" ? data.rawScore : 0;
+    if (round === 1) {
+        switch (powerName) {
+            case "Double Points":
+                s *= 2;
+                break;
+            case "Point Gamble":
+                s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2);
+                break;
+            case "Point Chance Brain":
+                s = Math.random() > 0.5 ? s * 2 : s;
+                break;
+            case "Insurance":
+                if (correct > 0)
+                    s = Math.max(s, 500);
+                break;
+            case "Mirror Effect":
+                s = Math.floor(s * 1.5);
+                break;
+            case "Steal A Point":
+                s += 200;
+                break;
+            case "Swap Fate":
+                s = Math.floor(s * 1.25);
+                break;
+        }
+    }
+    else if (round === 2) {
+        switch (powerName) {
+            case "Point Gamble":
+                s = Math.random() > 0.5 ? s * 2 : Math.floor(s / 2);
+                break;
+            case "Point Chance Brain":
+                s = Math.random() > 0.5 ? s * 2 : s;
+                break;
+            case "Insurance":
+                if (correct > 0)
+                    s = Math.max(s, 1000);
+                break;
+            case "Mirror Effect":
+                s = Math.floor(s * 1.5);
+                break;
+            case "Steal A Point":
+                s += 500;
+                break;
+            case "Swap Fate":
+                s = Math.floor(s * 1.25);
+                break;
+        }
+    }
+    return { score: Math.round(s) };
 });

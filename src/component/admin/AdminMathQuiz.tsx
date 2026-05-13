@@ -196,6 +196,11 @@ function BQQuestions() {
         !search || q.question.toLowerCase().includes(search.toLowerCase()) || (q.category ?? "").toLowerCase().includes(search.toLowerCase())
     );
 
+    const [qPage, setQPage] = useState(1);
+    const qPerPage = 20;
+    const qTotal = Math.ceil(filtered.length / qPerPage);
+    const qPaginated = filtered.slice((qPage - 1) * qPerPage, qPage * qPerPage);
+
     const extraCount = dupGroups.reduce((a, g) => a + g.length - 1, 0);
 
     return <>
@@ -266,7 +271,7 @@ function BQQuestions() {
                 </>
             ) : <>
                 <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => setSearch(e.target.value)} />
+                    <input style={{ ...s.input, maxWidth: 240 }} placeholder="Search questions…" value={search} onChange={e => { setSearch(e.target.value); setQPage(1); }} />
                     <button onClick={() => setAdding(true)} style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Question</button>
                     <button onClick={() => fileRef.current?.click()} disabled={importing}
                         style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}>
@@ -289,9 +294,9 @@ function BQQuestions() {
                     <table style={s.table}>
                         <thead><tr>{["#", "Question", "Options", "Correct", "Category", "Status", "Actions"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                         <tbody>
-                            {filtered.map((q, i) => (
+                            {qPaginated.map((q, i) => (
                                 <tr key={q.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                    <td style={s.td}>{i + 1}</td>
+                                    <td style={s.td}>{(qPage - 1) * qPerPage + i + 1}</td>
                                     <td style={{ ...s.td, maxWidth: 260 }}>{q.question}</td>
                                     <td style={s.td}>{q.options.map((o, oi) => <div key={oi} style={{ fontSize: "0.78rem", color: oi === q.answer ? "#059669" : "#555" }}>{String.fromCharCode(65+oi)}. {o}</div>)}</td>
                                     <td style={s.td}><strong style={{ color: "#059669" }}>{String.fromCharCode(65 + q.answer)}</strong></td>
@@ -309,6 +314,13 @@ function BQQuestions() {
                         </tbody>
                     </table>
                 </div>
+                {qTotal > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
+                        <button onClick={() => setQPage(p => Math.max(1, p - 1))} disabled={qPage === 1} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>← Prev</button>
+                        <span style={{ fontSize: "0.85rem", color: "#555" }}>Page {qPage} of {qTotal} · {filtered.length} questions</span>
+                        <button onClick={() => setQPage(p => Math.min(qTotal, p + 1))} disabled={qPage === qTotal} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Next →</button>
+                    </div>
+                )}
             </>}
         </div>
     </>;
@@ -337,6 +349,11 @@ function BQPayments() {
         return matchF && matchS;
     });
 
+    const [pPage, setPPage] = useState(1);
+    const pPerPage = 20;
+    const pTotal = Math.ceil(filtered.length / pPerPage);
+    const pPaginated = filtered.slice((pPage - 1) * pPerPage, pPage * pPerPage);
+
     const StatusBadge = ({ status }: { status: string }) => {
         const c: Record<string, { bg: string; color: string }> = {
             paid:    { bg: "#dcfce7", color: "#166534" },
@@ -360,9 +377,9 @@ function BQPayments() {
                     ))}
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                <input style={{ ...s.input, maxWidth: 220 }} placeholder="Search phone or name…" value={search} onChange={e => setSearch(e.target.value)} />
+                <input style={{ ...s.input, maxWidth: 220 }} placeholder="Search phone or name…" value={search} onChange={e => { setSearch(e.target.value); setPPage(1); }} />
                 {["all", "paid", "pending", "failed"].map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
+                    <button key={f} onClick={() => { setFilter(f); setPPage(1); }}
                         style={{ ...s.btn, background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#444" }}>
                         {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f] ?? 0})
                     </button>
@@ -372,9 +389,9 @@ function BQPayments() {
                 <table style={s.table}>
                     <thead><tr>{["#", "Name", "Phone", "Amount", "Status", "Trans ID", "Date"].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {filtered.map((r, i) => (
+                        {pPaginated.map((r, i) => (
                             <tr key={r._id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={s.td}>{i + 1}</td>
+                                <td style={s.td}>{(pPage - 1) * pPerPage + i + 1}</td>
                                 <td style={s.td}>{r.name ?? "—"}</td>
                                 <td style={s.td}>{r.phone ?? "—"}</td>
                                 <td style={s.td}>{r.amount != null ? `KSh ${r.amount}` : "—"}</td>
@@ -387,6 +404,13 @@ function BQPayments() {
                     </tbody>
                 </table>
             </div>
+            {pTotal > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}>
+                    <button onClick={() => setPPage(p => Math.max(1, p - 1))} disabled={pPage === 1} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>← Prev</button>
+                    <span style={{ fontSize: "0.85rem", color: "#555" }}>Page {pPage} of {pTotal} · {filtered.length} payments</span>
+                    <button onClick={() => setPPage(p => Math.min(pTotal, p + 1))} disabled={pPage === pTotal} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Next →</button>
+                </div>
+            )}
         </div>
     );
 }

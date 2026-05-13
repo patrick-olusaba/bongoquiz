@@ -26,6 +26,7 @@ const ResponsiblePlayPage = lazy(() => import("./component/legal/LegalPages.tsx"
 const BibleQuiz     = lazy(() => import("./component/BibleQuiz/App.tsx"));
 const BiologyQuiz   = lazy(() => import("./component/BiologyQuiz/App.tsx"));
 const MathQuiz      = lazy(() => import("./component/MathQuiz/App.tsx"));
+const GeneralKnowledge = lazy(() => import("./component/GeneralKnowledgeQuiz/App.tsx"));
 
 function KCSEAdminRoute() {
     const navigate = useNavigate();
@@ -58,7 +59,7 @@ function SupportAdminRoute() {
 
     return (
         <div style={{ fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#f4f5fb", minHeight: "100vh" }}>
-            <style>{`html,body{overflow:auto!important;height:auto!important;display:block!important;place-items:unset!important}`}</style>
+            <style>{`h tml,body{overflow:auto!important;height:auto!important;display:block!important;place-items:unset!important}`}</style>
             <div style={{ background: "#1a1a2e", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12 }}>
                 <button onClick={() => navigate('/')} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.85rem", color: "#aaa", fontFamily: "inherit" }}>← Back</button>
                 <span style={{ fontWeight: 800, fontSize: "1rem", color: "#ffd200", flex: 1 }}>💬 Support Portal</span>
@@ -127,6 +128,7 @@ function App() {
                 <Route path="/bible-admin" element={<AdminView initialTab="biblequiz" />} />
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
                 <Route path="/math-quiz"    element={<MathQuiz />} />
+                <Route path="/general-knowledge" element={<GeneralKnowledge />} />
                 <Route path="/summary/:id" element={<SummaryRoute />} />
                 <Route path="/support"        element={<SupportView />} />
                 <Route path="/contact"        element={<ContactSupport />} />

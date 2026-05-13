@@ -174,7 +174,6 @@ export const deposit = functions.https.onRequest(async (req, res) => {
                 const byPhone = await db.collection("payments")
                     .where("phone", "==", phone)
                     .where("status", "==", "pending")
-                    .orderBy("createdAt", "desc")
                     .limit(1).get();
                 if (!byPhone.empty) docRef = byPhone.docs[0].ref;
             }
@@ -293,21 +292,37 @@ export const stkCallback = functions.https.onRequest(async (req, res) => {
         }
 
         const status = ResultCode === 0 ? "paid" : "failed";
+        const updatePayload: Record<string, any> = {
+            status,
+            receipt,
+            trans_id: receipt,   // DeductionModal listens for trans_id
+            resultCode: ResultCode,
+            resultDesc: ResultDesc,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
 
-        // Try to update existing pending payment by checkoutRequestId
-        const existing = await db.collection("payments")
+        // 1. Try by checkoutRequestId
+        let matched = await db.collection("payments")
             .where("checkoutRequestId", "==", CheckoutRequestID)
             .limit(1).get();
 
-        if (!existing.empty) {
-            await existing.docs[0].ref.update({ status, receipt, resultCode: ResultCode, resultDesc: ResultDesc, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        // 2. Fall back to phone + pending (handles null checkoutRequestId)
+        if (matched.empty && phone) {
+            matched = await db.collection("payments")
+                .where("phone", "==", phone)
+                .where("status", "==", "pending")
+                .limit(1).get();
+        }
+
+        if (!matched.empty) {
+            await matched.docs[0].ref.update(updatePayload);
         } else {
-            // No matching pending record — create new
             await db.collection("payments").add({
                 checkoutRequestId: CheckoutRequestID,
                 merchantRequestId: MerchantRequestID,
                 phone, amount, receipt, transactionDate,
-                status, resultCode: ResultCode, resultDesc: ResultDesc,
+                trans_id: receipt,
+                ...updatePayload,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         }
@@ -645,7 +660,7 @@ export const genQuizDeposit = functions.https.onRequest(async (req, res) => {
         if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
         if (typeof amount !== "number" || amount <= 0)              { res.status(400).json({ error: "Invalid amount" }); return; }
 
-        const trigger = "GKQ";
+        const trigger = "R1R2";
         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
         const result = await new Promise<any>((resolve, reject) => {
             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };

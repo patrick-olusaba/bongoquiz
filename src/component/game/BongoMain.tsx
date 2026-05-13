@@ -1,7 +1,7 @@
 // BongoMain.tsx — top-level game orchestrator
 import { type FC, useState, useEffect, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getFirestore, collection, query, where, limit, getDocs,  onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, query, where, limit, getDocs, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import type { PrizeItem }    from "../../types/bongotypes.ts";
 import { type GameScreen, type Category } from "../../types/gametypes.ts";
 import type { RoundRecord } from "../../types/sessionTypes.ts";
@@ -112,6 +112,18 @@ export const BongoMain: FC = () => {
         return unsub;
     }, []);
 
+    // Granted R3 session — admin can grant R3 access for stuck players
+    const [hasGrantedR3Session, setHasGrantedR3Session] = useState(false);
+    useEffect(() => {
+        const phone = localStorage.getItem("bongo_player_phone");
+        if (!phone) return;
+        const db = getFirestore();
+        const unsub = onSnapshot(doc(db, "grantedR3Sessions", phone), snap => {
+            if (snap.exists()) setHasGrantedR3Session(true);
+        }, () => {});
+        return unsub;
+    }, []);
+
     // R1
     const [r1Score,     setR1Score]     = useState(0);
     const [r1TimeLeft,  setR1TimeLeft]  = useState(0);
@@ -213,10 +225,16 @@ export const BongoMain: FC = () => {
         </>;
 
     if (screen === "box_select")
-        return <BoxSelectScreen onBack={() => setScreen("home")} onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />;
+        return <><BoxSelectScreen onBack={() => setScreen("home")} onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />
+            <BottomNav active="home" onNavigate={(tab) => {
+                if (tab === 'home') setScreen("home");
+                else if (tab === 'games') setScreen("games");
+                else if (tab === 'leaderboard') setScreen("leaderboard");
+                else if (tab === 'profile') setScreen("profile");
+            }} /></>;
 
     if (screen === "power_reveal" && power)
-        return <PowerRevealScreen power={power} onBack={() => setScreen("home")} onContinue={() => {
+        return <><PowerRevealScreen power={power} onBack={() => setScreen("home")} onContinue={() => {
             if (hasPaidSessionRef.current) {
                 hasPaidSessionRef.current = false;
                 setHasPaidSession(false);
@@ -228,7 +246,13 @@ export const BongoMain: FC = () => {
             } else {
                 setScreen("deduct_r1r2");
             }
-        }} />;
+        }} />
+        <BottomNav active="home" onNavigate={(tab) => {
+            if (tab === 'home') setScreen("home");
+            else if (tab === 'games') setScreen("games");
+            else if (tab === 'leaderboard') setScreen("leaderboard");
+            else if (tab === 'profile') setScreen("profile");
+        }} /></>;
 
     // ── Deduction confirmations ────────────────────────────────────────────────
     if (screen === "deduct_r1r2")
@@ -241,7 +265,15 @@ export const BongoMain: FC = () => {
             onDecline={resetGame}
         />;
 
-    if (screen === "deduct_r3")
+    if (screen === "deduct_r3") {
+        // Admin granted R3 session — skip payment
+        if (hasGrantedR3Session) {
+            const phone = localStorage.getItem("bongo_player_phone") ?? "";
+            if (phone) deleteDoc(doc(getFirestore(), "grantedR3Sessions", phone)).catch(() => {});
+            setHasGrantedR3Session(false);
+            setScreen("transition_r3");
+            return null;
+        }
         return <DeductionModal
             amount={10}
             roundLabel="Round 3"
@@ -250,6 +282,7 @@ export const BongoMain: FC = () => {
             onAccept={() => setScreen("transition_r3")}
             onDecline={() => setScreen("round2_result")}
         />;
+    }
 
     // ── Transitions ────────────────────────────────────────────────────────────
     if (screen === "transition_r1")
