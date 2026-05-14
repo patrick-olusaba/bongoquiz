@@ -54,7 +54,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
   const initials = (n: string) => (n || '??').slice(0, 2).toUpperCase();
 
   return (
-    <div onClick={addRipple} style={{ position: 'relative', zIndex: 1, minHeight: '100svh', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "'Trebuchet MS','Segoe UI',sans-serif", background: '#060412', color: '#fff', overflowX: 'hidden' }}>
+    <div onClick={addRipple} style={{ position: 'relative', zIndex: 1, minHeight: '100dvh', height: '100dvh', maxHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "'Trebuchet MS','Segoe UI',sans-serif", background: '#060412', color: '#fff', overflowX: 'hidden', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 84, boxSizing: 'border-box' }}>
 
       <style>{`
         @keyframes lp-drift{0%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-35px) rotate(180deg)}100%{transform:translateY(12px) rotate(360deg)}}

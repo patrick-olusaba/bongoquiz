@@ -1,15 +1,19 @@
 /* ── Root ── */
 .mm-root {
   min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   width: 100vw;
   margin-left: calc(-50vw + 50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   background: radial-gradient(ellipse at 30% 60%, #2a0060 0%, #0a0020 45%, #000 100%);
 }
@@ -76,13 +80,14 @@
   z-index: 2;
   width: 100%;
   max-width: 780px;
-  padding: 80px 20px 40px;
+  padding: 80px 20px 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100svh;
-  justify-content: center;
+  min-height: auto;
+  justify-content: flex-start;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 /* ── Badge ── */
