@@ -50,6 +50,8 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
     const [scUsed,       setScUsed]       = useState(false);
     const [eliminated,   setEliminated]   = useState<number[]>([]);
     const [brainUsed,    setBrainUsed]    = useState(false);
+    const [timeExpired,  setTimeExpired]  = useState(false);
+    const [missingQuestion, setMissingQuestion] = useState(false);
 
     const doneRef    = useRef(false);
     const scoreRef   = useRef(0);
@@ -75,12 +77,20 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
                     if (next <= 5)       play("tick_urgent");
                     else if (next <= 10) play("tick");
                 }
-                if (next <= 0) { play("timeout"); finishRound(); return 0; }
+                if (next <= 0) {
+                    play("timeout");
+                    setTimeExpired(true);
+                    return 0;
+                }
                 return next;
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
     }, [frozen, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (timeExpired || missingQuestion) finishRound();
+    }, [timeExpired, missingQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const nextQuestion = () => {
         const next = index + 1;
@@ -186,7 +196,10 @@ export const Round2QuestionScreen: FC<Props> = ({ power, r1Score, onComplete }) 
     }
     
     const q = questions[index];
-    if (!q) { if (!doneRef.current) finishRound(); return <div className="game-root"><div className="game-card" /></div>; }
+    if (!q) {
+        if (!doneRef.current && !missingQuestion) setMissingQuestion(true);
+        return <div className="game-root"><div className="game-card" /></div>;
+    }
 
     const pct = (timer / baseTime) * 100;
     const timerColor = pct > 50 ? "#38ef7d" : pct > 25 ? "#ff9800" : "#e52d27";

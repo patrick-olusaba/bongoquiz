@@ -34,6 +34,167 @@ function pickLatestPendingPayment(
     return docs[0]?.ref ?? null;
 }
 
+type GameTimerName =
+    | "bongo"
+    | "bible"
+    | "math"
+    | "biology"
+    | "generalKnowledge"
+    | "sudoku";
+
+type GameTimerPhase =
+    | "session"
+    | "round1"
+    | "round2"
+    | "round3"
+    | "question"
+    | "payment";
+
+interface StartGameTimerData {
+    game: GameTimerName;
+    phase: GameTimerPhase;
+    durationSeconds?: number;
+    phone?: string;
+    metadata?: Record<string, unknown>;
+}
+
+interface GameTimerLookupData {
+    timerId: string;
+}
+
+const DEFAULT_TIMER_SECONDS: Record<GameTimerName, Partial<Record<GameTimerPhase, number>>> = {
+    bongo: { round1: 60, round2: 60, round3: 60, payment: 90 },
+    bible: { session: 60, question: 30, payment: 90 },
+    math: { session: 60, question: 30, payment: 90 },
+    biology: { session: 60, question: 30, payment: 90 },
+    generalKnowledge: { session: 60, question: 30, payment: 90 },
+    sudoku: { payment: 90 },
+};
+
+const MAX_TIMER_SECONDS = 60 * 60;
+
+function getTimerDurationSeconds(data: StartGameTimerData): number {
+    const configured = DEFAULT_TIMER_SECONDS[data.game]?.[data.phase] ?? 60;
+    const duration = typeof data.durationSeconds === "number" ? data.durationSeconds : configured;
+
+    if (!Number.isInteger(duration) || duration <= 0 || duration > MAX_TIMER_SECONDS) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid timer duration");
+    }
+
+    return duration;
+}
+
+function getTimerState(startedAtMs: number, durationSeconds: number, nowMs = Date.now()) {
+    const endsAtMs = startedAtMs + durationSeconds * 1000;
+    const remainingMs = Math.max(0, endsAtMs - nowMs);
+
+    return {
+        serverNowMs: nowMs,
+        startedAtMs,
+        endsAtMs,
+        durationSeconds,
+        remainingMs,
+        remainingSeconds: Math.ceil(remainingMs / 1000),
+        expired: remainingMs <= 0,
+    };
+}
+
+export const startGameTimer = functions.https.onCall(async (data: StartGameTimerData) => {
+    const validGames: GameTimerName[] = ["bongo", "bible", "math", "biology", "generalKnowledge", "sudoku"];
+    const validPhases: GameTimerPhase[] = ["session", "round1", "round2", "round3", "question", "payment"];
+
+    if (!validGames.includes(data.game)) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid game");
+    }
+    if (!validPhases.includes(data.phase)) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid timer phase");
+    }
+    if (typeof data.phone === "string" && data.phone && !/^(07\d{8}|254\d{9})$/.test(data.phone)) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    }
+
+    const durationSeconds = getTimerDurationSeconds(data);
+    const startedAtMs = Date.now();
+    const state = getTimerState(startedAtMs, durationSeconds, startedAtMs);
+    const timerRef = await db.collection("gameTimers").add({
+        game: data.game,
+        phase: data.phase,
+        phone: typeof data.phone === "string" ? data.phone : "",
+        durationSeconds,
+        startedAtMs,
+        endsAtMs: state.endsAtMs,
+        expired: false,
+        stopped: false,
+        metadata: data.metadata && typeof data.metadata === "object" ? data.metadata : {},
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { timerId: timerRef.id, ...state };
+});
+
+export const getGameTimer = functions.https.onCall(async (data: GameTimerLookupData) => {
+    if (typeof data.timerId !== "string" || !data.timerId.trim()) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid timerId");
+    }
+
+    const timerRef = db.collection("gameTimers").doc(data.timerId);
+    const timerSnap = await timerRef.get();
+    if (!timerSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Timer not found");
+    }
+
+    const timer = timerSnap.data() ?? {};
+    const startedAtMs = Number(timer.startedAtMs);
+    const durationSeconds = Number(timer.durationSeconds);
+    if (!Number.isFinite(startedAtMs) || !Number.isFinite(durationSeconds)) {
+        throw new functions.https.HttpsError("failed-precondition", "Timer data is invalid");
+    }
+
+    const state = getTimerState(startedAtMs, durationSeconds);
+    if (state.expired && timer.expired !== true) {
+        await timerRef.set({
+            expired: true,
+            expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+
+    return {
+        timerId: timerSnap.id,
+        game: timer.game,
+        phase: timer.phase,
+        stopped: timer.stopped === true,
+        ...state,
+    };
+});
+
+export const stopGameTimer = functions.https.onCall(async (data: GameTimerLookupData) => {
+    if (typeof data.timerId !== "string" || !data.timerId.trim()) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid timerId");
+    }
+
+    const timerRef = db.collection("gameTimers").doc(data.timerId);
+    const timerSnap = await timerRef.get();
+    if (!timerSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Timer not found");
+    }
+
+    const timer = timerSnap.data() ?? {};
+    const startedAtMs = Number(timer.startedAtMs);
+    const durationSeconds = Number(timer.durationSeconds);
+    const state = getTimerState(startedAtMs, durationSeconds);
+
+    await timerRef.set({
+        stopped: true,
+        stoppedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expired: state.expired,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { timerId: timerSnap.id, ...state, stopped: true };
+});
+
 interface SaveSessionData {
     name: string;
     phone: string;

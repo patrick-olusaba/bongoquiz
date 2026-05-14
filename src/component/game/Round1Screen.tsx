@@ -48,6 +48,7 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
     const [scUsed,      setScUsed]      = useState(false);
     const [eliminated,  setEliminated]  = useState<number[]>([]);
     const [brainUsed,   setBrainUsed]   = useState(false);
+    const [timeExpired, setTimeExpired] = useState(false);
 
     const doneRef      = useRef(false);
     const maxStreakRef  = useRef(0);
@@ -76,12 +77,20 @@ export const Round1Screen: FC<Props> = ({ power, onComplete }) => {
                     if (next <= 5)       play("tick_urgent");
                     else if (next <= 10) play("tick");
                 }
-                if (next <= 0) { play("timeout"); finishRound(); return 0; }
+                if (next <= 0) {
+                    play("timeout");
+                    setTimeExpired(true);
+                    return 0;
+                }
                 return next;
             });
         }, 1000);
         return () => clearInterval(timerRef.current!);
     }, [frozen, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (timeExpired) finishRound();
+    }, [timeExpired]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const nextQuestion = () => {
         const next = index + 1;
