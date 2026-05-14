@@ -65,7 +65,7 @@ function parseCSV(text: string): BQQuestion[] {
     return text.split("\n")
         .map(l => l.trim()).filter(l => l && !l.startsWith("#"))
         .map(line => {
-            const cols = parseCSVLine(line);
+            let cols = parseCSVLine(line);
             // Skip header row
             if (cols[0].toLowerCase() === "question" || cols[0].toLowerCase() === "id") return null;
             // Auto-skip leading numeric ID column

@@ -27,6 +27,7 @@ const BibleQuiz     = lazy(() => import("./component/BibleQuiz/App.tsx"));
 const BiologyQuiz   = lazy(() => import("./component/BiologyQuiz/App.tsx"));
 const MathQuiz      = lazy(() => import("./component/MathQuiz/App.tsx"));
 const GeneralKnowledge = lazy(() => import("./component/GeneralKnowledgeQuiz/App.tsx"));
+const SudokuGame = lazy(() => import("./component/Sudoku/App.tsx"));
 
 function KCSEAdminRoute() {
     const navigate = useNavigate();
@@ -129,6 +130,8 @@ function App() {
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
                 <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/general-knowledge" element={<GeneralKnowledge />} />
+                <Route path="/sudoku" element={<SudokuGame />} />
+
                 <Route path="/summary/:id" element={<SummaryRoute />} />
                 <Route path="/support"        element={<SupportView />} />
                 <Route path="/contact"        element={<ContactSupport />} />

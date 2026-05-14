@@ -8,6 +8,7 @@ import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
 import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
 import mathPoster from "../../assets/gamesposter/MathQuiz.png";
 import gkPoster from "../../assets/gamesposter/GeneralKnowledge.png";
+// import SudokuPoster from "../../assets/gamesposter/sodoku.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 // import {getStreakInfo} from "../../utils/streakDays.ts";
@@ -181,7 +182,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
         { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
         { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
         { label: "Math Quiz", logo: mathPoster, path: "/math-quiz", tag: "NEW" },
-        // { label: "History Quiz", logo: null, path: null, tag: "NEW", emoji: "🏛️" },
+        // { label: "Sudoku", logo: SudokuPoster, path: '/sudoku', tag: "NEW" },
     ];
 
     return (

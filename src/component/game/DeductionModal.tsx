@@ -57,7 +57,8 @@ export const DeductionModal: FC<Props> = ({ amount, roundLabel, phone, playerNam
 
             const db = getFirestore();
             unsubRef.current = onSnapshot(doc(db, "payments", result.paymentId), (snap) => {
-                if (snap.data()?.trans_id) handleConfirmed();
+                const payment = snap.data();
+                if (payment?.trans_id || payment?.status === "paid") handleConfirmed();
             }, () => {});
 
             setTimeout(() => {
