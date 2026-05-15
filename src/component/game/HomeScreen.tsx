@@ -4,10 +4,10 @@ import { Home, Gamepad2, Trophy } from 'lucide-react';
 import logoBg from "../../assets/logo.png";
 // import mainLogo from "../../assets/background.png";
 import wheelImg from "../../assets/wheel-hero.png";
-import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
-import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
-import mathPoster from "../../assets/gamesposter/MathQuiz.png";
-import gkPoster from "../../assets/gamesposter/GeneralKnowledge.png";
+// import biblePoster from "../../assets/gamesposter/Bible-IMG.png";
+// import biologyPoster from "../../assets/gamesposter/biologyquizposter.png";
+// import mathPoster from "../../assets/gamesposter/MathQuiz.png";
+// import gkPoster from "../../assets/gamesposter/GeneralKnowledge.png";
 // import SudokuPoster from "../../assets/gamesposter/sodoku.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
@@ -15,6 +15,7 @@ import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import '../../styles/HomeScreen.css';
+import {BrowseGames} from "./BrowseGames.tsx";
 
 interface Props {
     onStart: (playerName: string) => void;
@@ -177,13 +178,13 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
         { num: "03", label: "Spin & Win", icon: "🎡", desc: "Spin the wheel · answer to claim your bonus", color: "#e2e8f0", glow: "drop-shadow(0 0 12px rgba(226,232,240,0.4))", footerIcon: "🎡", footerLabel: "SPIN" },
     ];
 
-    const moreApps = [
-        { label: "General Knowledge", logo: gkPoster, path: "/general-knowledge", tag: "NEW" },
-        { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
-        { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
-        { label: "Math Quiz", logo: mathPoster, path: "/math-quiz", tag: "NEW" },
-        // { label: "Sudoku", logo: SudokuPoster, path: '/sudoku', tag: "NEW" },
-    ];
+    // const moreApps = [
+    //     { label: "General Knowledge", logo: gkPoster, path: "/general-knowledge", tag: "NEW" },
+    //     { label: "Bible Quiz", logo: biblePoster, path: "/bible-quiz", tag: "NEW" },
+    //     { label: "Biology Quiz", logo: biologyPoster, path: "/biology-quiz", tag: "NEW" },
+    //     { label: "Math Quiz", logo: mathPoster, path: "/math-quiz", tag: "NEW" },
+    //     // { label: "Sudoku", logo: SudokuPoster, path: '/sudoku', tag: "NEW" },
+    // ];
 
     return (
         <div className="home-root">
@@ -348,23 +349,24 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 </div>
 
                 {/* Browse Games */}
-                <div className="home-browse-games">
-                    <div className="home-browse-header">
-                        <span className="home-browse-title">BROWSE GAMES</span>
-                        <span className="home-browse-viewall" onClick={onViewAllGames}>View all &gt;</span>
-                    </div>
-                    <div className="home-browse-grid">
-                        {moreApps.map((app) => (
-                            <div key={app.label} className="home-browse-item" onClick={() => { if (app.path) window.location.href = app.path; }}>
-                                {app.tag && <span className="home-browse-tag">{app.tag}</span>}
-                                <div className="home-browse-img-wrap">
-                                    <img src={app.logo} alt={app.label} />
-                                </div>
-                                <span className="home-browse-label">{app.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                {/*<div className="home-browse-games">*/}
+                {/*    <div className="home-browse-header">*/}
+                {/*        <span className="home-browse-title">BROWSE GAMES</span>*/}
+                {/*        <span className="home-browse-viewall" onClick={onViewAllGames}>View all &gt;</span>*/}
+                {/*    </div>*/}
+                    {/*<div className="home-browse-grid">*/}
+                    {/*    {moreApps.map((app) => (*/}
+                    {/*        <div key={app.label} className="home-browse-item" onClick={() => { if (app.path) window.location.href = app.path; }}>*/}
+                    {/*            {app.tag && <span className="home-browse-tag">{app.tag}</span>}*/}
+                    {/*            <div className="home-browse-img-wrap">*/}
+                    {/*                <img src={app.logo} alt={app.label} />*/}
+                    {/*            </div>*/}
+                    {/*            <span className="home-browse-label">{app.label}</span>*/}
+                    {/*        </div>*/}
+                    {/*    ))}*/}
+                    {/*</div>*/}
+                    <BrowseGames exclude="Bongo Quiz"/>
+                {/*</div>*/}
             </div>
 
             {showNameModal && (

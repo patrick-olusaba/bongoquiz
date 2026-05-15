@@ -1,5 +1,5 @@
 import  {useState} from 'react';
-import {Target, CreditCard, Medal, Pencil, User, Menu, X, HelpCircle, ScrollText} from 'lucide-react';
+import {Target, CreditCard, Medal, Pencil, User, Menu, X, HelpCircle, ScrollText, Grid3X3} from 'lucide-react';
 import {PaymentModal} from './PaymentModal';
 import {ProfileModal, type UserProfile} from './ProfileModal';
 import {LeaderboardModal} from './LeaderboardModal';
@@ -38,6 +38,7 @@ export function LandingPage({
     const [showHistory, setShowHistory]         = useState(false);
     const [historySessions, setHistorySessions] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading]   = useState(false);
+    const [hasGrantedSession, setHasGrantedSession] = useState(false);
 
     const [isMenuOpen, setIsMenuOpen]     = useState(false);
     const [isEditing, setIsEditing]       = useState(false);
@@ -82,44 +83,15 @@ export function LandingPage({
         <div className="landing-container">
 
             <LiveBackground/>
-            <div style={{
-                position: 'relative',
-                zIndex: 2,
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '1rem 1.25rem 0.5rem'
-            }}>
-                {/* MathQuiz Logo + coins */}
-                <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
-                        <div style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            background: 'linear-gradient(135deg,#4ade80,#22d3ee)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 900,
-                            fontSize: '1rem',
-                            color: '#000',
-                            boxShadow: '0 0 12px rgba(74,222,128,0.5)'
-                        }}>∑
+            <div className="sudoku-landing-topbar">
+                <div className="sudoku-landing-brand-wrap">
+                    <div className="sudoku-landing-brand">
+                        <div className="sudoku-landing-brand-icon">
+                            <Grid3X3 size={20} strokeWidth={3} />
                         </div>
-                        <div style={{lineHeight: 1}}>
-                            <div
-                                style={{fontSize: '0.85rem', fontWeight: 900, color: '#4ade80', letterSpacing: 1}}>Math
-                            </div>
-                            <div style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 900,
-                                color: '#facc15',
-                                letterSpacing: 3,
-                                textTransform: 'uppercase'
-                            }}>Quiz
-                            </div>
+                        <div className="sudoku-landing-brand-copy">
+                            <div className="sudoku-landing-brand-name">Sudoku</div>
+                            <div className="sudoku-landing-brand-type">Puzzle</div>
                         </div>
                     </div>
                     {playerPhone && /^07\d{8}$/.test(playerPhone) && totalPoints > 0 && (
@@ -204,14 +176,7 @@ export function LandingPage({
                             }}>{personalBest.toLocaleString()}</span>
                         </div>
                     )}
-                    <button onClick={() => setIsMenuOpen(true)} style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 12,
-                        padding: '8px 10px',
-                        color: '#fff',
-                        cursor: 'pointer'
-                    }}>
+                    <button onClick={() => setIsMenuOpen(true)} className="sudoku-landing-menu-btn" aria-label="Open menu">
                         <Menu size={20}/>
                     </button>
                 </div>
@@ -292,9 +257,9 @@ export function LandingPage({
                         </div>
                         {[
                             { step: '01', title: 'Pay Entry Fee', desc: 'Pay KES 20 via M-Pesa to enter a session.', color: '#f43f5e' },
-                            { step: '02', title: 'Answer Fast', desc: '60 seconds. +100 correct, −50 wrong or skip.', color: '#4ade80' },
-                            { step: '03', title: 'Math Questions', desc: 'Arithmetic, algebra, geometry & more.', color: '#22d3ee' },
-                            { step: '04', title: 'Scoring Rules', desc: 'Time runs out = game over. Highest score wins.', color: '#facc15' },
+                            { step: '02', title: 'Fill the Grid', desc: 'Every row, column, and 3x3 box must contain digits 1-9.', color: '#4ade80' },
+                            { step: '03', title: 'Difficulty Levels', desc: 'Choose Easy, Medium, or Hard. Complete stages to unlock more.', color: '#22d3ee' },
+                            { step: '04', title: 'Scoring & Hints', desc: 'Earn points by completing stages. Hints cost 20 points.', color: '#facc15' },
                         ].map(s => (
                             <div key={s.step} style={{ display: 'flex', gap: 12, marginBottom: '1rem', background: 'rgba(255,255,255,0.04)', borderLeft: `3px solid ${s.color}`, borderRadius: 10, padding: '0.75rem 1rem' }}>
                                 <div>
@@ -359,7 +324,7 @@ export function LandingPage({
                     </span>
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                                        {s.total || 0} questions · {s.correct || 0} correct
+                                        {s.difficulty || 'Easy'} · Stage {s.stage || 1} · {s.hintsUsed || 0} hints
                                     </div>
                                 </div>
                             ))

@@ -184,6 +184,7 @@ export function SudokuMain({ onExit }: SudokuMainProps) {
                 isOpen={isComplete ?? false}
                 onNext={handleNextLevel}
                 onReplay={handleReplay}
+                onQuit={handleExit}
             />
 
             {isPaymentModalOpen && (

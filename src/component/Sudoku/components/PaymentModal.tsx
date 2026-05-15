@@ -36,7 +36,7 @@ export function PaymentModal({ userProfile, onClose, onPay }: PaymentModalProps)
         setLoading(true); setElapsed(0); setTimedOut(false); setError('');
         try {
             const phone254 = userProfile.phone.replace(/^0/, '254');
-            const res = await fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/sudokuDeposit', {
+            const res = await fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/deposit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: userProfile.name, phone: phone254, amount: 20, trigger: 'R1R2', game: 'SUDOKU' }),
@@ -44,7 +44,7 @@ export function PaymentModal({ userProfile, onClose, onPay }: PaymentModalProps)
 
             if (!res.paymentId) throw new Error(res.error || 'Payment failed');
 
-            unsubRef.current = onSnapshot(doc(getFirestore(), 'sudokuPayments', res.paymentId), snap => {
+            unsubRef.current = onSnapshot(doc(getFirestore(), 'payments', res.paymentId), snap => {
                 const d = snap.data();
                 if (d?.trans_id || d?.status === 'paid') handleConfirmed();
             }, () => {});

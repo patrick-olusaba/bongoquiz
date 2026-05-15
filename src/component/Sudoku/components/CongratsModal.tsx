@@ -4,9 +4,10 @@ type CongratsModalProps = {
   isOpen: boolean;
   onNext: () => void;
   onReplay: () => void;
+  onQuit: () => void;
 };
 
-export const CongratsModal: React.FC<CongratsModalProps> = ({ isOpen, onNext, onReplay }) => {
+export const CongratsModal: React.FC<CongratsModalProps> = ({ isOpen, onNext, onReplay, onQuit }) => {
   if (!isOpen) return null;
 
   return (
@@ -31,6 +32,12 @@ export const CongratsModal: React.FC<CongratsModalProps> = ({ isOpen, onNext, on
             className="sudoku-congrats-btn-secondary"
           >
             Replay Stage
+          </button>
+          <button
+            onClick={onQuit}
+            className="sudoku-congrats-btn-secondary"
+          >
+            Quit
           </button>
         </div>
       </div>

@@ -910,11 +910,15 @@ body:has(.home-root) {
 /* ── Browse Games ── */
 .home-browse-games {
     width: 100%;
+    max-width: 100%;
     margin-top: 16px;
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
     padding: 16px;
+    overflow: hidden;
+    box-sizing: border-box;
+    --home-browse-size: clamp(58px, 18vw, 70px);
 }
 
 .home-browse-header {
@@ -940,19 +944,42 @@ body:has(.home-root) {
 
 .home-browse-grid {
     display: flex;
-    gap: 16px;
-    padding-bottom: 4px;
+    gap: clamp(10px, 3.8vw, 16px);
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 12px 2px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168,85,247,0.75) rgba(255,255,255,0.08);
+    -webkit-overflow-scrolling: touch;
+}
+
+.home-browse-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.home-browse-grid::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+}
+
+.home-browse-grid::-webkit-scrollbar-thumb {
+    background: rgba(168,85,247,0.75);
+    border-radius: 999px;
 }
 
 .home-browse-item {
     flex: 0 0 auto;
-    width: 70px;
+    width: var(--home-browse-size);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
     cursor: pointer;
     position: relative;
+    scroll-snap-align: start;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -974,8 +1001,8 @@ body:has(.home-root) {
 .home-browse-tag.hot { background: linear-gradient(135deg, #ff4e00, #ff9500); }
 
 .home-browse-img-wrap {
-    width: 70px;
-    height: 70px;
+    width: var(--home-browse-size);
+    height: var(--home-browse-size);
     border-radius: 12px;
     overflow: hidden;
     border: 2px solid rgba(255,255,255,0.15);
@@ -1023,7 +1050,7 @@ body:has(.home-root) {
     .home-hero-rounds { font-size: 3.2rem; }
     .home-hero-win { font-size: 2.2rem; }
     .home-hero-wheel { max-width: 200px; }
-    .home-browse-img-wrap { width: 100px; height: 100px; }
+    .home-browse-games { --home-browse-size: 90px; }
 }
 
 @media (min-width: 768px) {
@@ -1033,7 +1060,7 @@ body:has(.home-root) {
 }
 @media (min-width: 460px) {
     .home-browse-grid {
-        gap: 36px;
+        gap: 20px;
     }
 }
 /* ═══════════════════════════════════════════════════
@@ -1097,11 +1124,18 @@ body:has(.home-root) {
         position: sticky;
         top: 80px;
         padding: 20px;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        --home-browse-size: 68px;
     }
 
     .home-browse-grid {
         flex-direction: column;
         gap: 14px;
+        overflow-x: hidden;
+        overflow-y: visible;
+        padding: 2px;
+        scroll-snap-type: none;
     }
 
     .home-browse-item {

@@ -1,63 +1,155 @@
 // AdminView.tsx — Admin panel UI
-import { useState, useEffect } from "react";
-import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, where, onSnapshot, Timestamp } from "firebase/firestore";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { db, auth } from "../../firebase.ts";
-import { AdminLogin, KCSE_EMAIL } from "./AdminLogin.tsx";
-import { AdminQuestions } from "./AdminQuestions.tsx";
-import { AdminPowers }    from "./AdminPowers.tsx";
-import { AdminKCSE }      from "./AdminKCSE.tsx";
-import { AdminBibleQuiz } from "./AdminBibleQuiz.tsx";
-import { AdminMathQuiz }  from "./AdminMathQuiz.tsx";
-import { AdminBioQuiz }   from "./AdminBioQuiz.tsx";
-import { AdminGenQuiz }   from "./AdminGenQuiz.tsx";
+import {useState, useEffect} from "react";
+import {
+    collection,
+    getDocs,
+    // updateDoc,
+    doc,
+    setDoc,
+    deleteDoc,
+    query,
+    where,
+    onSnapshot,
+    Timestamp
+} from "firebase/firestore";
+import {onAuthStateChanged, signOut} from "firebase/auth";
+import {db, auth} from "../../firebase.ts";
+import {AdminLogin, KCSE_EMAIL} from "./AdminLogin.tsx";
+import {AdminQuestions} from "./AdminQuestions.tsx";
+import {AdminPowers} from "./AdminPowers.tsx";
+import {AdminKCSE} from "./AdminKCSE.tsx";
+import {AdminBibleQuiz} from "./AdminBibleQuiz.tsx";
+import {AdminMathQuiz} from "./AdminMathQuiz.tsx";
+import {AdminBioQuiz} from "./AdminBioQuiz.tsx";
+import {AdminGenQuiz} from "./AdminGenQuiz.tsx";
+import {AdminSudoku} from "./AdminSudoku.tsx";
 
-type AdminTab = "dashboard" | "players" | "payments" | "games" | "leaderboard" | "questions" | "powers" | "achievements" | "kcse" | "biblequiz" | "mathquiz" | "bioquiz" | "genquiz";
+type AdminTab =
+    "dashboard"
+    | "players"
+    | "payments"
+    | "games"
+    | "leaderboard"
+    | "questions"
+    | "powers"
+    | "achievements"
+    | "kcse"
+    | "biblequiz"
+    | "mathquiz"
+    | "bioquiz"
+    | "genquiz"
+    | "sudoku";
 
 const TABS: { id: AdminTab; label: string }[] = [
-    { id: "dashboard",   label: "📊 Dashboard"      },
-    { id: "players",     label: "👥 Players"         },
-    { id: "payments",    label: "💳 Payments"        },
-    { id: "games",       label: "🎮 Game Sessions"   },
-    { id: "leaderboard", label: "🏆 Leaderboard"     },
-    { id: "questions",   label: "❓ Questions"       },
-    { id: "powers",      label: "⚡ Powers"          },
-    { id: "achievements",label: "🏅 Achievements"    },
-    { id: "kcse",        label: "📄 KCSE Papers"     },
-    { id: "biblequiz",   label: "✝️ Bible Quiz"      },
-    { id: "mathquiz",    label: "➗ Math Quiz"       },
-    { id: "bioquiz",     label: "🧬 Biology Quiz"    },
-    { id: "genquiz",     label: "🌍 General Knowledge" },
+    {id: "dashboard", label: "📊 Dashboard"},
+    {id: "players", label: "👥 Players"},
+    {id: "payments", label: "💳 Payments"},
+    {id: "games", label: "🎮 Game Sessions"},
+    {id: "leaderboard", label: "🏆 Leaderboard"},
+    {id: "questions", label: "❓ Questions"},
+    {id: "powers", label: "⚡ Powers"},
+    {id: "achievements", label: "🏅 Achievements"},
+    {id: "kcse", label: "📄 KCSE Papers"},
+    {id: "biblequiz", label: "✝️ Bible Quiz"},
+    {id: "mathquiz", label: "➗ Math Quiz"},
+    {id: "bioquiz", label: "🧬 Biology Quiz"},
+    {id: "genquiz", label: "🌍 General Knowledge"},
+    {id: "sudoku", label: "🧮 Sudoku"},
 ];
 
 const s: Record<string, React.CSSProperties> = {
-    card:   { background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #e8eaf0", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
-    h2:     { color: "#1a1a2e", fontSize: "1.05rem", fontWeight: 700, marginTop: 0, marginBottom: 14, paddingBottom: 8, borderBottom: "2px solid #f0f0f8" },
-    h3:     { color: "#4361ee", fontSize: "0.9rem", fontWeight: 600, marginTop: 0, marginBottom: 10 },
-    p:      { lineHeight: 1.75, color: "#444", fontSize: "0.9rem", margin: "0 0 10px" },
-    table:  { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem" },
-    th:     { background: "#f5f5ff", color: "#4361ee", padding: "10px 14px", textAlign: "left" as const, borderBottom: "2px solid #e0e0f0", fontWeight: 600, whiteSpace: "nowrap" as const },
-    td:     { padding: "10px 14px", borderBottom: "1px solid #f0f0f8", color: "#333", verticalAlign: "top" as const },
-    note:   { background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", color: "#166534", fontSize: "0.85rem", marginBottom: 12 },
-    warn:   { background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "10px 14px", color: "#9f1239", fontSize: "0.85rem", marginBottom: 12 },
-    stat:   { background: "#fff", borderRadius: 10, padding: "18px 20px", border: "1px solid #e8eaf0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", flex: 1, minWidth: 140 },
-    statN:  { fontSize: "1.8rem", fontWeight: 800, color: "#4361ee", lineHeight: 1 },
-    statL:  { fontSize: "0.78rem", color: "#888", marginTop: 4 },
-    btn:    { padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit" },
-    input:  { padding: "7px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", width: "100%" },
+    card: {
+        background: "#fff",
+        borderRadius: 10,
+        padding: "20px 24px",
+        border: "1px solid #e8eaf0",
+        marginBottom: 20,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
+    },
+    h2: {
+        color: "#1a1a2e",
+        fontSize: "1.05rem",
+        fontWeight: 700,
+        marginTop: 0,
+        marginBottom: 14,
+        paddingBottom: 8,
+        borderBottom: "2px solid #f0f0f8"
+    },
+    h3: {color: "#4361ee", fontSize: "0.9rem", fontWeight: 600, marginTop: 0, marginBottom: 10},
+    p: {lineHeight: 1.75, color: "#444", fontSize: "0.9rem", margin: "0 0 10px"},
+    table: {width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem"},
+    th: {
+        background: "#f5f5ff",
+        color: "#4361ee",
+        padding: "10px 14px",
+        textAlign: "left" as const,
+        borderBottom: "2px solid #e0e0f0",
+        fontWeight: 600,
+        whiteSpace: "nowrap" as const
+    },
+    td: {padding: "10px 14px", borderBottom: "1px solid #f0f0f8", color: "#333", verticalAlign: "top" as const},
+    note: {
+        background: "#f0fdf4",
+        border: "1px solid #bbf7d0",
+        borderRadius: 8,
+        padding: "10px 14px",
+        color: "#166534",
+        fontSize: "0.85rem",
+        marginBottom: 12
+    },
+    warn: {
+        background: "#fff1f2",
+        border: "1px solid #fecdd3",
+        borderRadius: 8,
+        padding: "10px 14px",
+        color: "#9f1239",
+        fontSize: "0.85rem",
+        marginBottom: 12
+    },
+    stat: {
+        background: "#fff",
+        borderRadius: 10,
+        padding: "18px 20px",
+        border: "1px solid #e8eaf0",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        flex: 1,
+        minWidth: 140
+    },
+    statN: {fontSize: "1.8rem", fontWeight: 800, color: "#4361ee", lineHeight: 1},
+    statL: {fontSize: "0.78rem", color: "#888", marginTop: 4},
+    btn: {
+        padding: "6px 14px",
+        borderRadius: 6,
+        border: "none",
+        cursor: "pointer",
+        fontSize: "0.8rem",
+        fontWeight: 600,
+        fontFamily: "inherit"
+    },
+    input: {
+        padding: "7px 12px",
+        borderRadius: 6,
+        border: "1px solid #ddd",
+        fontSize: "0.85rem",
+        fontFamily: "inherit",
+        outline: "none",
+        width: "100%"
+    },
 };
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({title, children}: { title: string; children: React.ReactNode }) {
     return <div style={s.card}><h2 style={s.h2}>{title}</h2>{children}</div>;
 }
 
-function Table({ heads, rows }: { heads: string[]; rows: (string | React.ReactNode)[][] }) {
+function Table({heads, rows}: { heads: string[]; rows: (string | React.ReactNode)[][] }) {
     return (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0", marginBottom: 4 }}>
+        <div style={{overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0", marginBottom: 4}}>
             <table style={s.table}>
-                <thead><tr>{heads.map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                <thead>
+                <tr>{heads.map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                </thead>
                 <tbody>{rows.map((r, i) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
+                    <tr key={i} style={{background: i % 2 === 0 ? "#fff" : "#fafafe"}}>
                         {r.map((c, j) => <td key={j} style={s.td}>{c}</td>)}
                     </tr>
                 ))}</tbody>
@@ -66,45 +158,63 @@ function Table({ heads, rows }: { heads: string[]; rows: (string | React.ReactNo
     );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({status}: { status: string }) {
     const colors: Record<string, { bg: string; color: string }> = {
-        paid:    { bg: "#dcfce7", color: "#166534" },
-        pending: { bg: "#fef9c3", color: "#854d0e" },
-        failed:  { bg: "#fee2e2", color: "#991b1b" },
-        active:  { bg: "#dbeafe", color: "#1e40af" },
-        banned:  { bg: "#fee2e2", color: "#991b1b" },
+        paid: {bg: "#dcfce7", color: "#166534"},
+        pending: {bg: "#fef9c3", color: "#854d0e"},
+        failed: {bg: "#fee2e2", color: "#991b1b"},
+        active: {bg: "#dbeafe", color: "#1e40af"},
+        banned: {bg: "#fee2e2", color: "#991b1b"},
     };
-    const c = colors[status] ?? { bg: "#f0f0f0", color: "#555" };
-    return <span style={{ ...c, padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700 }}>{status}</span>;
+    const c = colors[status] ?? {bg: "#f0f0f0", color: "#555"};
+    return <span
+        style={{...c, padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700}}>{status}</span>;
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard() {
     const [data, setData] = useState<any>(null);
-    const [live, setLive] = useState<Record<string, number>>({ bongo: 0, bible: 0, bio: 0, math: 0, gen: 0 });
-    const [peak, setPeak] = useState<{ total: number; bongo: number; bible: number; bio: number; math: number; at: Date; } | null>(() => {
+    const [live, setLive] = useState<Record<string, number>>({bongo: 0, bible: 0, bio: 0, math: 0, gen: 0, sudoku: 0});
+    const [peak, setPeak] = useState<{
+        total: number;
+        bongo: number;
+        bible: number;
+        bio: number;
+        math: number;
+        sudoku: number;
+        at: Date;
+    } | null>(() => {
         const saved = localStorage.getItem("admin_peak_live");
         if (!saved) return null;
         const p = JSON.parse(saved);
-        return { ...p, at: new Date(p.at) };
+        return {...p, at: new Date(p.at)};
     });
 
     // Live players = sessions started in last 5 minutes
     useEffect(() => {
         const fiveMinAgo = () => Timestamp.fromMillis(Date.now() - 5 * 60 * 1000);
         const unsubs = [
-            { key: "bongo", col: "gameSessions",    field: "playedAt" },
-            { key: "bible", col: "bibleQuizSessions", field: "playedAt" },
-            { key: "bio",   col: "bioQuizSessions",  field: "playedAt" },
-            { key: "math",  col: "mathQuizSessions", field: "playedAt" },
-        ].map(({ key, col, field }) =>
+            {key: "bongo", col: "gameSessions", field: "playedAt"},
+            {key: "bible", col: "bibleQuizSessions", field: "playedAt"},
+            {key: "bio", col: "bioQuizSessions", field: "playedAt"},
+            {key: "math", col: "mathQuizSessions", field: "playedAt"},
+            {key: "sudoku", col: "sudokuSessions", field: "playedAt"},
+        ].map(({key, col, field}) =>
             onSnapshot(query(collection(db, col), where(field, ">=", fiveMinAgo())),
                 snap => setLive(prev => {
-                    const next = { ...prev, [key]: snap.size };
-                    const total = next.bongo + next.bible + next.bio + next.math;
+                    const next = {...prev, [key]: snap.size};
+                    const total = next.bongo + next.bible + next.bio + next.math + next.sudoku;
                     setPeak(p => {
                         if (!p || total > p.total) {
-                            const newPeak = { total, bongo: next.bongo, bible: next.bible, bio: next.bio, math: next.math, at: new Date() };
+                            const newPeak = {
+                                total,
+                                bongo: next.bongo,
+                                bible: next.bible,
+                                bio: next.bio,
+                                math: next.math,
+                                sudoku: next.sudoku,
+                                at: new Date()
+                            };
                             localStorage.setItem("admin_peak_live", JSON.stringify(newPeak));
                             return newPeak;
                         }
@@ -119,31 +229,43 @@ function Dashboard() {
     useEffect(() => {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
-        const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime() / 1000;
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime() / 1000;
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
 
         const buildGameStats = (sessions: any[], payments: any[]) => {
-            const paid    = payments.filter(p => p.status === "paid");
+            const paid = payments.filter(p => p.status === "paid");
             const pending = payments.filter(p => p.status === "pending");
-            const failed  = payments.filter(p => p.status === "failed");
+            const failed = payments.filter(p => p.status === "failed");
             const rev = (list: any[]) => list.reduce((a, p) => a + (p.amount ?? 0), 0);
             const dailyRev: Record<string, number> = {};
             const dailyGames: Record<string, number> = {};
             for (let i = 6; i >= 0; i--) {
-                const d = new Date(now); d.setDate(d.getDate() - i);
-                const key = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" });
-                dailyRev[key] = 0; dailyGames[key] = 0;
+                const d = new Date(now);
+                d.setDate(d.getDate() - i);
+                const key = d.toLocaleDateString("en-KE", {weekday: "short", day: "numeric"});
+                dailyRev[key] = 0;
+                dailyGames[key] = 0;
             }
-            paid.forEach(p => { const d = p.createdAt?.toDate?.(); if (!d) return; const k = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" }); if (k in dailyRev) dailyRev[k] += p.amount ?? 0; });
-            sessions.forEach(s => { const d = s.playedAt?.toDate?.(); if (!d) return; const k = d.toLocaleDateString("en-KE", { weekday: "short", day: "numeric" }); if (k in dailyGames) dailyGames[k]++; });
+            paid.forEach(p => {
+                const d = p.createdAt?.toDate?.();
+                if (!d) return;
+                const k = d.toLocaleDateString("en-KE", {weekday: "short", day: "numeric"});
+                if (k in dailyRev) dailyRev[k] += p.amount ?? 0;
+            });
+            sessions.forEach(s => {
+                const d = s.playedAt?.toDate?.();
+                if (!d) return;
+                const k = d.toLocaleDateString("en-KE", {weekday: "short", day: "numeric"});
+                if (k in dailyGames) dailyGames[k]++;
+            });
             return {
                 sessions: sessions.length,
                 sessionsToday: sessions.filter(s => (s.playedAt?.seconds ?? 0) >= todayStart).length,
-                sessionsWeek:  sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length,
+                sessionsWeek: sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length,
                 avgScore: sessions.length ? Math.round(sessions.reduce((a, s) => a + (s.score ?? s.total ?? 0), 0) / sessions.length) : 0,
                 revenueTotal: rev(paid),
                 revenueToday: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart)),
-                revenueWeek:  rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart)),
+                revenueWeek: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart)),
                 revenueMonth: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= monthStart)),
                 paid: paid.length, pending: pending.length, failed: failed.length,
                 successRate: payments.length ? Math.round((paid.length / payments.length) * 100) : 0,
@@ -166,24 +288,37 @@ function Dashboard() {
             getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ"))),
             getDocs(collection(db, "genQuizSessions")),
             getDocs(query(collection(db, "payments"), where("game", "==", "GENERALKNOWLEDGE"))),
-        ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR]) => {
-            const bongoSessions  = snap(sessR).map((d: any) => d.data());
-            const bongoPayments  = snap(payR).map((d: any) => d.data());
-            const bibleSessions  = snap(bqSessR).map((d: any) => d.data());
-            const biblePayments  = snap(bqPayR).map((d: any) => d.data());
-            const mathSessions   = snap(mqSessR).map((d: any) => d.data());
-            const mathPayments   = snap(mqPayR).map((d: any) => d.data());
-            const bioSessions    = snap(bioSessR).map((d: any) => d.data());
-            const bioPayments    = snap(bioPayR).map((d: any) => d.data());
-            const genSessions    = snap(genSessR).map((d: any) => d.data());
-            const genPayments    = snap(genPayR).map((d: any) => d.data());
-            const leaders        = snap(lbR).map((d: any) => ({ id: d.id, ...d.data() }));
-            const playersSize    = playersR.status === "fulfilled" ? playersR.value.size : 0;
-            const grantSize      = grantR.status === "fulfilled" ? grantR.value.size : 0;
+            getDocs(collection(db, "sudokuSessions")),
+            getDocs(query(collection(db, "payments"), where("game", "==", "SUDOKU"))),
+            getDocs(collection(db, "sudokuPayments")),
+        ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR, sdkSessR, sdkPayR, sdkLegacyPayR]) => {
+            const allPayments = snap(payR).map((d: any) => d.data());
+            const knownGames = new Set(["BIBLEQUIZ", "MATHQUIZ", "BIOLOGYQUIZ", "GENERALKNOWLEDGE", "SUDOKU"]);
+            const bongoSessions = snap(sessR).map((d: any) => d.data());
+            const bongoPayments = allPayments.filter((p: any) => !knownGames.has(String(p.game ?? "BONGOQUIZ").toUpperCase()));
+            const bibleSessions = snap(bqSessR).map((d: any) => d.data());
+            const biblePayments = snap(bqPayR).map((d: any) => d.data());
+            const mathSessions = snap(mqSessR).map((d: any) => d.data());
+            const mathPayments = snap(mqPayR).map((d: any) => d.data());
+            const bioSessions = snap(bioSessR).map((d: any) => d.data());
+            const bioPayments = snap(bioPayR).map((d: any) => d.data());
+            const genSessions = snap(genSessR).map((d: any) => d.data());
+            const genPayments = snap(genPayR).map((d: any) => d.data());
+            const sudokuSessions = snap(sdkSessR).map((d: any) => d.data());
+            const sudokuPayments = [
+                ...snap(sdkPayR).map((d: any) => d.data()),
+                ...snap(sdkLegacyPayR).map((d: any) => ({ game: "SUDOKU", ...d.data() })),
+            ];
+            const leaders = snap(lbR).map((d: any) => ({id: d.id, ...d.data()}));
+            const playersSize = playersR.status === "fulfilled" ? playersR.value.size : 0;
+            const grantSize = grantR.status === "fulfilled" ? grantR.value.size : 0;
 
             // Power usage
             const powerCount: Record<string, number> = {};
-            bongoSessions.forEach(s => { if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1; });
+            // @ts-ignore
+            bongoSessions.forEach(s => {
+                if (s.power) powerCount[s.power] = (powerCount[s.power] ?? 0) + 1;
+            });
             const topPowers = Object.entries(powerCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
             // Top players deduped — normalize phone to 07... format
@@ -195,14 +330,14 @@ function Dashboard() {
             leaders.forEach((p: any) => {
                 const ph = normPhone(p);
                 const ex = byPhone.get(ph);
-                if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, { ...p, _normPhone: ph });
+                if (!ex || (p.score ?? 0) > (ex.score ?? 0)) byPhone.set(ph, {...p, _normPhone: ph});
             });
             const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 30);
 
             // All revenue combined
-            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments].filter(p => p.status === "paid");
+            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments, ...sudokuPayments].filter(p => p.status === "paid");
             const totalRevenue = allPaid.reduce((a, p) => a + (p.amount ?? 0), 0);
-            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length + genSessions.length;
+            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length + genSessions.length + sudokuSessions.length;
 
             setData({
                 players: playersSize,
@@ -211,81 +346,121 @@ function Dashboard() {
                 topPowers, topPlayers,
                 bongo: buildGameStats(bongoSessions, bongoPayments),
                 bible: buildGameStats(bibleSessions, biblePayments),
-                math:  buildGameStats(mathSessions,  mathPayments),
-                bio:   buildGameStats(bioSessions,   bioPayments),
-                gen:   buildGameStats(genSessions,   genPayments),
+                math: buildGameStats(mathSessions, mathPayments),
+                bio: buildGameStats(bioSessions, bioPayments),
+                gen: buildGameStats(genSessions, genPayments),
+                sudoku: buildGameStats(sudokuSessions, sudokuPayments),
             });
-        }).catch(() => {});
+        }).catch(() => {
+        });
     }, []);
 
     if (!data) return <div style={s.card}><p style={s.p}>Loading analytics…</p></div>;
 
-    const Bar = ({ val, max, color }: { val: number; max: number; color: string }) => (
-        <div style={{ background: "#f0f0f8", borderRadius: 4, height: 8, flex: 1 }}>
-            <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((val / Math.max(max, 1)) * 100)}%`, transition: "width 0.6s" }} />
+    const Bar = ({val, max, color}: { val: number; max: number; color: string }) => (
+        <div style={{background: "#f0f0f8", borderRadius: 4, height: 8, flex: 1}}>
+            <div style={{
+                background: color,
+                borderRadius: 4,
+                height: 8,
+                width: `${Math.round((val / Math.max(max, 1)) * 100)}%`,
+                transition: "width 0.6s"
+            }}/>
         </div>
     );
 
-    const StatBox = ({ n, l, color, sub }: { n: string | number; l: string; color?: string; sub?: string }) => (
-        <div style={{ ...s.stat, flex: "1 1 130px" }}>
-            <div style={{ ...s.statN, color: color ?? "#4361ee" }}>{n}</div>
+    const StatBox = ({n, l, color, sub}: { n: string | number; l: string; color?: string; sub?: string }) => (
+        <div style={{...s.stat, flex: "1 1 130px"}}>
+            <div style={{...s.statN, color: color ?? "#4361ee"}}>{n}</div>
             <div style={s.statL}>{l}</div>
-            {sub && <div style={{ fontSize: "0.7rem", color: "#aaa", marginTop: 2 }}>{sub}</div>}
+            {sub && <div style={{fontSize: "0.7rem", color: "#aaa", marginTop: 2}}>{sub}</div>}
         </div>
     );
 
-    const GameCard = ({ label, icon, color, g }: { label: string; icon: string; color: string; g: any }) => {
-        const maxRev   = Math.max(...Object.values(g.dailyRev as Record<string, number>), 1);
+    const GameCard = ({label, icon, color, g}: { label: string; icon: string; color: string; g: any }) => {
+        const maxRev = Math.max(...Object.values(g.dailyRev as Record<string, number>), 1);
         const maxGames = Math.max(...Object.values(g.dailyGames as Record<string, number>), 1);
         return (
-            <div style={{ ...s.card, borderTop: `3px solid ${color}` }}>
-                <h2 style={{ ...s.h2, color }}>{icon} {label}</h2>
+            <div style={{...s.card, borderTop: `3px solid ${color}`}}>
+                <h2 style={{...s.h2, color}}>{icon} {label}</h2>
                 {/* Mini KPIs */}
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+                <div style={{display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16}}>
                     {[
-                        { l: "Sessions",    v: g.sessions,                              c: color },
-                        { l: "Today",       v: g.sessionsToday,                         c: "#666" },
-                        { l: "Revenue",     v: `KSh ${g.revenueTotal.toLocaleString()}`,c: "#059669" },
-                        { l: "This Week",   v: `KSh ${g.revenueWeek.toLocaleString()}`, c: "#0891b2" },
-                        { l: "Avg Score",   v: g.avgScore.toLocaleString(),             c: "#d97706" },
-                        { l: "Success Rate",v: `${g.successRate}%`,                     c: g.successRate >= 70 ? "#059669" : "#dc2626" },
-                    ].map(({ l, v, c }) => (
-                        <div key={l} style={{ background: "#f8f9ff", borderRadius: 8, padding: "10px 14px", flex: "1 1 90px", border: "1px solid #eef0ff" }}>
-                            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: c }}>{v}</div>
-                            <div style={{ fontSize: "0.7rem", color: "#888", marginTop: 2 }}>{l}</div>
+                        {l: "Sessions", v: g.sessions, c: color},
+                        {l: "Today", v: g.sessionsToday, c: "#666"},
+                        {l: "Revenue", v: `KSh ${g.revenueTotal.toLocaleString()}`, c: "#059669"},
+                        {l: "This Week", v: `KSh ${g.revenueWeek.toLocaleString()}`, c: "#0891b2"},
+                        {l: "Avg Score", v: g.avgScore.toLocaleString(), c: "#d97706"},
+                        {l: "Success Rate", v: `${g.successRate}%`, c: g.successRate >= 70 ? "#059669" : "#dc2626"},
+                    ].map(({l, v, c}) => (
+                        <div key={l} style={{
+                            background: "#f8f9ff",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                            flex: "1 1 90px",
+                            border: "1px solid #eef0ff"
+                        }}>
+                            <div style={{fontSize: "1.1rem", fontWeight: 800, color: c}}>{v}</div>
+                            <div style={{fontSize: "0.7rem", color: "#888", marginTop: 2}}>{l}</div>
                         </div>
                     ))}
                 </div>
                 {/* Payment breakdown */}
-                <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>PAYMENTS</div>
-                    {[{ l: "Paid", v: g.paid, c: "#059669" }, { l: "Pending", v: g.pending, c: "#d97706" }, { l: "Failed", v: g.failed, c: "#dc2626" }].map(({ l, v, c }) => (
-                        <div key={l} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: "0.75rem", color: "#666", minWidth: 52 }}>{l}</span>
-                            <Bar val={v} max={g.paid + g.pending + g.failed || 1} color={c} />
-                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: c, minWidth: 24, textAlign: "right" }}>{v}</span>
+                <div style={{marginBottom: 14}}>
+                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>PAYMENTS</div>
+                    {[{l: "Paid", v: g.paid, c: "#059669"}, {l: "Pending", v: g.pending, c: "#d97706"}, {
+                        l: "Failed",
+                        v: g.failed,
+                        c: "#dc2626"
+                    }].map(({l, v, c}) => (
+                        <div key={l} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 6}}>
+                            <span style={{fontSize: "0.75rem", color: "#666", minWidth: 52}}>{l}</span>
+                            <Bar val={v} max={g.paid + g.pending + g.failed || 1} color={c}/>
+                            <span style={{
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                color: c,
+                                minWidth: 24,
+                                textAlign: "right"
+                            }}>{v}</span>
                         </div>
                     ))}
                 </div>
                 {/* Revenue last 7 days */}
-                <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>REVENUE — LAST 7 DAYS</div>
+                <div style={{marginBottom: 14}}>
+                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>REVENUE — LAST 7
+                        DAYS
+                    </div>
                     {Object.entries(g.dailyRev).map(([day, val]) => (
-                        <div key={day} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                            <span style={{ fontSize: "0.72rem", color: "#666", minWidth: 60 }}>{day}</span>
-                            <Bar val={val as number} max={maxRev} color={color} />
-                            <span style={{ fontSize: "0.72rem", fontWeight: 600, color, minWidth: 52, textAlign: "right" }}>KSh {(val as number).toLocaleString()}</span>
+                        <div key={day} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 5}}>
+                            <span style={{fontSize: "0.72rem", color: "#666", minWidth: 60}}>{day}</span>
+                            <Bar val={val as number} max={maxRev} color={color}/>
+                            <span style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                color,
+                                minWidth: 52,
+                                textAlign: "right"
+                            }}>KSh {(val as number).toLocaleString()}</span>
                         </div>
                     ))}
                 </div>
                 {/* Games last 7 days */}
                 <div>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8 }}>GAMES — LAST 7 DAYS</div>
+                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>GAMES — LAST 7
+                        DAYS
+                    </div>
                     {Object.entries(g.dailyGames).map(([day, val]) => (
-                        <div key={day} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                            <span style={{ fontSize: "0.72rem", color: "#666", minWidth: 60 }}>{day}</span>
-                            <Bar val={val as number} max={maxGames} color={color} />
-                            <span style={{ fontSize: "0.72rem", fontWeight: 600, color, minWidth: 20, textAlign: "right" }}>{val as number}</span>
+                        <div key={day} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 5}}>
+                            <span style={{fontSize: "0.72rem", color: "#666", minWidth: 60}}>{day}</span>
+                            <Bar val={val as number} max={maxGames} color={color}/>
+                            <span style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                color,
+                                minWidth: 20,
+                                textAlign: "right"
+                            }}>{val as number}</span>
                         </div>
                     ))}
                 </div>
@@ -295,108 +470,186 @@ function Dashboard() {
 
     return <>
         {/* ── Platform KPIs ── */}
-        <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "#aaa", marginBottom: 10 }}>Platform Overview</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
-                <StatBox n={data.players}                                  l="Total Players"      color="#4361ee" />
-                <StatBox n={data.totalSessions}                            l="Total Games (All)"  color="#7c3aed" />
-                <StatBox n={`KSh ${data.totalRevenue.toLocaleString()}`}   l="Total Revenue (All)"color="#059669" />
-                <StatBox n={data.stuckCount}                               l="Stuck at Payment"   color={data.stuckCount > 0 ? "#dc2626" : "#059669"} sub="needs admin action" />
+        <div style={{marginBottom: 8}}>
+            <div style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "1.2px",
+                color: "#aaa",
+                marginBottom: 10
+            }}>Platform Overview
+            </div>
+            <div style={{display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20}}>
+                <StatBox n={data.players} l="Total Players" color="#4361ee"/>
+                <StatBox n={data.totalSessions} l="Total Games (All)" color="#7c3aed"/>
+                <StatBox n={`KSh ${data.totalRevenue.toLocaleString()}`} l="Total Revenue (All)" color="#059669"/>
+                <StatBox n={data.stuckCount} l="Stuck at Payment" color={data.stuckCount > 0 ? "#dc2626" : "#059669"}
+                         sub="needs admin action"/>
             </div>
         </div>
 
         {/* ── Per-game analytics ── */}
-        <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "#aaa", marginBottom: 10 }}>Per-Game Analytics</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16, marginBottom: 20 }}>
-            <GameCard label="Bongo Quiz"         icon="🎯" color="#4361ee" g={data.bongo} />
-            <GameCard label="Bible Quiz"         icon="✝️" color="#059669" g={data.bible} />
-            <GameCard label="Biology Quiz"       icon="🧬" color="#7c3aed" g={data.bio}   />
-            <GameCard label="General Knowledge"  icon="🌍" color="#0891b2" g={data.gen}   />
-            <GameCard label="Math Quiz"          icon="➗" color="#d97706" g={data.math}  />
+        <div style={{
+            fontSize: "0.7rem",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "1.2px",
+            color: "#aaa",
+            marginBottom: 10
+        }}>Per-Game Analytics
+        </div>
+        <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
+            gap: 16,
+            marginBottom: 20
+        }}>
+            <GameCard label="Bongo Quiz" icon="🎯" color="#4361ee" g={data.bongo}/>
+            <GameCard label="Sudoku" icon="🧮" color="#059669" g={data.sudoku}/>
+            <GameCard label="Bible Quiz" icon="✝️" color="#4ade80" g={data.bible}/>
+            <GameCard label="Biology Quiz" icon="🧬" color="#7c3aed" g={data.bio}/>
+            <GameCard label="General Knowledge" icon="🌍" color="#0891b2" g={data.gen}/>
+            <GameCard label="Math Quiz" icon="➗" color="#d97706" g={data.math}/>
         </div>
 
         {/* ── Cross-game analytics ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16 }}>
+        <div
+            style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16}}>
             {/* Live players */}
-            <div style={{ ...s.card, borderTop: "3px solid #10b981" }}>
-                <h2 style={{ ...s.h2, color: "#10b981" }}>🟢 Live Players <span style={{ fontSize: "0.7rem", color: "#aaa", fontWeight: 400 }}>(last 5 min)</span></h2>
+            <div style={{...s.card, borderTop: "3px solid #10b981"}}>
+                <h2 style={{...s.h2, color: "#10b981"}}>🟢 Live Players <span
+                    style={{fontSize: "0.7rem", color: "#aaa", fontWeight: 400}}>(last 5 min)</span></h2>
                 {[
-                    { label: "Bongo Quiz",       color: "#4361ee", count: live.bongo },
-                    { label: "Bible Quiz",        color: "#059669", count: live.bible },
-                    { label: "Biology Quiz",      color: "#7c3aed", count: live.bio   },
-                    { label: "Math Quiz",         color: "#d97706", count: live.math  },
-                ].map(({ label, color, count }) => (
-                    <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8" }}>
-                        <span style={{ fontSize: "0.85rem", color: "#444" }}>{label}</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            {count > 0 && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block", boxShadow: "0 0 6px #10b981", animation: "pulse 1.5s infinite" }} />}
-                            <strong style={{ color: count > 0 ? color : "#aaa", fontSize: "1.1rem" }}>{count}</strong>
+                    {label: "Bongo Quiz", color: "#4361ee", count: live.bongo},
+                    {label: "Bible Quiz", color: "#059669", count: live.bible},
+                    {label: "Biology Quiz", color: "#7c3aed", count: live.bio},
+                    {label: "Math Quiz", color: "#d97706", count: live.math},
+                ].map(({label, color, count}) => (
+                    <div key={label} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 0",
+                        borderBottom: "1px solid #f0f0f8"
+                    }}>
+                        <span style={{fontSize: "0.85rem", color: "#444"}}>{label}</span>
+                        <span style={{display: "flex", alignItems: "center", gap: 6}}>
+                            {count > 0 && <span style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background: "#10b981",
+                                display: "inline-block",
+                                boxShadow: "0 0 6px #10b981",
+                                animation: "pulse 1.5s infinite"
+                            }}/>}
+                            <strong style={{color: count > 0 ? color : "#aaa", fontSize: "1.1rem"}}>{count}</strong>
                         </span>
                     </div>
                 ))}
-                <div style={{ marginTop: 10, textAlign: "center", fontSize: "1.4rem", fontWeight: 800, color: "#10b981" }}>
-                    {live.bongo + live.bible + live.bio + live.math} <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 400 }}>total active</span>
+                <div
+                    style={{marginTop: 10, textAlign: "center", fontSize: "1.4rem", fontWeight: 800, color: "#10b981"}}>
+                    {live.bongo + live.bible + live.bio + live.math} <span
+                    style={{fontSize: "0.75rem", color: "#aaa", fontWeight: 400}}>total active</span>
                 </div>
                 <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
             </div>
 
             {/* Peak live players */}
-            <div style={{ ...s.card, borderTop: "3px solid #f59e0b" }}>
-                <h2 style={{ ...s.h2, color: "#f59e0b" }}>📈 Peak Live Players</h2>
+            <div style={{...s.card, borderTop: "3px solid #f59e0b"}}>
+                <h2 style={{...s.h2, color: "#f59e0b"}}>📈 Peak Live Players</h2>
                 {peak ? (<>
-                    <div style={{ textAlign: "center", margin: "12px 0" }}>
-                        <div style={{ fontSize: "3rem", fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>{peak.total}</div>
-                        <div style={{ fontSize: "0.75rem", color: "#aaa", marginTop: 4 }}>simultaneous players</div>
+                    <div style={{textAlign: "center", margin: "12px 0"}}>
+                        <div style={{
+                            fontSize: "3rem",
+                            fontWeight: 900,
+                            color: "#f59e0b",
+                            lineHeight: 1
+                        }}>{peak.total}</div>
+                        <div style={{fontSize: "0.75rem", color: "#aaa", marginTop: 4}}>simultaneous players</div>
                     </div>
-                    <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: 12, textAlign: "center" }}>
-                        🕐 {peak.at.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" })}
+                    <div style={{fontSize: "0.78rem", color: "#666", marginBottom: 12, textAlign: "center"}}>
+                        🕐 {peak.at.toLocaleString("en-KE", {dateStyle: "medium", timeStyle: "short"})}
                     </div>
                     {[
-                        { label: "Bongo Quiz",  color: "#4361ee", count: peak.bongo },
-                        { label: "Bible Quiz",  color: "#059669", count: peak.bible },
-                        { label: "Biology Quiz",color: "#7c3aed", count: peak.bio   },
-                        { label: "Math Quiz",   color: "#d97706", count: peak.math ?? 0 },
-                    ].map(({ label, color, count }) => (
-                        <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                            <span style={{ fontSize: "0.78rem", color: "#444", minWidth: 110 }}>{label}</span>
-                            <div style={{ flex: 1, background: "#f0f0f8", borderRadius: 4, height: 8 }}>
-                                <div style={{ background: color, borderRadius: 4, height: 8, width: `${Math.round((count / Math.max(peak.total, 1)) * 100)}%` }} />
+                        {label: "Bongo Quiz", color: "#4361ee", count: peak.bongo},
+                        {label: "Bible Quiz", color: "#059669", count: peak.bible},
+                        {label: "Biology Quiz", color: "#7c3aed", count: peak.bio},
+                        {label: "Math Quiz", color: "#d97706", count: peak.math ?? 0},
+                    ].map(({label, color, count}) => (
+                        <div key={label} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 8}}>
+                            <span style={{fontSize: "0.78rem", color: "#444", minWidth: 110}}>{label}</span>
+                            <div style={{flex: 1, background: "#f0f0f8", borderRadius: 4, height: 8}}>
+                                <div style={{
+                                    background: color,
+                                    borderRadius: 4,
+                                    height: 8,
+                                    width: `${Math.round((count / Math.max(peak.total, 1)) * 100)}%`
+                                }}/>
                             </div>
-                            <strong style={{ color, minWidth: 20, textAlign: "right", fontSize: "0.85rem" }}>{count}</strong>
+                            <strong
+                                style={{color, minWidth: 20, textAlign: "right", fontSize: "0.85rem"}}>{count}</strong>
                         </div>
                     ))}
-                    <button onClick={() => { setPeak(null); localStorage.removeItem("admin_peak_live"); }}
-                        style={{ marginTop: 10, fontSize: "0.72rem", color: "#aaa", background: "none", border: "1px solid #eee", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
+                    <button onClick={() => {
+                        setPeak(null);
+                        localStorage.removeItem("admin_peak_live");
+                    }}
+                            style={{
+                                marginTop: 10,
+                                fontSize: "0.72rem",
+                                color: "#aaa",
+                                background: "none",
+                                border: "1px solid #eee",
+                                borderRadius: 6,
+                                padding: "3px 10px",
+                                cursor: "pointer"
+                            }}>
                         Reset peak
                     </button>
                 </>) : (
-                    <p style={{ ...s.p, textAlign: "center", marginTop: 24 }}>No peak recorded yet.<br/>Keep this tab open to track it.</p>
+                    <p style={{...s.p, textAlign: "center", marginTop: 24}}>No peak recorded yet.<br/>Keep this tab open
+                        to track it.</p>
                 )}
             </div>
             {/* Revenue breakdown */}
             <div style={s.card}>
                 <h2 style={s.h2}>💰 Revenue by Game</h2>
                 {[
-                    { label: "Bongo Quiz",        color: "#4361ee", rev: data.bongo.revenueTotal, paid: data.bongo.paid },
-                    { label: "Bible Quiz",         color: "#059669", rev: data.bible.revenueTotal, paid: data.bible.paid },
-                    { label: "Biology Quiz",       color: "#7c3aed", rev: data.bio.revenueTotal,   paid: data.bio.paid   },
-                    { label: "General Knowledge",  color: "#0891b2", rev: data.gen.revenueTotal,   paid: data.gen.paid   },
-                    { label: "Math Quiz",          color: "#d97706", rev: data.math.revenueTotal,  paid: data.math.paid  },
-                ].map(({ label, color, rev, paid }) => {
+                    {label: "Bongo Quiz", color: "#4361ee", rev: data.bongo.revenueTotal, paid: data.bongo.paid},
+                    {label: "Bible Quiz", color: "#059669", rev: data.bible.revenueTotal, paid: data.bible.paid},
+                    {label: "Biology Quiz", color: "#7c3aed", rev: data.bio.revenueTotal, paid: data.bio.paid},
+                    {label: "General Knowledge", color: "#0891b2", rev: data.gen.revenueTotal, paid: data.gen.paid},
+                    {label: "Math Quiz", color: "#d97706", rev: data.math.revenueTotal, paid: data.math.paid},
+                ].map(({label, color, rev, paid}) => {
                     const maxRev = Math.max(data.bongo.revenueTotal, data.bible.revenueTotal, data.bio.revenueTotal, data.gen.revenueTotal, data.math.revenueTotal, 1);
                     return (
-                        <div key={label} style={{ marginBottom: 10 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: 3 }}>
-                                <span style={{ color: "#444" }}>{label}</span>
-                                <span style={{ fontWeight: 700, color }}> KSh {rev.toLocaleString()} <span style={{ color: "#aaa", fontWeight: 400 }}>({paid} paid)</span></span>
+                        <div key={label} style={{marginBottom: 10}}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: "0.78rem",
+                                marginBottom: 3
+                            }}>
+                                <span style={{color: "#444"}}>{label}</span>
+                                <span style={{fontWeight: 700, color}}> KSh {rev.toLocaleString()} <span
+                                    style={{color: "#aaa", fontWeight: 400}}>({paid} paid)</span></span>
                             </div>
-                            <Bar val={rev} max={maxRev} color={color} />
+                            <Bar val={rev} max={maxRev} color={color}/>
                         </div>
                     );
                 })}
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f8", display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                    <span style={{ color: "#888" }}>Total Revenue</span>
-                    <strong style={{ color: "#4361ee" }}>KSh {data.totalRevenue.toLocaleString()}</strong>
+                <div style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: "1px solid #f0f0f8",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "0.82rem"
+                }}>
+                    <span style={{color: "#888"}}>Total Revenue</span>
+                    <strong style={{color: "#4361ee"}}>KSh {data.totalRevenue.toLocaleString()}</strong>
                 </div>
             </div>
 
@@ -404,26 +657,39 @@ function Dashboard() {
             <div style={s.card}>
                 <h2 style={s.h2}>🎮 Sessions by Game</h2>
                 {[
-                    { label: "Bongo Quiz",        color: "#4361ee", sess: data.bongo.sessions, rate: data.bongo.successRate },
-                    { label: "Bible Quiz",         color: "#059669", sess: data.bible.sessions, rate: data.bible.successRate },
-                    { label: "Biology Quiz",       color: "#7c3aed", sess: data.bio.sessions,   rate: data.bio.successRate   },
-                    { label: "General Knowledge",  color: "#0891b2", sess: data.gen.sessions,   rate: data.gen.successRate   },
-                    { label: "Math Quiz",          color: "#d97706", sess: data.math.sessions,  rate: data.math.successRate  },
-                ].map(({ label, color, sess, rate }) => {
+                    {label: "Bongo Quiz", color: "#4361ee", sess: data.bongo.sessions, rate: data.bongo.successRate},
+                    {label: "Bible Quiz", color: "#059669", sess: data.bible.sessions, rate: data.bible.successRate},
+                    {label: "Biology Quiz", color: "#7c3aed", sess: data.bio.sessions, rate: data.bio.successRate},
+                    {label: "General Knowledge", color: "#0891b2", sess: data.gen.sessions, rate: data.gen.successRate},
+                    {label: "Math Quiz", color: "#d97706", sess: data.math.sessions, rate: data.math.successRate},
+                ].map(({label, color, sess, rate}) => {
                     const maxSess = Math.max(data.bongo.sessions, data.bible.sessions, data.bio.sessions, data.gen.sessions, data.math.sessions, 1);
                     return (
-                        <div key={label} style={{ marginBottom: 10 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: 3 }}>
-                                <span style={{ color: "#444" }}>{label}</span>
-                                <span style={{ fontWeight: 700, color }}>{sess.toLocaleString()} <span style={{ color: "#aaa", fontWeight: 400 }}>({rate}% success)</span></span>
+                        <div key={label} style={{marginBottom: 10}}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: "0.78rem",
+                                marginBottom: 3
+                            }}>
+                                <span style={{color: "#444"}}>{label}</span>
+                                <span style={{fontWeight: 700, color}}>{sess.toLocaleString()} <span
+                                    style={{color: "#aaa", fontWeight: 400}}>({rate}% success)</span></span>
                             </div>
-                            <Bar val={sess} max={maxSess} color={color} />
+                            <Bar val={sess} max={maxSess} color={color}/>
                         </div>
                     );
                 })}
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #f0f0f8", display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
-                    <span style={{ color: "#888" }}>Total Sessions</span>
-                    <strong style={{ color: "#4361ee" }}>{data.totalSessions.toLocaleString()}</strong>
+                <div style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: "1px solid #f0f0f8",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "0.82rem"
+                }}>
+                    <span style={{color: "#888"}}>Total Sessions</span>
+                    <strong style={{color: "#4361ee"}}>{data.totalSessions.toLocaleString()}</strong>
                 </div>
             </div>
 
@@ -431,21 +697,37 @@ function Dashboard() {
             <div style={s.card}>
                 <h2 style={s.h2}>📊 Payment Health</h2>
                 {[
-                    { label: "Bongo Quiz",        color: "#4361ee", g: data.bongo },
-                    { label: "Bible Quiz",         color: "#059669", g: data.bible },
-                    { label: "Biology Quiz",       color: "#7c3aed", g: data.bio   },
-                    { label: "General Knowledge",  color: "#0891b2", g: data.gen   },
-                    { label: "Math Quiz",          color: "#d97706", g: data.math  },
-                ].map(({ label, color, g }) => (
-                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: "0.78rem" }}>
-                        <span style={{ color: "#444", minWidth: 100, fontSize: "0.75rem" }}>{label}</span>
-                        <span style={{ color: "#059669", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>✓ {g.paid}</span>
-                        <span style={{ color: "#f59e0b", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>⏳ {g.pending}</span>
-                        <span style={{ color: "#ef4444", fontWeight: 600, minWidth: 36, fontSize: "0.75rem" }}>✗ {g.failed}</span>
-                        <div style={{ flex: 1, background: "#f0f0f8", borderRadius: 4, height: 6 }}>
-                            <div style={{ background: color, borderRadius: 4, height: 6, width: `${g.successRate}%` }} />
+                    {label: "Bongo Quiz", color: "#4361ee", g: data.bongo},
+                    {label: "Bible Quiz", color: "#059669", g: data.bible},
+                    {label: "Biology Quiz", color: "#7c3aed", g: data.bio},
+                    {label: "General Knowledge", color: "#0891b2", g: data.gen},
+                    {label: "Math Quiz", color: "#d97706", g: data.math},
+                ].map(({label, color, g}) => (
+                    <div key={label}
+                         style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: "0.78rem"}}>
+                        <span style={{color: "#444", minWidth: 100, fontSize: "0.75rem"}}>{label}</span>
+                        <span style={{
+                            color: "#059669",
+                            fontWeight: 600,
+                            minWidth: 36,
+                            fontSize: "0.75rem"
+                        }}>✓ {g.paid}</span>
+                        <span style={{
+                            color: "#f59e0b",
+                            fontWeight: 600,
+                            minWidth: 36,
+                            fontSize: "0.75rem"
+                        }}>⏳ {g.pending}</span>
+                        <span style={{
+                            color: "#ef4444",
+                            fontWeight: 600,
+                            minWidth: 36,
+                            fontSize: "0.75rem"
+                        }}>✗ {g.failed}</span>
+                        <div style={{flex: 1, background: "#f0f0f8", borderRadius: 4, height: 6}}>
+                            <div style={{background: color, borderRadius: 4, height: 6, width: `${g.successRate}%`}}/>
                         </div>
-                        <span style={{ color, fontWeight: 700, minWidth: 36, textAlign: "right" }}>{g.successRate}%</span>
+                        <span style={{color, fontWeight: 700, minWidth: 36, textAlign: "right"}}>{g.successRate}%</span>
                     </div>
                 ))}
             </div>
@@ -455,12 +737,12 @@ function Dashboard() {
 
 // ── Players ────────────────────────────────────────────────────────────────────
 function Players() {
-    const [search,   setSearch]   = useState("");
-    const [players,  setPlayers]  = useState<any[]>([]);
+    const [search, setSearch] = useState("");
+    const [players, setPlayers] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
-    const [banned,   setBanned]   = useState<Set<string>>(new Set());
-    const [page,     setPage]     = useState(1);
+    const [banned, setBanned] = useState<Set<string>>(new Set());
+    const [page, setPage] = useState(1);
     const PAGE_SIZE = 20;
 
     useEffect(() => {
@@ -470,9 +752,9 @@ function Players() {
             getDocs(collection(db, "payments")).catch(() => null),
             getDocs(collection(db, "bannedPlayers")).catch(() => null),
         ]).then(([pSnap, sSnap, paySnap, banSnap]) => {
-            if (pSnap)   setPlayers(pSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            if (pSnap) setPlayers(pSnap.docs.map(d => ({id: d.id, ...d.data()}))
                 .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)));
-            if (sSnap)   setSessions(sSnap.docs.map(d => d.data()));
+            if (sSnap) setSessions(sSnap.docs.map(d => d.data()));
             if (paySnap) setPayments(paySnap.docs.map(d => d.data()));
             if (banSnap) setBanned(new Set(banSnap.docs.map(d => d.id)));
         });
@@ -481,80 +763,122 @@ function Players() {
     const norm = (p: string) => String(p ?? "").replace(/^\+?254|^0/, "").slice(-9);
 
     const enriched = players.map(p => {
-        const pNorm      = norm(p.phone);
-        const phone07    = pNorm ? "0" + pNorm : (p.phone ?? "");
-        const pSessions  = sessions.filter(s => norm(s.phone) === pNorm);
-        const paidAmt    = payments.filter(pay => norm(pay.phone) === pNorm && pay.status === "paid")
-                                   .reduce((a, pay) => a + (pay.amount ?? 0), 0);
-        const lastSess   = [...pSessions].sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
-        return { ...p, phone07, games: pSessions.length, spent: paidAmt,
+        const pNorm = norm(p.phone);
+        const phone07 = pNorm ? "0" + pNorm : (p.phone ?? "");
+        const pSessions = sessions.filter(s => norm(s.phone) === pNorm);
+        const paidAmt = payments.filter(pay => norm(pay.phone) === pNorm && pay.status === "paid")
+            .reduce((a, pay) => a + (pay.amount ?? 0), 0);
+        const lastSess = [...pSessions].sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
+        return {
+            ...p, phone07, games: pSessions.length, spent: paidAmt,
             lastPlayed: lastSess?.playedAt?.toDate?.() ?? null,
-            isBanned: banned.has(phone07) || banned.has(p.phone ?? "") };
+            isBanned: banned.has(phone07) || banned.has(p.phone ?? "")
+        };
     });
 
     const toggleBan = async (p: any) => {
         if (!confirm(`${p.isBanned ? "Unban" : "Ban"} ${p.name ?? p.phone}?`)) return;
         if (p.isBanned) {
-            await deleteDoc(doc(db, "bannedPlayers", p.phone07)).catch(() => {});
-            setBanned(prev => { const n = new Set(prev); n.delete(p.phone07); return n; });
+            await deleteDoc(doc(db, "bannedPlayers", p.phone07)).catch(() => {
+            });
+            setBanned(prev => {
+                const n = new Set(prev);
+                n.delete(p.phone07);
+                return n;
+            });
         } else {
-            await setDoc(doc(db, "bannedPlayers", p.phone07), { phone: p.phone07, bannedAt: new Date() }).catch(() => {});
+            await setDoc(doc(db, "bannedPlayers", p.phone07), {phone: p.phone07, bannedAt: new Date()}).catch(() => {
+            });
             setBanned(prev => new Set([...prev, p.phone07]));
         }
     };
 
-    const filtered   = enriched.filter(p =>
+    const filtered = enriched.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search)
     );
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Players">
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
-                <input style={{ ...s.input, maxWidth: 260 }} placeholder="Search by name or phone…"
-                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-                <span style={{ fontSize: "0.8rem", color: "#888", marginLeft: "auto" }}>
+            <div style={{display: "flex", gap: 8, marginBottom: 14, alignItems: "center"}}>
+                <input style={{...s.input, maxWidth: 260}} placeholder="Search by name or phone…"
+                       value={search} onChange={e => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                }}/>
+                <span style={{fontSize: "0.8rem", color: "#888", marginLeft: "auto"}}>
                     {filtered.length} player{filtered.length !== 1 ? "s" : ""}
                 </span>
             </div>
-            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+            <div style={{overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0"}}>
                 <table style={s.table}>
-                    <thead><tr>
-                        {["#","Name","Phone","Games","Spent","Last Played","Status","Action"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                    </tr></thead>
+                    <thead>
+                    <tr>
+                        {["#", "Name", "Phone", "Games", "Spent", "Last Played", "Status", "Action"].map(h => <th
+                            key={h} style={s.th}>{h}</th>)}
+                    </tr>
+                    </thead>
                     <tbody>
-                        {paginated.length ? paginated.map((p, i) => (
-                            <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={{ ...s.td, color: "#aaa", fontSize: "0.78rem" }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
-                                <td style={s.td}>{p.name ?? "—"}</td>
-                                <td style={s.td}>{p.phone ?? "—"}</td>
-                                <td style={{ ...s.td, fontWeight: 600 }}>{p.games}</td>
-                                <td style={{ ...s.td, color: "#059669", fontWeight: 600 }}>KSh {p.spent.toLocaleString()}</td>
-                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{p.lastPlayed?.toLocaleDateString('en-GB') ?? "—"}</td>
-                                <td style={s.td}>
-                                    <span style={{ background: p.isBanned ? "#fee2e2" : "#dcfce7", color: p.isBanned ? "#991b1b" : "#166534", padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700 }}>
+                    {paginated.length ? paginated.map((p, i) => (
+                        <tr key={p.id} style={{background: i % 2 === 0 ? "#fff" : "#fafafe"}}>
+                            <td style={{
+                                ...s.td,
+                                color: "#aaa",
+                                fontSize: "0.78rem"
+                            }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                            <td style={s.td}>{p.name ?? "—"}</td>
+                            <td style={s.td}>{p.phone ?? "—"}</td>
+                            <td style={{...s.td, fontWeight: 600}}>{p.games}</td>
+                            <td style={{...s.td, color: "#059669", fontWeight: 600}}>KSh {p.spent.toLocaleString()}</td>
+                            <td style={{
+                                ...s.td,
+                                fontSize: "0.78rem"
+                            }}>{p.lastPlayed?.toLocaleDateString('en-GB') ?? "—"}</td>
+                            <td style={s.td}>
+                                    <span style={{
+                                        background: p.isBanned ? "#fee2e2" : "#dcfce7",
+                                        color: p.isBanned ? "#991b1b" : "#166534",
+                                        padding: "2px 8px",
+                                        borderRadius: 4,
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700
+                                    }}>
                                         {p.isBanned ? "banned" : "active"}
                                     </span>
-                                </td>
-                                <td style={s.td}>
-                                    <button onClick={() => toggleBan(p)}
-                                        style={{ ...s.btn, background: p.isBanned ? "#dcfce7" : "#fee2e2", color: p.isBanned ? "#166534" : "#991b1b" }}>
-                                        {p.isBanned ? "Unban" : "Ban"}
-                                    </button>
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan={8} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No players yet</td></tr>
-                        )}
+                            </td>
+                            <td style={s.td}>
+                                <button onClick={() => toggleBan(p)}
+                                        style={{
+                                            ...s.btn,
+                                            background: p.isBanned ? "#dcfce7" : "#fee2e2",
+                                            color: p.isBanned ? "#166534" : "#991b1b"
+                                        }}>
+                                    {p.isBanned ? "Unban" : "Ban"}
+                                </button>
+                            </td>
+                        </tr>
+                    )) : (
+                        <tr>
+                            <td colSpan={8} style={{...s.td, textAlign: "center", color: "#aaa"}}>No players yet</td>
+                        </tr>
+                    )}
                     </tbody>
                 </table>
             </div>
             {totalPages > 1 && (
-                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                    <span style={{ fontSize: "0.85rem", color: "#555", padding: "6px 8px" }}>Page {page} of {totalPages}</span>
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                <div style={{display: "flex", gap: 6, justifyContent: "center", marginTop: 14}}>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}>← Prev
+                    </button>
+                    <span style={{
+                        fontSize: "0.85rem",
+                        color: "#555",
+                        padding: "6px 8px"
+                    }}>Page {page} of {totalPages}</span>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === totalPages}
+                            onClick={() => setPage(p => p + 1)}>Next →
+                    </button>
                 </div>
             )}
         </Card>
@@ -563,17 +887,18 @@ function Players() {
 
 // ── Payments ───────────────────────────────────────────────────────────────────
 function Payments() {
-    const [rows,   setRows]   = useState<any[]>([]);
+    const [rows, setRows] = useState<any[]>([]);
     const [filter, setFilter] = useState("all");
     const [search, setSearch] = useState("");
-    const [page,   setPage]   = useState(1);
+    const [page, setPage] = useState(1);
     const PAGE_SIZE = 20;
 
     useEffect(() => {
         getDocs(collection(db, "payments"))
-            .then(snap => setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+            .then(snap => setRows(snap.docs.map(d => ({_id: d.id, ...d.data()}))
                 .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))))
-            .catch(() => {});
+            .catch(() => {
+            });
     }, []);
 
     const term = search.toLowerCase();
@@ -590,44 +915,56 @@ function Payments() {
 
     const totalPaid = rows.filter(r => r.status === "paid").reduce((a, r) => a + (r.amount ?? 0), 0);
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-    const counts: Record<string, number> = { all: rows.length };
-    rows.forEach(r => { counts[r.status] = (counts[r.status] ?? 0) + 1; });
+    const counts: Record<string, number> = {all: rows.length};
+    rows.forEach(r => {
+        counts[r.status] = (counts[r.status] ?? 0) + 1;
+    });
 
     return <>
         <Card title="Payments">
             {/* Summary */}
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+            <div style={{display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16}}>
                 {[
-                    { l: "Total Payments", v: rows.length },
-                    { l: "Paid",           v: counts.paid    ?? 0, color: "#166534" },
-                    { l: "Pending",        v: counts.pending ?? 0, color: "#92400e" },
-                    { l: "Failed",         v: counts.failed  ?? 0, color: "#9f1239" },
-                    { l: "Total Revenue",  v: `KSh ${totalPaid.toLocaleString()}`, color: "#4361ee" },
-                ].map(({ l, v, color }) => (
-                    <div key={l} style={{ ...s.stat, minWidth: 110, flex: "1 1 110px" }}>
-                        <div style={{ ...s.statN, color: color ?? "#1a1a2e" }}>{v}</div>
+                    {l: "Total Payments", v: rows.length},
+                    {l: "Paid", v: counts.paid ?? 0, color: "#166534"},
+                    {l: "Pending", v: counts.pending ?? 0, color: "#92400e"},
+                    {l: "Failed", v: counts.failed ?? 0, color: "#9f1239"},
+                    {l: "Total Revenue", v: `KSh ${totalPaid.toLocaleString()}`, color: "#4361ee"},
+                ].map(({l, v, color}) => (
+                    <div key={l} style={{...s.stat, minWidth: 110, flex: "1 1 110px"}}>
+                        <div style={{...s.statN, color: color ?? "#1a1a2e"}}>{v}</div>
                         <div style={s.statL}>{l}</div>
                     </div>
                 ))}
             </div>
 
             {/* Search + filter */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-                <input style={{ ...s.input, maxWidth: 260 }} placeholder="Search phone, name, receipt…"
-                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center"}}>
+                <input style={{...s.input, maxWidth: 260}} placeholder="Search phone, name, receipt…"
+                       value={search} onChange={e => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                }}/>
+                <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
                     {["all", "paid", "pending", "failed"].map(f => (
-                        <button key={f} onClick={() => { setFilter(f); setPage(1); }}
-                            style={{ ...s.btn, background: filter === f ? "#4361ee" : "#f0f0f8", color: filter === f ? "#fff" : "#444" }}>
+                        <button key={f} onClick={() => {
+                            setFilter(f);
+                            setPage(1);
+                        }}
+                                style={{
+                                    ...s.btn,
+                                    background: filter === f ? "#4361ee" : "#f0f0f8",
+                                    color: filter === f ? "#fff" : "#444"
+                                }}>
                             {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f] ?? 0})
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: 8 }}>
+            <div style={{fontSize: "0.8rem", color: "#888", marginBottom: 8}}>
                 Showing {paginated.length} of {filtered.length} records
             </div>
 
@@ -635,33 +972,43 @@ function Payments() {
                 heads={["#", "Name", "Phone", "Amount (KES)", "Trigger", "Status", "Trans ID", "Receipt", "Date"]}
                 rows={paginated.length ? paginated.map((r, i) => [
                     (page - 1) * PAGE_SIZE + i + 1,
-                    r.name    ?? "—",
-                    r.phone   ?? "—",
-                    r.amount  != null ? `KSh ${r.amount}` : "—",
+                    r.name ?? "—",
+                    r.phone ?? "—",
+                    r.amount != null ? `KSh ${r.amount}` : "—",
                     r.game ? `${r.game} / ${r.trigger ?? "—"}` : (r.trigger ?? r.round ?? "—"),
-                    <StatusBadge status={r.status ?? "pending"} />,
+                    <StatusBadge status={r.status ?? "pending"}/>,
                     r.trans_id ?? r.checkoutRequestId ?? "—",
-                    r.receipt  ?? r.trans_id ?? "—",
+                    r.receipt ?? r.trans_id ?? "—",
                     r.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                 ]) : [["—", "No payments found", "", "", "", "", "", "", ""]]}
             />
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                <div style={{display: "flex", gap: 6, justifyContent: "center", marginTop: 14, flexWrap: "wrap"}}>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}>← Prev
+                    </button>
+                    {Array.from({length: totalPages}, (_, i) => i + 1)
                         .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
                         .reduce<(number | "…")[]>((acc, p, idx, arr) => {
                             if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
-                            acc.push(p); return acc;
+                            acc.push(p);
+                            return acc;
                         }, [])
                         .map((p, i) => p === "…"
-                            ? <span key={`e${i}`} style={{ padding: "6px 4px", color: "#aaa" }}>…</span>
+                            ? <span key={`e${i}`} style={{padding: "6px 4px", color: "#aaa"}}>…</span>
                             : <button key={p} onClick={() => setPage(p as number)}
-                                style={{ ...s.btn, background: page === p ? "#4361ee" : "#f0f0f8", color: page === p ? "#fff" : "#444", minWidth: 34 }}>{p}</button>
+                                      style={{
+                                          ...s.btn,
+                                          background: page === p ? "#4361ee" : "#f0f0f8",
+                                          color: page === p ? "#fff" : "#444",
+                                          minWidth: 34
+                                      }}>{p}</button>
                         )}
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === totalPages}
+                            onClick={() => setPage(p => p + 1)}>Next →
+                    </button>
                 </div>
             )}
         </Card>
@@ -670,26 +1017,29 @@ function Payments() {
 
 // ── Game Sessions ──────────────────────────────────────────────────────────────
 function GameSessions() {
-    const [rows,     setRows]     = useState<any[]>([]);
+    const [rows, setRows] = useState<any[]>([]);
     const [payments, setPayments] = useState<any[]>([]);
     const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-    const [search,   setSearch]   = useState("");
-    const [tab,      setTab]      = useState<"sessions" | "stuck">("sessions");
+    const [search, setSearch] = useState("");
+    const [tab, setTab] = useState<"sessions" | "stuck">("sessions");
     const [granting, setGranting] = useState<string | null>(null);
-    const [page,     setPage]     = useState(1);
+    const [page, setPage] = useState(1);
     const PAGE_SIZE = 20;
 
     useEffect(() => {
         getDocs(collection(db, "gameSessions"))
-            .then(snap => setRows(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .then(snap => setRows(snap.docs.map(d => ({id: d.id, ...d.data()}))
                 .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))))
-            .catch(() => {});
+            .catch(() => {
+            });
         getDocs(collection(db, "payments"))
-            .then(snap => setPayments(snap.docs.map(d => ({ _id: d.id, ...d.data() }))))
-            .catch(() => {});
+            .then(snap => setPayments(snap.docs.map(d => ({_id: d.id, ...d.data()}))))
+            .catch(() => {
+            });
         getDocs(collection(db, "dismissedPayments"))
             .then(snap => setDismissed(new Set(snap.docs.map(d => d.id))))
-            .catch(() => {});
+            .catch(() => {
+            });
     }, []);
 
     // Players who paid but never got a session
@@ -724,7 +1074,7 @@ function GameSessions() {
         setGranting(null);
     };
 
-    const filtered   = rows.filter(r => {
+    const filtered = rows.filter(r => {
         if (!search) return true;
         const term = search.toLowerCase();
         return (r.name ?? "").toLowerCase().includes(term) || (r.phone ?? "").includes(term);
@@ -735,63 +1085,84 @@ function GameSessions() {
         const minute = r.playedAt?.toDate ? Math.floor(r.playedAt.toDate().getTime() / 60000) : r.playedAt?.seconds ? Math.floor(r.playedAt.seconds / 60) : r.id;
         const key = `${r.phone}|${minute}`;
         if (seen.has(key)) return false;
-        seen.add(key); return true;
+        seen.add(key);
+        return true;
     });
     const totalPages = Math.max(1, Math.ceil(deduped.length / PAGE_SIZE));
-    const paginated  = deduped.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const paginated = deduped.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Game Sessions">
             {/* Tabs */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <div style={{display: "flex", gap: 8, marginBottom: 16}}>
                 <button onClick={() => setTab("sessions")}
-                    style={{ ...s.btn, background: tab === "sessions" ? "#4361ee" : "#f0f0f8", color: tab === "sessions" ? "#fff" : "#444" }}>
+                        style={{
+                            ...s.btn,
+                            background: tab === "sessions" ? "#4361ee" : "#f0f0f8",
+                            color: tab === "sessions" ? "#fff" : "#444"
+                        }}>
                     🎮 All Sessions ({rows.length})
                 </button>
                 <button onClick={() => setTab("stuck")}
-                    style={{ ...s.btn, background: tab === "stuck" ? "#e53e3e" : "#f0f0f8", color: tab === "stuck" ? "#fff" : "#444" }}>
+                        style={{
+                            ...s.btn,
+                            background: tab === "stuck" ? "#e53e3e" : "#f0f0f8",
+                            color: tab === "stuck" ? "#fff" : "#444"
+                        }}>
                     ⚠️ Stuck at Payment ({stuckPlayers.length})
                 </button>
             </div>
 
             {tab === "stuck" ? (<>
-                <div style={{ ...s.warn, marginBottom: 12 }}>
-                    These players paid but never started a game session. Click <strong>Grant Session</strong> to restore their access.
+                <div style={{...s.warn, marginBottom: 12}}>
+                    These players paid but never started a game session. Click <strong>Grant Session</strong> to restore
+                    their access.
                 </div>
                 <Table
                     heads={["Name", "Phone", "Amount", "Round", "Paid At", "Action"]}
                     rows={stuckPlayers.length ? stuckPlayers.map(p => [
-                        p.name  ?? "—",
+                        p.name ?? "—",
                         (p.phone ?? "—").replace(/^254/, "0"),
                         p.amount != null ? `KSh ${p.amount}` : "—",
                         p.trigger ?? "—",
                         p.createdAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
-                        <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{display: "flex", gap: 6}}>
                             <button
                                 disabled={granting === (p.phone ?? "").replace(/^254/, "0")}
                                 onClick={() => grantSession(p)}
-                                style={{ ...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1 }}>
+                                style={{...s.btn, background: "#22c55e", color: "#fff", opacity: granting ? 0.6 : 1}}>
                                 {granting === (p.phone ?? "").replace(/^254/, "0") ? "Granting…" : `✓ Grant ${(p.trigger ?? "").toUpperCase() === "R3" ? "R3" : "Session"}`}
                             </button>
                             <button
                                 onClick={() => {
-                                    setDoc(doc(db, "dismissedPayments", p._id), { dismissedAt: new Date() }).catch(() => {});
+                                    setDoc(doc(db, "dismissedPayments", p._id), {dismissedAt: new Date()}).catch(() => {
+                                    });
                                     setDismissed(prev => new Set([...prev, p._id]));
                                 }}
-                                style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>
+                                style={{...s.btn, background: "#f0f0f8", color: "#444"}}>
                                 Already Granted
                             </button>
                         </div>
                     ]) : [["No stuck players 🎉", "", "", "", ""]]}
                 />
             </>) : (<>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-                    <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 16,
+                    flexWrap: "wrap",
+                    gap: 8
+                }}>
+                    <span style={{fontSize: "0.85rem", color: "#666"}}>
                         Total: <strong>{deduped.length}</strong> session{deduped.length !== 1 ? "s" : ""}
                     </span>
                     <input type="text" placeholder="Search by name or phone..."
-                        value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                        style={{ ...s.input, width: "auto", minWidth: 220 }} />
+                           value={search} onChange={e => {
+                        setSearch(e.target.value);
+                        setPage(1);
+                    }}
+                           style={{...s.input, width: "auto", minWidth: 220}}/>
                 </div>
                 <Table
                     heads={["Player", "Phone", "Power Used", "R1", "R2", "R3", "Total", "Date"]}
@@ -800,17 +1171,33 @@ function GameSessions() {
                         (r.r1Score ?? 0).toLocaleString(),
                         (r.r2Score ?? 0).toLocaleString(),
                         (r.r3Bonus ?? 0).toLocaleString(),
-                        (r.total   ?? 0).toLocaleString(),
+                        (r.total ?? 0).toLocaleString(),
                         r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—",
                     ]) : [["No sessions found", "", "", "", "", "", "", ""]]}
                 />
                 {totalPages > 1 && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-                        <span style={{ fontSize: "0.82rem", color: "#888" }}>Page {page} of {totalPages}</span>
-                        <button style={{ ...s.btn, background: page === 1 ? "#eee" : "#4361ee", color: page === 1 ? "#aaa" : "#fff" }}
-                            disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                        <button style={{ ...s.btn, background: page === totalPages ? "#eee" : "#4361ee", color: page === totalPages ? "#aaa" : "#fff" }}
-                            disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: 8,
+                        marginTop: 12
+                    }}>
+                        <span style={{fontSize: "0.82rem", color: "#888"}}>Page {page} of {totalPages}</span>
+                        <button style={{
+                            ...s.btn,
+                            background: page === 1 ? "#eee" : "#4361ee",
+                            color: page === 1 ? "#aaa" : "#fff"
+                        }}
+                                disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev
+                        </button>
+                        <button style={{
+                            ...s.btn,
+                            background: page === totalPages ? "#eee" : "#4361ee",
+                            color: page === totalPages ? "#aaa" : "#fff"
+                        }}
+                                disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →
+                        </button>
                     </div>
                 )}
             </>)}
@@ -820,9 +1207,9 @@ function GameSessions() {
 
 // ── Leaderboard ────────────────────────────────────────────────────────────────
 function AdminLeaderboard() {
-    const [rows,   setRows]   = useState<any[]>([]);
+    const [rows, setRows] = useState<any[]>([]);
     const [search, setSearch] = useState("");
-    const [page,   setPage]   = useState(1);
+    const [page, setPage] = useState(1);
     const PAGE_SIZE = 20;
     const NEW_THRESHOLD_DAYS = 3; // badge players who joined leaderboard within last 3 days
 
@@ -833,7 +1220,7 @@ function AdminLeaderboard() {
             .then(r => r.json())
             .catch(() => []); // Fallback for HTTPS mixed content blocking
         const fbFetch = getDocs(collection(db, "leaderboard"))
-            .then(snap => snap.docs.map(d => ({ id: d.id, ...d.data() }))).catch(() => []);
+            .then(snap => snap.docs.map(d => ({id: d.id, ...d.data()}))).catch(() => []);
 
         Promise.all([sqlFetch, fbFetch]).then(([sqlRaw, fbRaw]) => {
             const byPhone = new Map<string, any>();
@@ -844,7 +1231,7 @@ function AdminLeaderboard() {
                 const phone07 = phone.replace(/^254/, "0");
                 const existing = byPhone.get(phone);
                 if (!existing || score > existing.score)
-                    byPhone.set(phone, { phone: phone07, name: phone07.slice(0, 3) + "*******", score, playedAt: null });
+                    byPhone.set(phone, {phone: phone07, name: phone07.slice(0, 3) + "*******", score, playedAt: null});
             });
 
             (Array.isArray(fbRaw) ? fbRaw : []).forEach((d: any) => {
@@ -854,16 +1241,17 @@ function AdminLeaderboard() {
                 const existing = byPhone.get(phone);
                 const name = d.name && !/^\d/.test(d.name) ? d.name : existing?.name;
                 if (!existing || score > existing.score)
-                    byPhone.set(phone, { phone: phone07, name: name ?? phone07, score, playedAt: d.playedAt ?? null });
+                    byPhone.set(phone, {phone: phone07, name: name ?? phone07, score, playedAt: d.playedAt ?? null});
                 else if (existing && name)
-                    byPhone.set(phone, { ...existing, name });
+                    byPhone.set(phone, {...existing, name});
             });
 
             const sorted = Array.from(byPhone.values())
                 .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-                .map((d, i) => ({ ...d, rank: i + 1 }));
+                .map((d, i) => ({...d, rank: i + 1}));
             setRows(sorted);
-        }).catch(() => {});
+        }).catch(() => {
+        });
     }, []);
 
     const exportCSV = () => {
@@ -873,62 +1261,114 @@ function AdminLeaderboard() {
             r.score ?? 0,
             r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "",
         ].join(",")).join("\n");
-        const blob = new Blob([header + "\n" + csv], { type: "text/csv" });
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-        a.download = "leaderboard.csv"; a.click();
+        const blob = new Blob([header + "\n" + csv], {type: "text/csv"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "leaderboard.csv";
+        a.click();
     };
 
     const cutoff = Date.now() - NEW_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
-    const isNew  = (r: any) => (r.playedAt?.toDate?.()?.getTime() ?? 0) > cutoff;
+    const isNew = (r: any) => (r.playedAt?.toDate?.()?.getTime() ?? 0) > cutoff;
 
-    const filtered   = rows.filter(r => !search ||
+    const filtered = rows.filter(r => !search ||
         (r.name ?? "").toLowerCase().includes(search.toLowerCase()) || (r.phone ?? "").includes(search)
     );
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     return <>
         <Card title="Leaderboard">
-            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap"}}>
                 <input type="text" placeholder="Search by name or phone..."
-                    value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                    style={{ ...s.input, maxWidth: 260 }} />
-                <span style={{ fontSize: "0.8rem", color: "#888" }}>{filtered.length} player{filtered.length !== 1 ? "s" : ""}</span>
-                <button onClick={exportCSV} style={{ ...s.btn, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", marginLeft: "auto" }}>
+                       value={search} onChange={e => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                }}
+                       style={{...s.input, maxWidth: 260}}/>
+                <span style={{
+                    fontSize: "0.8rem",
+                    color: "#888"
+                }}>{filtered.length} player{filtered.length !== 1 ? "s" : ""}</span>
+                <button onClick={exportCSV} style={{
+                    ...s.btn,
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    border: "1px solid #bbf7d0",
+                    marginLeft: "auto"
+                }}>
                     📥 Export CSV
                 </button>
             </div>
-            <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0" }}>
+            <div style={{overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0"}}>
                 <table style={s.table}>
-                    <thead><tr>
-                        {["Rank","Player","Phone","Score","Date","Status"].map(h => <th key={h} style={s.th}>{h === "Status" ? "" : h}</th>)}
-                    </tr></thead>
+                    <thead>
+                    <tr>
+                        {["Rank", "Player", "Phone", "Score", "Date", "Status"].map(h => <th key={h}
+                                                                                             style={s.th}>{h === "Status" ? "" : h}</th>)}
+                    </tr>
+                    </thead>
                     <tbody>
-                        {paginated.length ? paginated.map((r, i) => (
-                            <tr key={r.phone ?? i} style={{ background: i % 2 === 0 ? "#fff" : "#fafafe" }}>
-                                <td style={{ ...s.td, fontWeight: 700 }}>{r.rank <= 3 ? ["🥇","🥈","🥉"][r.rank-1] : r.rank}</td>
-                                <td style={s.td}>
-                                    {r.name ?? "—"}
-                                    {isNew(r) && <span style={{ marginLeft: 6, background: "#fef9c3", color: "#854d0e", fontSize: "0.68rem", fontWeight: 700, padding: "1px 6px", borderRadius: 4 }}>NEW</span>}
-                                </td>
-                                <td style={s.td}>{r.phone ?? "—"}</td>
-                                <td style={{ ...s.td, fontWeight: 700, color: "#4361ee" }}>{(r.score ?? 0).toLocaleString()}</td>
-                                <td style={{ ...s.td, fontSize: "0.78rem" }}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
-                                <td style={s.td}>
-                                    {isNew(r) && <span style={{ background: "#dcfce7", color: "#166534", fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>🆕 Recent</span>}
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", color: "#aaa" }}>No entries found</td></tr>
-                        )}
+                    {paginated.length ? paginated.map((r, i) => (
+                        <tr key={r.phone ?? i} style={{background: i % 2 === 0 ? "#fff" : "#fafafe"}}>
+                            <td style={{
+                                ...s.td,
+                                fontWeight: 700
+                            }}>{r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}</td>
+                            <td style={s.td}>
+                                {r.name ?? "—"}
+                                {isNew(r) && <span style={{
+                                    marginLeft: 6,
+                                    background: "#fef9c3",
+                                    color: "#854d0e",
+                                    fontSize: "0.68rem",
+                                    fontWeight: 700,
+                                    padding: "1px 6px",
+                                    borderRadius: 4
+                                }}>NEW</span>}
+                            </td>
+                            <td style={s.td}>{r.phone ?? "—"}</td>
+                            <td style={{
+                                ...s.td,
+                                fontWeight: 700,
+                                color: "#4361ee"
+                            }}>{(r.score ?? 0).toLocaleString()}</td>
+                            <td style={{
+                                ...s.td,
+                                fontSize: "0.78rem"
+                            }}>{r.playedAt?.toDate?.()?.toLocaleString('en-GB') ?? "—"}</td>
+                            <td style={s.td}>
+                                {isNew(r) && <span style={{
+                                    background: "#dcfce7",
+                                    color: "#166534",
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                    padding: "2px 8px",
+                                    borderRadius: 4
+                                }}>🆕 Recent</span>}
+                            </td>
+                        </tr>
+                    )) : (
+                        <tr>
+                            <td colSpan={6} style={{...s.td, textAlign: "center", color: "#aaa"}}>No entries found</td>
+                        </tr>
+                    )}
                     </tbody>
                 </table>
             </div>
             {totalPages > 1 && (
-                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 14 }}>
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-                    <span style={{ fontSize: "0.85rem", color: "#555", padding: "6px 8px" }}>Page {page} of {totalPages}</span>
-                    <button style={{ ...s.btn, background: "#f0f0f8", color: "#444" }} disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                <div style={{display: "flex", gap: 6, justifyContent: "center", marginTop: 14}}>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}>← Prev
+                    </button>
+                    <span style={{
+                        fontSize: "0.85rem",
+                        color: "#555",
+                        padding: "6px 8px"
+                    }}>Page {page} of {totalPages}</span>
+                    <button style={{...s.btn, background: "#f0f0f8", color: "#444"}} disabled={page === totalPages}
+                            onClick={() => setPage(p => p + 1)}>Next →
+                    </button>
                 </div>
             )}
         </Card>
@@ -944,23 +1384,23 @@ function AdminLeaderboard() {
 // ── Achievements ───────────────────────────────────────────────────────────────
 function Achievements() {
     const badges = [
-        ["🔥 Hot Streak",    "Play 7 days in a row",          "342"],
-        ["💎 High Roller",   "Score over 50,000 in one game", "87"],
-        ["⚡ Speed Demon",   "Finish R1 with 30s+ remaining", "214"],
+        ["🔥 Hot Streak", "Play 7 days in a row", "342"],
+        ["💎 High Roller", "Score over 50,000 in one game", "87"],
+        ["⚡ Speed Demon", "Finish R1 with 30s+ remaining", "214"],
         ["🎯 Perfect Round", "Answer all R2 questions right", "56"],
-        ["🏆 Champion",      "Reach #1 on leaderboard",       "12"],
-        ["🌟 First Win",     "Complete your first game",      "1,284"],
+        ["🏆 Champion", "Reach #1 on leaderboard", "12"],
+        ["🌟 First Win", "Complete your first game", "1,284"],
     ];
     return <>
         <Card title="Achievements">
-            <div style={{ marginBottom: 14, textAlign: "right" as const }}>
-                <button style={{ ...s.btn, background: "#4361ee", color: "#fff" }}>+ Add Badge</button>
+            <div style={{marginBottom: 14, textAlign: "right" as const}}>
+                <button style={{...s.btn, background: "#4361ee", color: "#fff"}}>+ Add Badge</button>
             </div>
             <Table
                 heads={["Badge", "Condition", "Unlocked By (players)", "Actions"]}
                 rows={badges.map(b => [
                     b[0], b[1], b[2],
-                    <button style={{ ...s.btn, background: "#fef9c3", color: "#854d0e" }}>Edit</button>
+                    <button style={{...s.btn, background: "#fef9c3", color: "#854d0e"}}>Edit</button>
                 ])}
             />
         </Card>
@@ -1087,7 +1527,7 @@ html, body { height: 100%; display: block !important; place-items: unset !import
 `;
 
 // ── Main export ────────────────────────────────────────────────────────────────
-export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
+export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
     const [authed, setAuthed] = useState(false);
     const [authChecked, setAuthChecked] = useState(false);
     const [tab, setTab] = useState<AdminTab>(initialTab ?? "dashboard");
@@ -1096,7 +1536,7 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
     const changeTab = (t: AdminTab) => {
         setTab(t);
         setDrawerOpen(false);
-        document.getElementById("adm-content")?.scrollTo({ top: 0 });
+        document.getElementById("adm-content")?.scrollTo({top: 0});
     };
 
     useEffect(() => {
@@ -1111,30 +1551,42 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
     const handleLogout = () => signOut(auth);
 
     if (!authChecked) return null;
-    if (!authed) return <AdminLogin onLogin={() => {}} />;
+    if (!authed) return <AdminLogin onLogin={() => {
+    }}/>;
 
     return (
         <>
         <style>{CSS}</style>
         <div className="adm-root">
             <header className="adm-topbar">
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{display: "flex", alignItems: "center", gap: 10}}>
                     <button className="adm-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
                         <span/><span/><span/>
                     </button>
                     <h1>🛠️ Bongo Quiz — Admin Panel</h1>
                 </div>
-                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <div style={{display: "flex", gap: 16, alignItems: "center"}}>
                     <a href="#/">← Back to Game</a>
                     <button onClick={handleLogout}
-                        style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.3)", background: "rgba(255,80,80,0.12)", color: "#ff8080", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, fontFamily: "inherit", transition: "all 0.15s" }}>
+                            style={{
+                                padding: "6px 14px",
+                                borderRadius: 6,
+                                border: "1px solid rgba(255,100,100,0.3)",
+                                background: "rgba(255,80,80,0.12)",
+                                color: "#ff8080",
+                                cursor: "pointer",
+                                fontSize: "0.8rem",
+                                fontWeight: 600,
+                                fontFamily: "inherit",
+                                transition: "all 0.15s"
+                            }}>
                         Logout
                     </button>
                 </div>
             </header>
 
             {/* Mobile drawer */}
-            <div className={`adm-drawer-backdrop${drawerOpen ? " open" : ""}`} onClick={() => setDrawerOpen(false)} />
+            <div className={`adm-drawer-backdrop${drawerOpen ? " open" : ""}`} onClick={() => setDrawerOpen(false)}/>
             <div className={`adm-drawer${drawerOpen ? " open" : ""}`}>
                 <div className="adm-drawer-header">
                     <span>🛠️ Admin Menu</span>
@@ -1142,55 +1594,61 @@ export function AdminView({ initialTab }: { initialTab?: AdminTab } = {}) {
                 </div>
                 <div className="adm-drawer-nav">
                     <div className="adm-sidebar-label">Bongo Quiz</div>
-                    {TABS.filter(t => ["dashboard","players","payments","games","leaderboard","questions","powers","achievements"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot" />{t.label}
+                    {TABS.filter(t => ["dashboard", "players", "payments", "games", "leaderboard", "questions", "powers", "achievements"].includes(t.id)).map(t => (
+                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                                onClick={() => changeTab(t.id)}>
+                            <span className="adm-dot"/>{t.label}
                         </button>
                     ))}
-                    <div className="adm-sidebar-divider" />
+                    <div className="adm-sidebar-divider"/>
                     <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz","genquiz"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot" />{t.label}
+                    {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku"].includes(t.id)).map(t => (
+                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                                onClick={() => changeTab(t.id)}>
+                            <span className="adm-dot"/>{t.label}
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div className="adm-layout">
-                <nav className="adm-sidebar">
-                    <div className="adm-sidebar-label">Bongo Quiz</div>
-                    {TABS.filter(t => ["dashboard","players","payments","games","leaderboard","questions","powers","achievements"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot" />{t.label}
-                        </button>
-                    ))}
-                    <div className="adm-sidebar-divider" />
-                    <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse","biblequiz","mathquiz","bioquiz","genquiz"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`} onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot" />{t.label}
-                        </button>
-                    ))}
-                </nav>
+        <div className="adm-layout">
+            <nav className="adm-sidebar">
+                <div className="adm-sidebar-label">Bongo Quiz</div>
+                {TABS.filter(t => ["dashboard", "players", "payments", "games", "leaderboard", "questions", "powers", "achievements"].includes(t.id)).map(t => (
+                    <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                            onClick={() => changeTab(t.id)}>
+                        <span className="adm-dot"/>{t.label}
+                    </button>
+                ))}
+                <div className="adm-sidebar-divider"/>
+                <div className="adm-sidebar-label">Other Games</div>
+                {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku"].includes(t.id)).map(t => (
+                    <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                            onClick={() => changeTab(t.id)}>
+                        <span className="adm-dot"/>{t.label}
+                    </button>
+                ))}
+            </nav>
 
-                <main className="adm-content" id="adm-content">
-                    {tab === "dashboard"    && <Dashboard />}
-                    {tab === "players"      && <Players />}
-                    {tab === "payments"     && <Payments />}
-                    {tab === "games"        && <GameSessions />}
-                    {tab === "leaderboard"  && <AdminLeaderboard />}
-                    {tab === "questions"    && <AdminQuestions />}
-                    {tab === "powers"       && <AdminPowers />}
-                    {tab === "achievements" && <Achievements />}
-                    {tab === "kcse"         && <AdminKCSE />}
-                    {tab === "biblequiz"    && <AdminBibleQuiz />}
-                    {tab === "mathquiz"     && <AdminMathQuiz />}
-                    {tab === "bioquiz"      && <AdminBioQuiz />}
-                    {tab === "genquiz"      && <AdminGenQuiz />}
-                </main>
-            </div>
+            <main className="adm-content" id="adm-content">
+                {tab === "dashboard" && <Dashboard/>}
+                {tab === "players" && <Players/>}
+                {tab === "payments" && <Payments/>}
+                {tab === "games" && <GameSessions/>}
+                {tab === "leaderboard" && <AdminLeaderboard/>}
+                {tab === "questions" && <AdminQuestions/>}
+                {tab === "powers" && <AdminPowers/>}
+                {tab === "achievements" && <Achievements/>}
+                {tab === "kcse" && <AdminKCSE/>}
+                {tab === "biblequiz" && <AdminBibleQuiz/>}
+                {tab === "mathquiz" && <AdminMathQuiz/>}
+                {tab === "bioquiz" && <AdminBioQuiz/>}
+                {tab === "genquiz" && <AdminGenQuiz/>}
+                {tab === "sudoku" && <AdminSudoku/>}
+            </main>
         </div>
-        </>
-    );
+        </div>
+</>
+)
+    ;
 }
