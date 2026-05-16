@@ -1,6 +1,6 @@
 // HomeScreen.tsx
 import {type FC, useEffect, useRef, useState} from "react";
-import { Home, Gamepad2, Trophy } from 'lucide-react';
+import {Home, Gamepad2, Trophy, Zap, FolderOpen, RotateCw, Clock3} from 'lucide-react';
 import logoBg from "../../assets/logo.png";
 // import mainLogo from "../../assets/background.png";
 import wheelImg from "../../assets/wheel-hero.png";
@@ -12,10 +12,12 @@ import wheelImg from "../../assets/wheel-hero.png";
 import {PlayerNameModal} from "./Playernamemodal.tsx";
 import {HowToPlayModal} from "./Howtoplaymodal.tsx";
 // import {getStreakInfo} from "../../utils/streakDays.ts";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import {collection, query, where, orderBy, limit, getDocs} from "firebase/firestore";
+import {db} from "../../firebase.ts";
 import '../../styles/HomeScreen.css';
 import {BrowseGames} from "./BrowseGames.tsx";
+
+// import {BrowseGames} from "./BrowseGames.tsx";
 
 interface Props {
     onStart: (playerName: string) => void;
@@ -28,7 +30,27 @@ interface Props {
     onViewAllGames?: () => void;
 }
 
-export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onReviewSession, hasPaidSession = false, triggerPlay, onTriggerPlayDone, onViewAllGames}) => {
+type LeaderPreviewEntry = {
+    name: string;
+    score: number;
+};
+
+const FALLBACK_LEADERS: LeaderPreviewEntry[] = [
+    {name: "Amina", score: 9840},
+    {name: "Brian", score: 9120},
+    {name: "Jay", score: 8740},
+];
+
+export const HomeScreen: FC<Props> = ({
+                                          onStart,
+                                          onLeaderboard,
+                                          onHistory,
+                                          onReviewSession,
+                                          hasPaidSession = false,
+                                          triggerPlay,
+                                          onTriggerPlayDone,
+                                          onViewAllGames
+                                      }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const logoRef = useRef<HTMLImageElement>(null);
     const [showNameModal, setShowNameModal] = useState(false);
@@ -46,6 +68,7 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     const [totalPoints, setTotalPoints] = useState(() =>
         parseInt(localStorage.getItem("bongo_total_points") ?? "0")
     );
+    const [leaderPreview, setLeaderPreview] = useState<LeaderPreviewEntry[]>(FALLBACK_LEADERS);
 
     // Fetch real personal best and total points from Firestore when phone is known
     useEffect(() => {
@@ -61,7 +84,8 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 setPersonalBest(best);
                 localStorage.setItem("bongo_best_score", String(best));
             }
-        }).catch(() => {});
+        }).catch(() => {
+        });
 
         const phone254 = playerPhone.replace(/^0/, '254');
         fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard')
@@ -72,8 +96,27 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     setTotalPoints(entry.score ?? 0);
                     localStorage.setItem("bongo_total_points", String(entry.score ?? 0));
                 }
-            }).catch(() => {});
+            }).catch(() => {
+        });
     }, [playerPhone]);
+
+    useEffect(() => {
+        fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/getLeaderboard')
+            .then(r => r.json())
+            .then((data: any[]) => {
+                const leaders = data
+                    .map((entry: any) => ({
+                        name: entry.name || entry.playerName || entry.username || "Player",
+                        score: Number(entry.score ?? entry.total ?? 0),
+                    }))
+                    .filter((entry: LeaderPreviewEntry) => entry.score > 0)
+                    .sort((a: LeaderPreviewEntry, b: LeaderPreviewEntry) => b.score - a.score)
+                    .slice(0, 3);
+                if (leaders.length === 3) setLeaderPreview(leaders);
+            })
+            .catch(() => {
+            });
+    }, []);
     //     const next = !soundOn;
     //     setSoundOn(next);
     //     localStorage.setItem("bongo_sound", next ? "on" : "off");
@@ -112,7 +155,10 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     };
 
     useEffect(() => {
-        if (triggerPlay) { handlePlay(); onTriggerPlayDone?.(); }
+        if (triggerPlay) {
+            handlePlay();
+            onTriggerPlayDone?.();
+        }
     }, [triggerPlay]);
 
     useEffect(() => {
@@ -121,12 +167,15 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 logoRef.current.style.transform = `translate(-50%, calc(-50% + ${window.scrollY * 0.3}px))`;
             }
         };
-        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('scroll', onScroll, {passive: true});
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
     useEffect(() => {
-        checkInactivity();
+        checkInactivity();/*body {*/
+        /*    display: flex;*/
+        /*    flex-direction: column;*/
+        /*}*/
     }, []);
 
     useEffect(() => {
@@ -173,9 +222,36 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
     }, []);
 
     const rounds = [
-        { num: "01", label: "Quickfire", icon: "⚡", desc: "100 pts per answer · race the clock", color: "#00e5ff", glow: "drop-shadow(0 0 12px rgba(0,229,255,0.6))", footerIcon: "⏱", footerLabel: "90s" },
-        { num: "02", label: "Categories", icon: "🗂️", desc: "10 questions · powers apply", color: "#c084fc", glow: "drop-shadow(0 0 12px rgba(192,132,252,0.6))", footerIcon: "⏱", footerLabel: "40s" },
-        { num: "03", label: "Spin & Win", icon: "🎡", desc: "Spin the wheel · answer to claim your bonus", color: "#e2e8f0", glow: "drop-shadow(0 0 12px rgba(226,232,240,0.4))", footerIcon: "🎡", footerLabel: "SPIN" },
+        {
+            num: "01",
+            label: "Quickfire",
+            Icon: Zap,
+            desc: "Score fast points before the timer runs out",
+            color: "#00e5ff",
+            glow: "drop-shadow(0 0 12px rgba(0,229,255,0.6))",
+            FooterIcon: Clock3,
+            footerLabel: "80s"
+        },
+        {
+            num: "02",
+            label: "Categories",
+            Icon: FolderOpen,
+            desc: "Pick your topic and build a stronger score",
+            color: "#c084fc",
+            glow: "drop-shadow(0 0 12px rgba(192,132,252,0.6))",
+            FooterIcon: Clock3,
+            footerLabel: "40s"
+        },
+        {
+            num: "03",
+            label: "Bonus Spin",
+            Icon: RotateCw,
+            desc: "Spin for bonus points, streak boosts, or multipliers",
+            color: "#e2e8f0",
+            glow: "drop-shadow(0 0 12px rgba(226,232,240,0.4))",
+            FooterIcon: RotateCw,
+            footerLabel: "BONUS"
+        },
     ];
 
     // const moreApps = [
@@ -192,17 +268,23 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                 <div className="topbar-left">
                     <img src={logoBg} alt="Bongo Quiz" className="topbar-logo"/>
                     {playerPhone && /^07\d{8}$/.test(playerPhone) && (
-                    <div className="topbar-coins">
-                        <span className="topbar-coin-icon">🪙</span>
-                        <span className="topbar-coin-value">{totalPoints.toLocaleString()}</span>
-                    </div>
+                        <div className="topbar-coins">
+                            <span className="topbar-coin-icon">🪙</span>
+                            <span className="topbar-coin-value">{totalPoints.toLocaleString()}</span>
+                        </div>
                     )}
                 </div>
                 {/* Desktop nav links */}
                 <div className="topbar-desktop-nav">
-                    <button className="topbar-nav-link active" onClick={() => {}}><Home size={16} strokeWidth={2}/> Home</button>
-                    <button className="topbar-nav-link" onClick={onViewAllGames}><Gamepad2 size={16} strokeWidth={2}/> Games</button>
-                    <button className="topbar-nav-link" onClick={onLeaderboard}><Trophy size={16} strokeWidth={2}/> Leaderboard</button>
+                    <button className="topbar-nav-link active" onClick={() => {
+                    }}><Home size={16} strokeWidth={2}/> Home
+                    </button>
+                    <button className="topbar-nav-link" onClick={onViewAllGames}><Gamepad2 size={16}
+                                                                                           strokeWidth={2}/> Games
+                    </button>
+                    <button className="topbar-nav-link" onClick={onLeaderboard}><Trophy size={16}
+                                                                                        strokeWidth={2}/> Leaderboard
+                    </button>
                 </div>
                 <div className="topbar-right">
                     {personalBest > 0 && (
@@ -226,52 +308,93 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)}/>}
             <div className={`menu-drawer${menuOpen ? ' menu-drawer--open' : ''}`}>
                 <div className="menu-drawer-header">
-                    <img src={logoBg} alt="" style={{width:32}}/>
+                    <img src={logoBg} alt="" style={{width: 32}}/>
                     <span className="menu-drawer-title">Menu</span>
                     <button className="menu-close-btn" onClick={() => setMenuOpen(false)}>✕</button>
                 </div>
                 <div className="menu-items">
-                    <button className="menu-item" onClick={() => { setMenuOpen(false); setShowHTP(true); }}>
+                    <button className="menu-item" onClick={() => {
+                        setMenuOpen(false);
+                        setShowHTP(true);
+                    }}>
                         <span className="menu-item-icon">❓</span>
-                        <div><div className="menu-item-label">How to Play</div><div className="menu-item-sub">Learn the rules & rounds</div></div>
+                        <div>
+                            <div className="menu-item-label">How to Play</div>
+                            <div className="menu-item-sub">Learn the rules & rounds</div>
+                        </div>
                     </button>
                     <div className="hideonmobile">
-                        <button className="menu-item" onClick={() => { setMenuOpen(false); onLeaderboard(); }}>
+                        <button className="menu-item" onClick={() => {
+                            setMenuOpen(false);
+                            onLeaderboard();
+                        }}>
                             <span className="menu-item-icon">🏆</span>
-                            <div><div className="menu-item-label">Leaderboard</div><div className="menu-item-sub">See top players</div></div>
+                            <div>
+                                <div className="menu-item-label">Leaderboard</div>
+                                <div className="menu-item-sub">See top players</div>
+                            </div>
                         </button>
-                        <button className="menu-item" onClick={() => { setMenuOpen(false); setShowNameModal(true); }}>
+                        <button className="menu-item" onClick={() => {
+                            setMenuOpen(false);
+                            setShowNameModal(true);
+                        }}>
                             <span className="menu-item-icon">👤</span>
-                            <div><div className="menu-item-label">Edit Profile</div><div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div></div>
+                            <div>
+                                <div className="menu-item-label">Edit Profile</div>
+                                <div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div>
+                            </div>
                         </button>
                     </div>
 
                     {onHistory && (
-                        <button className="menu-item" onClick={() => { setMenuOpen(false); onHistory(); }}>
+                        <button className="menu-item" onClick={() => {
+                            setMenuOpen(false);
+                            onHistory();
+                        }}>
                             <span className="menu-item-icon">📜</span>
-                            <div><div className="menu-item-label">Game History</div><div className="menu-item-sub">View your past sessions</div></div>
+                            <div>
+                                <div className="menu-item-label">Game History</div>
+                                <div className="menu-item-sub">View your past sessions</div>
+                            </div>
                         </button>
                     )}
                     {onReviewSession && (
-                        <button className="menu-item" onClick={() => { setMenuOpen(false); onReviewSession(); }}>
+                        <button className="menu-item" onClick={() => {
+                            setMenuOpen(false);
+                            onReviewSession();
+                        }}>
                             <span className="menu-item-icon">📋</span>
-                            <div><div className="menu-item-label">Review Last Game</div><div className="menu-item-sub">See questions & answers</div></div>
+                            <div>
+                                <div className="menu-item-label">Review Last Game</div>
+                                <div className="menu-item-sub">See questions & answers</div>
+                            </div>
                         </button>
                     )}
                     <button className="menu-item" onClick={() => {
-                        const text = `🎯 Play Bongo Quiz — 3 rounds of trivia, hidden powers & a prize wheel!\n${window.location.href}`;
+                        const text = `Play Bongo Quiz - 3 rounds of trivia, bonus points, and leaderboard rankings.\n${window.location.href}`;
                         if (navigator.share) {
-                            navigator.share({ title: 'Bongo Quiz', text, url: window.location.href }).catch(() => {});
+                            navigator.share({title: 'Bongo Quiz', text, url: window.location.href}).catch(() => {
+                            });
                         } else {
-                            navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!')).catch(() => {});
+                            navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!')).catch(() => {
+                            });
                         }
                     }}>
                         <span className="menu-item-icon">🔗</span>
-                        <div><div className="menu-item-label">Share</div><div className="menu-item-sub">Invite friends to play</div></div>
+                        <div>
+                            <div className="menu-item-label">Share</div>
+                            <div className="menu-item-sub">Invite friends to play</div>
+                        </div>
                     </button>
-                    <button className="menu-item" onClick={() => { setMenuOpen(false); window.location.href = "/contact"; }}>
+                    <button className="menu-item" onClick={() => {
+                        setMenuOpen(false);
+                        window.location.href = "/contact";
+                    }}>
                         <span className="menu-item-icon">🎧</span>
-                        <div><div className="menu-item-label">Contact Support</div><div className="menu-item-sub">Live chat, email & WhatsApp</div></div>
+                        <div>
+                            <div className="menu-item-label">Contact Support</div>
+                            <div className="menu-item-sub">Live chat, email & WhatsApp</div>
+                        </div>
                     </button>
                     {/*<button className="menu-item" onClick={toggleSound}>*/}
                     {/*    <span className="menu-item-icon">{soundOn ? '🔊' : '🔇'}</span>*/}
@@ -279,20 +402,24 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
                     {/*    <span className={`menu-toggle${soundOn ? ' menu-toggle--on' : ''}`}/>*/}
                     {/*</button>*/}
                     {playerPhone && (
-                        <button className="menu-item" style={{ color: "#ef4444" }} onClick={() => {
-                            ["bongo_player_name","bongo_player_phone","bongo_best_score","bongo_total_points",
-                             "bongo_session_score","bongo_achievements","bongo_streak","bongo_last_activity"].forEach(k => localStorage.removeItem(k));
+                        <button className="menu-item" style={{color: "#ef4444"}} onClick={() => {
+                            ["bongo_player_name", "bongo_player_phone", "bongo_best_score", "bongo_total_points",
+                                "bongo_session_score", "bongo_achievements", "bongo_streak", "bongo_last_activity"].forEach(k => localStorage.removeItem(k));
                             setPlayerName("Player");
                             setPlayerPhone("");
                             setMenuOpen(false);
                         }}>
                             <span className="menu-item-icon">🚪</span>
-                            <div><div className="menu-item-label" style={{ color: "#ef4444" }}>Log Out</div><div className="menu-item-sub">Sign out of your account</div></div>
+                            <div>
+                                <div className="menu-item-label" style={{color: "#ef4444"}}>Log Out</div>
+                                <div className="menu-item-sub">Sign out of your account</div>
+                            </div>
                         </button>
                     )}
                 </div>
                 {personalBest > 0 && (
-                    <div className="menu-best">🏅 Personal Best: <strong>{personalBest.toLocaleString()} pts</strong></div>
+                    <div className="menu-best">🏅 Personal Best: <strong>{personalBest.toLocaleString()} pts</strong>
+                    </div>
                 )}
             </div>
 
@@ -308,66 +435,103 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </div>
 
             <div className="home-content">
-                {/*<div className="home-badge">*/}
-                {/*    <span className="home-badge-dot"/>*/}
-                {/*    <span className="home-badge-text">Trivia · 3 Rounds · Entry KES 20</span>*/}
-                {/*</div>*/}
-
-
-
                 {/* ── Hero section: text + wheel ── */}
                 <div className="home-hero">
                     <div className="home-hero-text">
-                        <p className="home-hero-label">3 EXPLOSIVE</p>
-                        <p className="home-hero-rounds">ROUNDS</p>
+                        <div className="home-arena-chip"><span/> Bongo Quiz Arena</div>
+                        <p className="home-hero-label">3 SKILL ROUNDS</p>
                         <p className="home-hero-sub">TEST YOUR KNOWLEDGE</p>
-                        <p className="home-hero-win">WIN BIG!</p>
-                        <button className="home-btn" onClick={handlePlay}>
-                            <span className="home-btn-shine"/>
-                            {hasPaidSession ? "▶️  Continue" : "PLAY NOW"}
-                        </button>
-                        <p className="home-hint">Rounds 1 &amp; 2: KES 20 · Spin round: KES 10</p>
-                    </div>
-                    <div className="home-hero-wheel">
-                        <img src={wheelImg} alt="Prize Wheel" className="home-wheel-img"/>
-                    </div>
-                </div>
 
-                {/* Player name + personal best bar */}
-                <div className="home-rounds">
-                    {rounds.map((r, i) => (
-                        <div key={r.num} className="home-round-card" style={{animationDelay: `${0.4 + i * 0.08}s`, borderColor: r.color, boxShadow: `0 0 16px ${r.color}33`}}>
-                            <div className="home-round-num" style={{color: r.color}}>ROUND {r.num}</div>
-                            <div className="home-round-icon" style={{filter: r.glow}}>{r.icon}</div>
-                            <div className="home-round-label" style={{color: r.color}}>{r.label}</div>
-                            <div className="home-round-desc">{r.desc}</div>
-                            <div className="home-round-footer" style={{borderTopColor: `${r.color}44`}}>
-                                <span className="home-round-footer-text" style={{color: r.color}}>{r.footerIcon} {r.footerLabel}</span>
+                        <p className="home-hero-rounds">SCORE POINTS</p>
+                        <p className="home-hero-win">CLIMB THE BOARD</p>
+                        <div className="home-hero-actions">
+                            <button className="home-btn" onClick={handlePlay}>
+                                <span className="home-btn-shine"/>
+                                {hasPaidSession ? "Continue" : "Start Quiz"}
+                            </button>
+                            {/*<button className="home-hero-secondary" onClick={onLeaderboard}>Leaderboard</button>*/}
+                        </div>
+                        <div className="home-hero-stats" aria-label="Player score summary">
+                            <div>
+                                <span>Personal best</span>
+                                <strong>{personalBest > 0 ? personalBest.toLocaleString() : "--"} pts</strong>
+                            </div>
+                            <div>
+                                <span>Total points</span>
+                                <strong>{totalPoints > 0 ? totalPoints.toLocaleString() : "--"} pts</strong>
+                            </div>
+                            <div>
+                                <span>Goal</span>
+                                <strong>Top 10</strong>
                             </div>
                         </div>
-                    ))}
+                        <p className="home-hint">Leaderboard points only. Every correct answer moves your rank.</p>
+                    </div>
+
+                    <div className="home-hero-wheel">
+                        <div className="home-wheel-card">
+                            <div className="home-wheel-kicker">Round 3 Spin</div>
+                            <img src={wheelImg} alt="Bonus points wheel" className="home-wheel-img"/>
+                            <div className="home-wheel-pills">
+                                <span>+2500 pts</span>
+                                {/*<span>Double points</span>*/}
+                                <span>Streak boost</span>
+                            </div>
+                            <div className="home-wheel-status">
+                                <span>Next move</span>
+                                <strong>Answer to claim the bonus</strong>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Browse Games */}
-                {/*<div className="home-browse-games">*/}
-                {/*    <div className="home-browse-header">*/}
-                {/*        <span className="home-browse-title">BROWSE GAMES</span>*/}
-                {/*        <span className="home-browse-viewall" onClick={onViewAllGames}>View all &gt;</span>*/}
-                {/*    </div>*/}
-                    {/*<div className="home-browse-grid">*/}
-                    {/*    {moreApps.map((app) => (*/}
-                    {/*        <div key={app.label} className="home-browse-item" onClick={() => { if (app.path) window.location.href = app.path; }}>*/}
-                    {/*            {app.tag && <span className="home-browse-tag">{app.tag}</span>}*/}
-                    {/*            <div className="home-browse-img-wrap">*/}
-                    {/*                <img src={app.logo} alt={app.label} />*/}
-                    {/*            </div>*/}
-                    {/*            <span className="home-browse-label">{app.label}</span>*/}
-                    {/*        </div>*/}
-                    {/*    ))}*/}
-                    {/*</div>*/}
-                    <BrowseGames exclude="Bongo Quiz"/>
-                {/*</div>*/}
+                <div className='middle-section'>
+                    {/* Player name + personal best bar */}
+                    <div className="home-rounds">
+                        {rounds.map((r, i) => (
+                            <div key={r.num} className="home-round-card" style={{
+                                animationDelay: `${0.4 + i * 0.08}s`,
+                                borderColor: r.color,
+                                boxShadow: `0 0 16px ${r.color}33`
+                            }}>
+                                <div className="home-round-num" style={{color: r.color}}>ROUND {r.num}</div>
+                                <div className="home-round-icon" style={{filter: r.glow, color: r.color}}>
+                                    <r.Icon size={38} strokeWidth={2.5}/>
+                                </div>
+                                <div className="home-round-label" style={{color: r.color}}>{r.label}</div>
+                                <div className="home-round-desc">{r.desc}</div>
+                                <div className="home-round-footer" style={{borderTopColor: `${r.color}44`}}>
+                                <span className="home-round-footer-text" style={{color: r.color}}>
+                                    <r.FooterIcon size={13} strokeWidth={2.5}/>
+                                    {r.footerLabel}
+                                </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <section className="home-leader-preview" aria-label="Top players today">
+                        <div className="home-leader-preview-head">
+                            <div>
+                                <span>Leaderboard Preview</span>
+                                <h2>Top Players Today</h2>
+                            </div>
+                            <button type="button" onClick={onLeaderboard}>View Board</button>
+                        </div>
+                        <div className="home-leader-preview-list">
+                            {leaderPreview.map((entry, index) => (
+                                <div className="home-leader-preview-row" key={`${entry.name}-${index}`}>
+                                    <span className="home-leader-rank">#{index + 1}</span>
+                                    <span className="home-leader-name">{entry.name}</span>
+                                    <strong>{entry.score.toLocaleString()} pts</strong>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+                <BrowseGames exclude="Bongo Quiz"/>
+
             </div>
+
 
             {showNameModal && (
                 <PlayerNameModal
@@ -401,61 +565,159 @@ export const HomeScreen: FC<Props> = ({onStart, onLeaderboard, onHistory, onRevi
             </a> */}
 
             {/* ── Footer ── */}
-            <footer style={{ background: "#0d0d1a", borderTop: "1px solid rgba(255,255,255,0.07)", padding: "32px 24px 100px", marginTop: 16, width: "100%", boxSizing: "border-box", alignSelf: "stretch" }}>
+            <footer style={{
+                background: "#0d0d1a",
+                borderTop: "1px solid rgba(255,255,255,0.07)",
+                padding: "32px 24px 100px",
+                marginTop: 16,
+                width: "100%",
+                boxSizing: "border-box",
+                alignSelf: "stretch"
+            }}>
                 {/* Logo + tagline */}
-                <div style={{ textAlign: "center", marginBottom: 28 }}>
-                    <div style={{ fontWeight: 900, fontSize: "1.2rem", color: "#FFD700", letterSpacing: 1 }}>
+                <div style={{textAlign: "center", marginBottom: 28}}>
+                    <div style={{fontWeight: 900, fontSize: "1.2rem", color: "#FFD700", letterSpacing: 1}}>
                         <img className="bongo-footer-logo" src={logoBg} alt=""/>
                     </div>
-                    <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem", marginTop: 4 }}>Test your knowledge.</div>
+                    <div style={{color: "rgba(255,255,255,0.35)", fontSize: "0.75rem", marginTop: 4}}>Test your
+                        knowledge. Build your score. Climb the leaderboard.
+                    </div>
                 </div>
 
                 {/* 3-column grid — collapses to 1 col on small screens via minmax */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "24px 16px", maxWidth: 900, margin: "0 auto 28px" }}>
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gap: "24px 16px",
+                    maxWidth: 900,
+                    margin: "0 auto 28px"
+                }}>
                     {/* Support */}
                     <div>
-                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Support</div>
+                        <div style={{
+                            color: "rgba(255,255,255,0.45)",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            marginBottom: 10
+                        }}>Support
+                        </div>
                         {[
-                            { label: "Contact Us", action: () => window.location.href = "/contact" },
-                            { label: "Live Chat",  action: () => window.dispatchEvent(new CustomEvent("bongo:open-chat")) },
-                            { label: "FAQs",       action: () => window.location.href = "/contact" },
+                            {label: "Contact Us", action: () => window.location.href = "/contact"},
+                            {
+                                label: "Live Chat",
+                                action: () => window.dispatchEvent(new CustomEvent("bongo:open-chat"))
+                            },
+                            {label: "FAQs", action: () => window.location.href = "/contact"},
                         ].map(l => (
-                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                            <button key={l.label} onClick={l.action} style={{
+                                display: "block",
+                                background: "none",
+                                border: "none",
+                                color: "rgba(255,255,255,0.6)",
+                                fontSize: "0.82rem",
+                                cursor: "pointer",
+                                padding: "4px 0",
+                                fontFamily: "inherit",
+                                textAlign: "left"
+                            }}>{l.label}</button>
                         ))}
                     </div>
 
                     {/* Quick Links */}
                     <div>
-                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Quick Links</div>
+                        <div style={{
+                            color: "rgba(255,255,255,0.45)",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            marginBottom: 10
+                        }}>Quick Links
+                        </div>
                         {[
                             // { label: "How to Play", action: () => window.location.href = "/docs" },
-                            { label: "Leaderboard", action: () => window.dispatchEvent(new CustomEvent("bongo:goto-leaderboard")) },
-                            { label: "Games",       action: () => window.dispatchEvent(new CustomEvent("bongo:goto-games")) },
+                            {
+                                label: "Leaderboard",
+                                action: () => window.dispatchEvent(new CustomEvent("bongo:goto-leaderboard"))
+                            },
+                            {label: "Games", action: () => window.dispatchEvent(new CustomEvent("bongo:goto-games"))},
                         ].map(l => (
-                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                            <button key={l.label} onClick={l.action} style={{
+                                display: "block",
+                                background: "none",
+                                border: "none",
+                                color: "rgba(255,255,255,0.6)",
+                                fontSize: "0.82rem",
+                                cursor: "pointer",
+                                padding: "4px 0",
+                                fontFamily: "inherit",
+                                textAlign: "left"
+                            }}>{l.label}</button>
                         ))}
                     </div>
 
                     {/* Legal */}
                     <div>
-                        <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Legal</div>
+                        <div style={{
+                            color: "rgba(255,255,255,0.45)",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            marginBottom: 10
+                        }}>Legal
+                        </div>
                         {[
-                            { label: "Terms & Conditions", action: () => window.location.href = "/terms" },
-                            { label: "Privacy Policy",     action: () => window.location.href = "/privacy" },
-                            { label: "Responsible Play",   action: () => window.location.href = "/responsible" },
+                            {label: "Terms & Conditions", action: () => window.location.href = "/terms"},
+                            {label: "Privacy Policy", action: () => window.location.href = "/privacy"},
+                            {label: "Fair Play", action: () => window.location.href = "/responsible"},
                         ].map(l => (
-                            <button key={l.label} onClick={l.action} style={{ display: "block", background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", cursor: "pointer", padding: "4px 0", fontFamily: "inherit", textAlign: "left" }}>{l.label}</button>
+                            <button key={l.label} onClick={l.action} style={{
+                                display: "block",
+                                background: "none",
+                                border: "none",
+                                color: "rgba(255,255,255,0.6)",
+                                fontSize: "0.82rem",
+                                cursor: "pointer",
+                                padding: "4px 0",
+                                fontFamily: "inherit",
+                                textAlign: "left"
+                            }}>{l.label}</button>
                         ))}
                     </div>
                 </div>
 
-                {/* Responsible gaming notice */}
-                <div style={{ textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20, maxWidth: 900, margin: "0 auto" }}>
-                    <div style={{ color: "#FFD700", fontSize: "0.72rem", fontWeight: 700, marginBottom: 6, letterSpacing: "0.05em" }}>18+ · PLAY RESPONSIBLY</div>
-                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.68rem", lineHeight: 1.6, maxWidth: 400, margin: "0 auto 12px" }}>
-                        Bongo Quiz is a skill-based trivia game. Participation is open to persons aged 18 and above.
+                {/* Fair play notice */}
+                <div style={{
+                    textAlign: "center",
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    // paddingTop: 20,
+                    maxWidth: 900,
+                    margin: "0 auto"
+                }}>
+                    <div style={{
+                        color: "#FFD700",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        marginBottom: 6,
+                        letterSpacing: "0.05em"
+                    }}>POINTS-BASED QUIZ PLAY
                     </div>
-                    <div style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.65rem" }}>© {new Date().getFullYear()} Bongo Quiz. All Rights Reserved.</div>
+                    <div style={{
+                        color: "rgba(255,255,255,0.25)",
+                        fontSize: "0.68rem",
+                        lineHeight: 1.6,
+                        maxWidth: 400,
+                        margin: "0 auto 12px"
+                    }}>
+                        Bongo Quiz is a skill-based trivia game. Scores earn points for leaderboard ranking only.
+                    </div>
+                    <div
+                        style={{color: "rgba(255,255,255,0.2)", fontSize: "0.65rem"}}>© {new Date().getFullYear()} Bongo
+                        Quiz. All Rights Reserved.
+                    </div>
                 </div>
             </footer>
         </div>

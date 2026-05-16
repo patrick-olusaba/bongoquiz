@@ -10,6 +10,8 @@ html, body {
 
 #root {
     min-height: 100dvh;
+    scrollbar-width: none;
+
 }
 /*body {*/
 /*    display: flex;*/
@@ -17,4 +19,11 @@ html, body {
 /*}*/
 * {
     -webkit-tap-highlight-color: transparent;
+}
+
+
+body::-webkit-scrollbar,
+.games-page::-webkit-scrollbar,
+.home-root::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
 }

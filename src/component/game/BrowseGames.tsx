@@ -23,12 +23,13 @@ export const BrowseGames: FC<Props> = ({ exclude }) => {
     return (
         <div className="home-browse-games">
             <div className="home-browse-header">
-                <span className="home-browse-title">BROWSE GAMES</span>
+                <span className="home-browse-title">MORE GAMES</span>
             </div>
             <div className="home-browse-grid">
                 {games.map(app => (
                     <div key={app.label} className="home-browse-item" onClick={() => { window.location.href = app.path; }}>
-                        {app.tag && <span className={`home-browse-tag${app.tag === 'HOT' ? ' hot' : ''}`}>{app.tag}</span>}
+                        {app.tag &&
+                            <span className={`home-browse-tag${app.tag === 'HOT' ? ' hot' : ''}`}>{app.tag}</span>}
                         <div className="home-browse-img-wrap">
                             <img src={app.logo} alt={app.label} />
                         </div>

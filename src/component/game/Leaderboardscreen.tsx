@@ -1,5 +1,5 @@
 // LeaderboardScreen.tsx
-import { type FC, useEffect, useState, useRef } from "react";
+import { type FC, useEffect, useState } from "react";
 import { collection, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase.ts";
 import '../../styles/Leaderboardscreen.css';
@@ -24,7 +24,6 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
     const [visible, setVisible] = useState(false);
     const [highlightRow, setHighlightRow] = useState(-1);
     const [dbLeaders, setDbLeaders] = useState<LeaderboardEntry[]>([]);
-    const savedRef = useRef(false);
 
     useEffect(() => {
         // Score is already saved by saveGameSession cloud function — no client write needed
