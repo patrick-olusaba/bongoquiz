@@ -36,6 +36,17 @@ const SliderGAMES = [
     },
     // { label: 'General Knowledge', poster: gkPoster, tag: 'NEW', path: '/general-knowledge', desc: 'Science, history, geography & more', category: 'quiz', new: true, timed: true },
     {
+        label: 'Street Bongo',
+        poster: bongobanner,
+        tag: 'NEW',
+        path: '/street-bongo',
+        desc: '2 out of 3 street challenge · chicken meal prize',
+        category: 'quiz',
+        hot: true,
+        new: true,
+        timed: true
+    },
+    {
         label: 'Bible Quiz',
         poster: biblebanner,
         tag: 'NEW',
@@ -76,6 +87,17 @@ const GAMES = [
         category: 'quiz',
         hot: true,
         new: false,
+        timed: true
+    },
+    {
+        label: 'Street Bongo',
+        poster: bongoPoster,
+        tag: 'NEW',
+        path: '/street-bongo',
+        desc: 'Fast host-led 2 out of 3 challenge for street shoots',
+        category: 'quiz',
+        hot: true,
+        new: true,
         timed: true
     },
     {
