@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Target, CreditCard, Medal, Pencil, User, Menu, X, HelpCircle, ScrollText, Grid3X3} from 'lucide-react';
 import {PaymentModal} from './PaymentModal';
 import {ProfileModal, type UserProfile} from './ProfileModal';
@@ -7,7 +7,7 @@ import {LiveBackground} from './LiveBackground';
 import {BrowseGames} from "../../game/BrowseGames.tsx";
 import type {LeaderboardEntry} from "../../MathQuiz/types.ts";
 import {EditProfileModal} from "../../BiologyQuiz/components/EditProfileModal.tsx";
-import {collection, getDocs, getFirestore, limit, query, where} from "firebase/firestore";
+import {collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, where} from "firebase/firestore";
 import {BottomNav} from "../../game/BottomNav.tsx";
 
 type LandingPageProps = {
@@ -18,6 +18,80 @@ type LandingPageProps = {
     playerPhone?: string;
     setPlayerPhone?: (p: string) => void;
 };
+
+const normalizePhone07 = (phone: string) => {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (digits.startsWith('254') && digits.length === 12) return `0${digits.slice(3)}`;
+    if (digits.startsWith('7') && digits.length === 9) return `0${digits}`;
+    return digits;
+};
+
+const normalizePhone254 = (phone: string) => normalizePhone07(phone).replace(/^0/, '254');
+
+const getBongoProfile = (): UserProfile | null => {
+    const name = localStorage.getItem('bongo_player_name')?.trim() ?? '';
+    const phone = normalizePhone07(localStorage.getItem('bongo_player_phone') ?? '');
+    return name && /^07\d{8}$/.test(phone) ? {name, phone} : null;
+};
+
+const getSudokuProfile = (): UserProfile | null => {
+    const saved = localStorage.getItem('sudoku_user');
+    if (!saved) return null;
+    try {
+        const parsed = JSON.parse(saved) as UserProfile;
+        const name = parsed.name?.trim() ?? '';
+        const phone = normalizePhone07(parsed.phone ?? '');
+        return name && phone ? {name, phone} : null;
+    } catch {
+        return null;
+    }
+};
+
+const getStoredProfile = (): UserProfile | null => getBongoProfile() ?? getSudokuProfile();
+
+const saveSharedProfile = (profile: UserProfile) => {
+    const normalizedProfile = {...profile, phone: normalizePhone07(profile.phone)};
+    localStorage.setItem('sudoku_user', JSON.stringify(normalizedProfile));
+    localStorage.setItem('bongo_player_name', normalizedProfile.name);
+    localStorage.setItem('bongo_player_phone', normalizedProfile.phone);
+    localStorage.setItem('bongo_last_activity', Date.now().toString());
+    return normalizedProfile;
+};
+
+async function hasRestoredSudokuSession(phone: string) {
+    const phone07 = normalizePhone07(phone);
+    if (!/^07\d{8}$/.test(phone07)) return false;
+
+    const db = getFirestore();
+    const grantSnap = await getDoc(doc(db, 'grantedSudokuSessions', phone07));
+    if (grantSnap.exists()) return true;
+
+    const phone254 = normalizePhone254(phone07);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const paymentsSnap = await getDocs(query(
+        collection(db, 'payments'),
+        where('phone', '==', phone254),
+        where('status', '==', 'paid'),
+        where('game', '==', 'SUDOKU'),
+        limit(5),
+    ));
+
+    if (paymentsSnap.empty) return false;
+
+    const latest = paymentsSnap.docs
+        .map(d => ({...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0)}))
+        .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime())[0];
+
+    if (latest._paidAt < since) return false;
+
+    const sessionsSnap = await getDocs(query(
+        collection(db, 'sudokuSessions'),
+        where('phone', '==', phone07),
+        limit(10),
+    ));
+
+    return !sessionsSnap.docs.some(d => (d.data().playedAt?.toDate?.() ?? new Date(0)) > latest._paidAt);
+}
 
 export function LandingPage({
                                 onPlay,
@@ -30,15 +104,12 @@ export function LandingPage({
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
-        const saved = localStorage.getItem('sudoku_user');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(() => getStoredProfile());
     const [showHtp, setShowHtp] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [historySessions, setHistorySessions] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
-    // const [hasGrantedSession, setHasGrantedSession] = useState(false);
+    const [hasPaidSession, setHasPaidSession] = useState(false);
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -51,8 +122,8 @@ export function LandingPage({
 
 
     const handleProfileSave = (profile: UserProfile) => {
-        setUserProfile(profile);
-        localStorage.setItem('sudoku_user', JSON.stringify(profile));
+        const savedProfile = saveSharedProfile(profile);
+        setUserProfile(savedProfile);
         setShowProfileModal(false);
 
         // If we were trying to play, show the payment modal now
@@ -61,20 +132,73 @@ export function LandingPage({
         }
     };
 
-    const handlePlayClick = () => {
+    useEffect(() => {
+        const syncProfile = () => {
+            const storedProfile = getStoredProfile();
+            if (!storedProfile) return;
+
+            setUserProfile(current => {
+                if (current?.name === storedProfile.name && normalizePhone07(current.phone) === storedProfile.phone) {
+                    return current;
+                }
+                localStorage.setItem('sudoku_user', JSON.stringify(storedProfile));
+                return storedProfile;
+            });
+        };
+
+        syncProfile();
+        window.addEventListener('storage', syncProfile);
+        window.addEventListener('focus', syncProfile);
+        return () => {
+            window.removeEventListener('storage', syncProfile);
+            window.removeEventListener('focus', syncProfile);
+        };
+    }, []);
+
+    useEffect(() => {
+        const phone07 = normalizePhone07(userProfile?.phone ?? '');
+        if (!/^07\d{8}$/.test(phone07)) {
+            setHasPaidSession(false);
+            return;
+        }
+
+        let cancelled = false;
+        hasRestoredSudokuSession(phone07)
+            .then(hasSession => {
+                if (!cancelled) setHasPaidSession(hasSession);
+            })
+            .catch(() => {
+                if (!cancelled) setHasPaidSession(false);
+            });
+
+        const unsub = onSnapshot(doc(getFirestore(), 'grantedSudokuSessions', phone07), snap => {
+            if (snap.exists()) setHasPaidSession(true);
+        }, () => {});
+
+        return () => {
+            cancelled = true;
+            unsub();
+        };
+    }, [userProfile?.phone]);
+
+    const handlePlayClick = async () => {
         if (!userProfile) {
             setShowProfileModal(true);
         } else {
+            if (hasPaidSession || await hasRestoredSudokuSession(userProfile.phone).catch(() => false)) {
+                setHasPaidSession(false);
+                onPlay();
+                return;
+            }
             setShowPaymentModal(true);
         }
     };
 
     const handleProfileUpdate = (name: string, phone: string) => {
-        const profile = {name, phone};
+        const profile = saveSharedProfile({name, phone});
         setPlayerName?.(name);
-        setPlayerPhone?.(phone);
+        setPlayerPhone?.(profile.phone);
         setUserProfile(profile);
-        localStorage.setItem('sudoku_user', JSON.stringify(profile));
         setIsEditing(false);
     };
 

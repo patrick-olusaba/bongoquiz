@@ -281,10 +281,9 @@ export const CanvasGame: React.FC<CanvasGameProps> = (props) => {
       const rect = container.getBoundingClientRect();
       const AW = rect.width;
       const AH = rect.height;
-      let W = AW;
-      if (1.60 * W > AH) {
-        W = AH / 1.60;
-      }
+      const heightBoundWidth = AH > 0 ? AH / 1.60 : AW;
+      const minPlayableWidth = Math.min(AW, 300);
+      const W = Math.min(AW, Math.max(heightBoundWidth, minPlayableWidth));
       const dpr = window.devicePixelRatio || 1;
       canvas.width = W * dpr;
       canvas.height = (W * 1.60) * dpr;
