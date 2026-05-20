@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from "react";
 import confetti from "canvas-confetti";
 import {addDoc, collection, getDocs, serverTimestamp} from "firebase/firestore";
-import {ArrowLeft, Camera, Check, ChevronRight, PartyPopper, RotateCw, Volume2, X} from "lucide-react";
+import {ArrowLeft, Check, ChevronRight, PartyPopper, RotateCw, Volume2, X} from "lucide-react";
 import {db} from "../../firebase";
 import correctSfx from "../../assets/sounds/correct.mp3";
 import wrongSfx from "../../assets/sounds/wrong.mp3";
@@ -56,21 +56,41 @@ export default function StreetBongo() {
         return [0, 1, 2].map(i => answers[i]?.result ?? "pending");
     }, [answers]);
 
+    const fetchQuestionBank = async () => {
+        const snap = await getDocs(collection(db, "streetBongoQuestions"));
+        const remote = snap.docs.map(d => {
+            const data = d.data() as StreetBongoQuestion;
+            return {...data, id: data.id || d.id};
+        });
+        setQuestionBank(remote);
+        return remote;
+    };
+
     useEffect(() => {
-        getDocs(collection(db, "streetBongoQuestions"))
-            .then(snap => {
-                const remote = snap.docs.map(d => d.data() as StreetBongoQuestion);
-                setQuestionBank(remote.length ? remote : DEFAULT_STREET_BONGO_QUESTIONS);
-            })
-            .catch(() => setQuestionBank(DEFAULT_STREET_BONGO_QUESTIONS));
+        fetchQuestionBank().catch(() => setQuestionBank(DEFAULT_STREET_BONGO_QUESTIONS));
     }, []);
 
-    const startChallenge = (nextCategory: StreetBongoCategory) => {
-        const pool = questionBank.filter(q =>
+    const pickFreshQuestions = (pool: StreetBongoQuestion[], nextCategory: StreetBongoCategory) => {
+        const storageKey = "street_bongo_recent_" + nextCategory;
+        const recent = JSON.parse(localStorage.getItem(storageKey) || "[]") as string[];
+        const fresh = pool.filter(q => !recent.includes(q.id));
+        const selectedPool = fresh.length >= 3 ? fresh : pool;
+        const selected = shuffle(selectedPool).slice(0, 3);
+        localStorage.setItem(storageKey, JSON.stringify([...selected.map(q => q.id), ...recent].slice(0, 30)));
+        return selected;
+    };
+
+    const startChallenge = async (nextCategory: StreetBongoCategory) => {
+        const latestQuestions = await fetchQuestionBank().catch(() => questionBank);
+        const pool = latestQuestions.filter(q =>
             nextCategory === "random" ? true : q.category === nextCategory
         );
+        if (pool.length < 3) {
+            alert("Add at least 3 Street Bongo questions in this category before starting.");
+            return;
+        }
         setCategory(nextCategory);
-        setQuestions(shuffle(pool).slice(0, 3));
+        setQuestions(pickFreshQuestions(pool, nextCategory));
         setIndex(0);
         setAnswers([]);
         sessionSavedRef.current = false;
@@ -78,7 +98,6 @@ export default function StreetBongo() {
         setLastResult(null);
         setPhase("question");
     };
-
     const saveSession = async (finalAnswers: SessionAnswer[]) => {
         if (sessionSavedRef.current) return;
         sessionSavedRef.current = true;
@@ -223,7 +242,6 @@ export default function StreetBongo() {
                         <div className="sb-prize-card muted">Try again next time!</div>
                     )}
                     <div className="sb-actions">
-                        <button className="sb-secondary" onClick={() => window.print()}><Camera size={18}/> Take Photo</button>
                         <button className="sb-primary" onClick={nextContestant}><RotateCw size={18}/> Next Contestant</button>
                     </div>
                     {saving && <span className="sb-saving">Saving session...</span>}
@@ -270,7 +288,7 @@ export default function StreetBongo() {
                 )}
 
                 <div className="sb-host-controls">
-                    <button className="sb-secondary" onClick={() => setAnswerVisible(true)}>Show Answer</button>
+                    <button className="sb-secondary" onClick={() => setAnswerVisible(v => !v)}>{answerVisible ? "Hide Answer" : "Show Answer"}</button>
                     <button className="sb-correct" onClick={() => markAnswer("correct")} disabled={!!lastResult}>
                         <Check size={18}/> Correct
                     </button>

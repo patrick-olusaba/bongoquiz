@@ -1,9 +1,8 @@
 import {useEffect, useMemo, useState} from "react";
-import {addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc} from "firebase/firestore";
+import {addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc} from "firebase/firestore";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {db, storage} from "../../firebase";
 import {
-    DEFAULT_STREET_BONGO_QUESTIONS,
     STREET_BONGO_CATEGORIES,
     StreetBongoCategory,
     StreetBongoQuestion,
@@ -46,6 +45,8 @@ export function AdminStreetBongo() {
     const [imagePreview, setImagePreview] = useState("");
     const [draggingImage, setDraggingImage] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [bulkText, setBulkText] = useState("");
+    const [bulkImporting, setBulkImporting] = useState(false);
 
     const setSelectedImage = (file: File | null) => {
         setImageFile(file);
@@ -69,11 +70,7 @@ export function AdminStreetBongo() {
         if (!questionSnap) return;
 
         if (questionSnap.empty) {
-            await Promise.all(DEFAULT_STREET_BONGO_QUESTIONS.map(q =>
-                setDoc(doc(db, "streetBongoQuestions", q.id), {...q, source: "default", createdAt: serverTimestamp()})
-            ));
-            const seeded = await getDocs(collection(db, "streetBongoQuestions"));
-            setQuestions(seeded.docs.map(d => ({docId: d.id, ...(d.data() as StreetBongoQuestion & {source?: string})})));
+            setQuestions([]);
             return;
         }
 
@@ -119,6 +116,65 @@ export function AdminStreetBongo() {
             mostMissed: mostMissedQuestion ? `${mostMissedQuestion[0]} (${mostMissedQuestion[1]})` : "No misses yet",
         };
     }, [sessions]);
+
+    const categoryFromLine = (line: string): CategoryId | null => {
+        const value = line.toLowerCase();
+        if (value.includes("general knowledge")) return "general";
+        if (value.includes("sports")) return "sports";
+        if (value.includes("car logos")) return "carLogos";
+        if (value.includes("brand logos")) return "brandLogos";
+        if (value.includes("tricky") || value.includes("trick")) return "trick";
+        if (value.includes("kenya")) return "kenya";
+        return null;
+    };
+
+    const importBulkQuestions = async () => {
+        const lines = bulkText.split("\n").map(line => line.trim()).filter(Boolean);
+        let currentCategory: CategoryId = activeCategory;
+        let pendingPrompt = "";
+        const parsed: Array<{category: CategoryId; prompt: string; answer: string}> = [];
+
+        lines.forEach(line => {
+            const category = categoryFromLine(line);
+            if (category) {
+                currentCategory = category;
+                pendingPrompt = "";
+                return;
+            }
+
+            const answerMatch = line.match(/^answer\s*:\s*(.+)$/i);
+            if (answerMatch) {
+                if (pendingPrompt) {
+                    parsed.push({category: currentCategory, prompt: pendingPrompt, answer: answerMatch[1].trim()});
+                    pendingPrompt = "";
+                }
+                return;
+            }
+
+            pendingPrompt = pendingPrompt ? pendingPrompt + " " + line : line;
+        });
+
+        if (!parsed.length) return;
+        setBulkImporting(true);
+        try {
+            await Promise.all(parsed.map((question, index) => addDoc(collection(db, "streetBongoQuestions"), {
+                id: `bulk-${Date.now()}-${index}`,
+                category: question.category,
+                prompt: question.prompt,
+                options: [],
+                answer: question.answer,
+                visual: null,
+                visualImageUrl: null,
+                source: "admin",
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            })));
+            setBulkText("");
+            await load();
+        } finally {
+            setBulkImporting(false);
+        }
+    };
 
     const uploadImage = async () => {
         if (!imageFile) return form.visualImageUrl;
@@ -230,6 +286,20 @@ export function AdminStreetBongo() {
             {/*    <p style={s.p}>A contestant wins when they get at least 2 correct after all 3 questions. Winner sessions count as one Chicken Meal + Soda given out.</p>*/}
             {/*    <p style={s.p}>Use Random Mix for public shoots where you want category variety and more suspense.</p>*/}
             {/*</div>*/}
+
+            <div style={{...s.card, display: activeTab === "overview" ? "none" : "block"}}>
+                <h2 style={s.h2}>Bulk Paste Questions</h2>
+                <p style={s.p}>Paste questions in this format: question line, then Answer: answer line. Category headings like General Knowledge, Sports, Tricky Questions, and Kenya Trivia are detected automatically.</p>
+                <textarea
+                    style={{...s.input, minHeight: 180, resize: "vertical"}}
+                    value={bulkText}
+                    placeholder={"🧠 General Knowledge\nWhat is the smallest country in the world?\nAnswer: Vatican City"}
+                    onChange={e => setBulkText(e.target.value)}
+                />
+                <button style={{...s.btn, marginTop: 10, background: "#6d28d9", color: "#fff", opacity: bulkImporting ? 0.65 : 1}} onClick={importBulkQuestions} disabled={bulkImporting || !bulkText.trim()}>
+                    {bulkImporting ? "Importing..." : "Import Bulk Questions"}
+                </button>
+            </div>
 
             <div id="street-question-form" style={{...s.card, display: activeTab === "overview" ? "none" : "block"}}>
                 <h2 style={s.h2}>{editingId ? `Edit ${activeLabel} Question` : `Add ${activeLabel} Question`}</h2>

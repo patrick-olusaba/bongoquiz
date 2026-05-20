@@ -1,8 +1,5 @@
 .street-bongo {
     min-height: 100vh;
-    background:
-        linear-gradient(135deg, rgba(12, 18, 32, 0.86), rgba(27, 36, 24, 0.84)),
-        url("../../assets/category-frame.jpeg") center/cover;
     color: #fff;
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 22px;
@@ -447,4 +444,473 @@
     height: min(220px, 34vh);
     object-fit: contain;
     display: block;
+}
+
+/* Street Bongo host question layout */
+.sb-question-shell {
+    width: min(100%, 1040px);
+    min-height: calc(100vh - 68px);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 14px;
+    padding-top: 0;
+}
+
+.sb-question-top {
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.sb-question-top > div:first-child {
+    min-width: 0;
+}
+
+.sb-question-top h1 {
+    font-size: clamp(1.9rem, 4.6vw, 3.4rem);
+    line-height: 1.02;
+    margin: 6px 0 0;
+}
+
+.sb-score {
+    align-self: center;
+    gap: 8px;
+}
+
+.sb-score span {
+    background: rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.sb-progress {
+    gap: 8px;
+    margin: 0;
+}
+
+.sb-dot {
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.sb-progress strong {
+    font-size: clamp(0.88rem, 2.4vw, 1rem);
+    text-align: right;
+}
+
+.sb-question-card {
+    min-height: clamp(260px, 48vh, 430px);
+    border: 0;
+    border-left: 7px solid transparent;
+    border-radius: 8px;
+    padding: clamp(22px, 4.5vw, 44px);
+    align-content: center;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.26);
+}
+
+.sb-question-card.correct {
+    border-color: #17b26a;
+}
+
+.sb-question-card.wrong {
+    border-color: #ef4444;
+}
+
+.sb-question-card h2 {
+    font-size: clamp(1.75rem, 5vw, 3.25rem);
+    line-height: 1.12;
+    max-width: 18ch;
+}
+
+.sb-answer {
+    width: fit-content;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #dcfce7;
+    color: #047857;
+    font-size: clamp(0.92rem, 2.4vw, 1rem);
+}
+
+.sb-host-controls {
+    grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr);
+    margin-top: 0;
+}
+
+.sb-host-controls button {
+    min-height: 54px;
+    font-size: 1rem;
+}
+
+@media (max-width: 760px) {
+    .street-bongo {
+        padding: max(10px, env(safe-area-inset-top)) 11px max(14px, env(safe-area-inset-bottom));
+        min-height: 100dvh;
+    }
+
+    .sb-back {
+        min-height: 36px;
+        padding: 7px 12px;
+        margin-bottom: 14px;
+        border-radius: 7px;
+        font-size: 0.86rem;
+    }
+
+    .sb-question-shell {
+        min-height: calc(100dvh - 66px);
+        gap: 12px;
+    }
+
+    .sb-question-top {
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .sb-question-top h1 {
+        font-size: clamp(1.55rem, 8vw, 2.05rem);
+        margin-top: 4px;
+    }
+
+    .sb-kicker {
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+    }
+
+    .sb-score {
+        width: 100%;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .sb-score span {
+        flex: 1 1 126px;
+        max-width: 142px;
+        padding: 7px 9px;
+        text-align: center;
+        font-size: 0.92rem;
+    }
+
+    .sb-progress {
+        justify-content: center;
+        gap: 9px;
+    }
+
+    .sb-dot {
+        width: 38px;
+        height: 38px;
+    }
+
+    .sb-progress strong {
+        flex-basis: 100%;
+        margin: 4px 0 0;
+        text-align: center;
+        color: #ffd33d;
+    }
+
+    .sb-question-card {
+        min-height: clamp(190px, 34dvh, 300px);
+        padding: 22px 23px;
+        border-left-width: 5px;
+        align-content: center;
+    }
+
+    .sb-question-card h2 {
+        max-width: none;
+        font-size: clamp(1.55rem, 8.5vw, 2.15rem);
+        line-height: 1.12;
+    }
+
+    .sb-answer {
+        font-size: 0.92rem;
+        line-height: 1.25;
+    }
+
+    .sb-host-controls {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .sb-host-controls button {
+        min-height: 45px;
+        border-radius: 8px;
+        font-size: 0.96rem;
+    }
+
+    .sb-visual {
+        min-height: 92px;
+        font-size: clamp(2rem, 11vw, 3.4rem);
+    }
+
+    .sb-visual.image img {
+        height: min(160px, 25dvh);
+    }
+}
+
+@media (max-width: 760px) {
+    .sb-host-controls {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .sb-host-controls .sb-secondary {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Gaming start screen */
+.sb-start {
+    min-height: calc(100dvh - 88px);
+    grid-template-columns: minmax(0, 0.9fr) minmax(300px, 0.8fr);
+    align-items: stretch;
+}
+
+.sb-start-copy {
+    position: relative;
+    display: grid;
+    align-content: center;
+    gap: 16px;
+    padding: clamp(18px, 4vw, 34px);
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+}
+
+.sb-start-copy::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255, 211, 61, 0.18), transparent 34%, rgba(23, 178, 106, 0.14));
+    pointer-events: none;
+}
+
+.sb-start-copy > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sb-start-copy h1 {
+    max-width: 9ch;
+    margin: 0;
+    font-size: clamp(2.5rem, 6.2vw, 5.9rem);
+    line-height: 0.88;
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);
+}
+
+.sb-start-copy .sb-kicker {
+    width: fit-content;
+    padding: 6px 9px;
+    border-radius: 6px;
+    background: rgba(125, 211, 252, 0.12);
+    border: 1px solid rgba(125, 211, 252, 0.22);
+}
+
+.sb-prize {
+    width: fit-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    min-height: 60px;
+    margin: 0;
+    padding: 13px 16px;
+    background: linear-gradient(135deg, rgba(255, 211, 61, 0.24), rgba(23, 178, 106, 0.14));
+    border-color: rgba(255, 211, 61, 0.58);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 12px 32px rgba(255, 211, 61, 0.1);
+}
+
+.sb-rules {
+    margin: 0;
+    gap: 9px;
+}
+
+.sb-rules li {
+    min-height: 44px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sb-start .sb-primary {
+    width: fit-content;
+    min-height: 54px;
+    padding-inline: 22px;
+    box-shadow: 0 12px 28px rgba(255, 211, 61, 0.28);
+}
+
+.sb-stage {
+    min-height: 100%;
+    border-color: rgba(125, 211, 252, 0.2);
+    background:
+        radial-gradient(circle at 50% 21%, rgba(255, 211, 61, 0.5), transparent 17%),
+        radial-gradient(circle at 30% 78%, rgba(23, 178, 106, 0.36), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 26px 70px rgba(0, 0, 0, 0.32);
+}
+
+.sb-stage::after {
+    content: "";
+    position: absolute;
+    inset: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    transform: scaleX(0.82);
+}
+
+.sb-mic {
+    width: clamp(160px, 18vw, 240px);
+    height: clamp(160px, 18vw, 240px);
+    font-size: clamp(4.5rem, 8vw, 7rem);
+    background: radial-gradient(circle at 50% 35%, rgba(255, 211, 61, 0.16), rgba(0, 0, 0, 0.44) 62%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.sb-score-pill {
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+@media (max-width: 760px) {
+    .sb-start {
+        min-height: auto;
+        gap: 14px;
+    }
+
+    .sb-start-copy {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .sb-start-copy h1 {
+        max-width: 8.5ch;
+        font-size: clamp(2.15rem, 12vw, 3.05rem);
+        line-height: 0.91;
+    }
+
+    .sb-prize {
+        width: 100%;
+        min-height: 54px;
+        font-size: 1rem;
+    }
+
+    .sb-rules li {
+        min-height: 38px;
+        padding: 7px 9px;
+        font-size: 0.95rem;
+    }
+
+    .sb-start .sb-primary {
+        width: 100%;
+    }
+
+    .sb-stage {
+        min-height: 270px;
+    }
+
+    .sb-mic {
+        width: 164px;
+        height: 164px;
+        font-size: 4.4rem;
+    }
+
+    .sb-score-pill {
+        bottom: 14px;
+        left: 14px;
+        right: 14px;
+        padding: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .street-bongo {
+        padding: 8px;
+        overflow-x: hidden;
+    }
+
+    .sb-start {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .sb-start-copy {
+        padding: 14px;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .sb-start-copy h1 {
+        max-width: 100%;
+        font-size: clamp(2rem, 11vw, 2.8rem);
+        line-height: 0.93;
+        overflow-wrap: anywhere;
+    }
+
+    .sb-start-copy .sb-kicker {
+        font-size: 0.62rem;
+        padding: 5px 7px;
+    }
+
+    .sb-prize {
+        min-height: 0;
+        padding: 11px 12px;
+        font-size: 0.96rem;
+        line-height: 1.2;
+        white-space: normal;
+    }
+
+    .sb-rules {
+        gap: 7px;
+    }
+
+    .sb-rules li {
+        min-height: 0;
+        padding: 8px 9px;
+        align-items: flex-start;
+        font-size: 0.9rem;
+        line-height: 1.25;
+    }
+
+    .sb-rules li svg {
+        flex: 0 0 auto;
+        margin-top: 1px;
+    }
+
+    .sb-start .sb-primary {
+        min-height: 48px;
+        font-size: 0.95rem;
+    }
+
+    .sb-stage {
+        min-height: 210px;
+        max-height: 30vh;
+        border-radius: 8px;
+    }
+
+    .sb-stage::before {
+        height: 30%;
+    }
+
+    .sb-stage::after {
+        inset: 12px;
+    }
+
+    .sb-mic {
+        width: 132px;
+        height: 132px;
+        font-size: 3.4rem;
+    }
+
+    .sb-score-pill {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        padding: 9px;
+        font-size: 0.88rem;
+    }
 }
