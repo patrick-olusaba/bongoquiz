@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc} from "firebase/firestore";
+import {addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc, writeBatch} from "firebase/firestore";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {db, storage} from "../../firebase";
 import {
@@ -50,6 +50,8 @@ export function AdminStreetBongo() {
     const [uploading, setUploading] = useState(false);
     const [bulkImporting, setBulkImporting] = useState(false);
     const [csvImportMessage, setCsvImportMessage] = useState("");
+    const [difficultyFilter, setDifficultyFilter] = useState<"all" | StreetBongoDifficulty | "duplicates">("all");
+    const [questionPage, setQuestionPage] = useState(1);
 
     const setSelectedImage = (file: File | null) => {
         setImageFile(file);
@@ -294,20 +296,85 @@ export function AdminStreetBongo() {
         await load();
     };
 
-    const filteredQuestions = questions.filter(q => q.category === activeCategory);
     const activeLabel = categories.find(c => c.id === activeCategory)?.label ?? "Street Questions";
+    const categoryQuestions = questions.filter(q => q.category === activeCategory);
+    const levelCounts = {
+        all: categoryQuestions.length,
+        easy: categoryQuestions.filter(q => (q.difficulty ?? "easy") === "easy").length,
+        medium: categoryQuestions.filter(q => (q.difficulty ?? "easy") === "medium").length,
+        hard: categoryQuestions.filter(q => (q.difficulty ?? "easy") === "hard").length,
+    };
+    const duplicateGroups = useMemo(() => {
+        const groups = new Map<string, ManagedQuestion[]>();
+        categoryQuestions.forEach(q => {
+            const duplicateSource = q.category === "carLogos" || q.category === "brandLogos" ? q.answer : q.prompt;
+            const key = duplicateSource.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+            if (!key) return;
+            groups.set(key, [...(groups.get(key) ?? []), q]);
+        });
+        return Array.from(groups.values()).filter(group => group.length > 1);
+    }, [categoryQuestions]);
+    const duplicateDocIds = useMemo(() => new Set(duplicateGroups.flatMap(group => group.map(q => q.docId))), [duplicateGroups]);
+    const duplicateQuestionsCount = duplicateDocIds.size;
+    const duplicateBasisLabel = activeCategory === "carLogos" || activeCategory === "brandLogos" ? "answers" : "question text";
+    const filteredQuestions = categoryQuestions.filter(q => {
+        if (difficultyFilter === "duplicates") return duplicateDocIds.has(q.docId);
+        return difficultyFilter === "all" || (q.difficulty ?? "easy") === difficultyFilter;
+    });
+    const pageSize = 15;
+    const totalQuestionPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+    const currentQuestionPage = Math.min(questionPage, totalQuestionPages);
+    const paginatedQuestions = filteredQuestions.slice((currentQuestionPage - 1) * pageSize, currentQuestionPage * pageSize);
+
+    useEffect(() => {
+        setQuestionPage(1);
+    }, [activeCategory, difficultyFilter]);
+
+    const deleteCategoryQuestions = async () => {
+        if (!categoryQuestions.length) return;
+        const confirmed = window.confirm("Delete all " + categoryQuestions.length + " questions in " + activeLabel + "? This cannot be undone.");
+        if (!confirmed) return;
+
+        for (let i = 0; i < categoryQuestions.length; i += 450) {
+            const batch = writeBatch(db);
+            categoryQuestions.slice(i, i + 450).forEach(q => batch.delete(doc(db, "streetBongoQuestions", q.docId)));
+            await batch.commit();
+        }
+        if (editingId && categoryQuestions.some(q => q.docId === editingId)) resetForm();
+        await load();
+    };
+
+    const deleteDuplicateQuestions = async () => {
+        if (!duplicateDocIds.size) return;
+        const confirmed = window.confirm("Delete all " + duplicateDocIds.size + " duplicate questions in " + activeLabel + "? This will keep the first copy of each duplicate group.");
+        if (!confirmed) return;
+
+        const keepIds = new Set<string>();
+        duplicateGroups.forEach(group => {
+            const keeper = group[0];
+            keepIds.add(keeper.docId);
+        });
+        const idsToDelete = categoryQuestions.filter(q => duplicateDocIds.has(q.docId) && !keepIds.has(q.docId));
+        for (let i = 0; i < idsToDelete.length; i += 450) {
+            const batch = writeBatch(db);
+            idsToDelete.slice(i, i + 450).forEach(q => batch.delete(doc(db, "streetBongoQuestions", q.docId)));
+            await batch.commit();
+        }
+        if (editingId && idsToDelete.some(q => q.docId === editingId)) resetForm();
+        await load();
+    };
 
     return (
         <div>
             <div style={s.card}>
                 <h2 style={s.h2}>Street Bongo</h2>
                 <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
-                    <button style={{...s.btn, background: activeTab === "overview" ? "#6d28d9" : "#f3f4f6", color: activeTab === "overview" ? "#fff" : "#374151", border: activeTab === "overview" ? "none" : "1px solid #e5e7eb"}} onClick={() => { setActiveTab("overview"); resetForm(); }}>Overview</button>
+                    <button style={{...s.btn, background: activeTab === "overview" ? "#6d28d9" : "#f3f4f6", color: activeTab === "overview" ? "#fff" : "#374151", border: activeTab === "overview" ? "none" : "1px solid #e5e7eb"}} onClick={() => { setActiveTab("overview"); setDifficultyFilter("all"); resetForm(); }}>Overview</button>
                     {categories.map(cat => {
                         const count = questions.filter(q => q.category === cat.id).length;
                         const active = activeTab === cat.id;
                         return (
-                            <button key={cat.id} style={{...s.btn, background: active ? "#6d28d9" : "#f3f4f6", color: active ? "#fff" : "#374151", border: active ? "none" : "1px solid #e5e7eb"}} onClick={() => { setActiveTab(cat.id); resetForm(cat.id); }}>
+                            <button key={cat.id} style={{...s.btn, background: active ? "#6d28d9" : "#f3f4f6", color: active ? "#fff" : "#374151", border: active ? "none" : "1px solid #e5e7eb"}} onClick={() => { setActiveTab(cat.id); setDifficultyFilter("all"); resetForm(cat.id); }}>
                                 {cat.icon} {cat.label} ({count})
                             </button>
                         );
@@ -417,15 +484,49 @@ export function AdminStreetBongo() {
             </div>
 
             <div style={{...s.card, display: activeTab === "overview" ? "none" : "block"}}>
-                <h2 style={s.h2}>{activeLabel} Question Bank</h2>
+                <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "2px solid #f0f0f8", paddingBottom: 10, marginBottom: 12}}>
+                    <div>
+                        <h2 style={{...s.h2, borderBottom: "none", paddingBottom: 0, marginBottom: 4}}>{activeLabel} Question Bank</h2>
+                        <p style={{...s.p, marginBottom: 0}}>{categoryQuestions.length} total questions. {duplicateGroups.length ? duplicateGroups.length + " duplicate group" + (duplicateGroups.length === 1 ? "" : "s") + " found." : "No duplicates found."}</p>
+                    </div>
+                    <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+                        <button style={{...s.btn, background: categoryQuestions.length ? "#dc2626" : "#f3f4f6", color: categoryQuestions.length ? "#fff" : "#9ca3af"}} onClick={deleteCategoryQuestions} disabled={!categoryQuestions.length}>Delete All in Category</button>
+                        <button style={{...s.btn, background: duplicateQuestionsCount ? "#f59e0b" : "#f3f4f6", color: duplicateQuestionsCount ? "#fff" : "#9ca3af"}} onClick={deleteDuplicateQuestions} disabled={!duplicateQuestionsCount}>Delete All Duplicates</button>
+                    </div>
+                </div>
+                <div style={{display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12}}>
+                    {(["all", "easy", "medium", "hard", "duplicates"] as Array<"all" | StreetBongoDifficulty | "duplicates">).map(level => {
+                        const active = difficultyFilter === level;
+                        return (
+                            <button key={level} style={{...s.btn, background: active ? "#6d28d9" : "#f3f4f6", color: active ? "#fff" : "#374151", border: active ? "none" : "1px solid #e5e7eb", textTransform: "capitalize"}} onClick={() => setDifficultyFilter(level)}>
+                                {level} ({level === "duplicates" ? duplicateQuestionsCount : levelCounts[level]})
+                            </button>
+                        );
+                    })}
+                </div>
+                {duplicateGroups.length > 0 && (
+                    <div style={{border: "1px solid #fed7aa", background: "#fff7ed", color: "#9a3412", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: "0.82rem"}}>
+                        <strong>Duplicate detector:</strong> These questions have matching {duplicateBasisLabel} after cleanup.
+                        <div style={{display: "grid", gap: 6, marginTop: 8}}>
+                            {duplicateGroups.slice(0, 5).map(group => {
+                                const duplicateLabel = duplicateBasisLabel === "answers" ? group[0].answer : group[0].prompt;
+                                return <div key={group[0].docId}>"{duplicateLabel}" appears {group.length} times.</div>;
+                            })}
+                            {duplicateGroups.length > 5 && <div>+{duplicateGroups.length - 5} more duplicate groups.</div>}
+                        </div>
+                    </div>
+                )}
                 <div style={{overflowX: "auto"}}>
                     <table style={{width: "100%", borderCollapse: "collapse", fontSize: "0.82rem"}}>
                         <thead><tr>{["Visual", "Question", "Answer", "Level", "Source", "Actions"].map(h => <th key={h} style={{textAlign: "left", padding: 10, background: "#f5f5ff", color: "#4361ee"}}>{h}</th>)}</tr></thead>
                         <tbody>
-                        {filteredQuestions.map(q => (
-                            <tr key={q.docId}>
+                        {paginatedQuestions.map(q => (
+                            <tr key={q.docId} style={{background: duplicateDocIds.has(q.docId) ? "#fff7ed" : "transparent"}}> 
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.visualImageUrl ? <img src={q.visualImageUrl} alt="" style={{width: 54, height: 38, objectFit: "contain", background: "#f8fafc", borderRadius: 6}}/> : q.visual ?? "-"}</td>
-                                <td style={{padding: 10, borderBottom: "1px solid #eef0f7", minWidth: 240}}>{q.prompt}</td>
+                                <td style={{padding: 10, borderBottom: "1px solid #eef0f7", minWidth: 240}}>
+                                    {q.prompt}
+                                    {duplicateDocIds.has(q.docId) && <span style={{display: "inline-block", marginLeft: 8, padding: "2px 6px", borderRadius: 999, background: "#fed7aa", color: "#9a3412", fontSize: "0.7rem", fontWeight: 900}}>Duplicate</span>}
+                                </td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.answer}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7", textTransform: "capitalize", fontWeight: 800}}>{q.difficulty ?? "easy"}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.source === "default" ? "Default" : "Admin"}</td>
@@ -441,6 +542,18 @@ export function AdminStreetBongo() {
                         </tbody>
                     </table>
                 </div>
+                {filteredQuestions.length > pageSize && (
+                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12}}>
+                        <span style={{fontSize: "0.82rem", color: "#6b7280", fontWeight: 700}}>
+                            Showing {(currentQuestionPage - 1) * pageSize + 1}-{Math.min(currentQuestionPage * pageSize, filteredQuestions.length)} of {filteredQuestions.length}
+                        </span>
+                        <div style={{display: "flex", gap: 8, alignItems: "center"}}>
+                            <button style={{...s.btn, background: currentQuestionPage === 1 ? "#f3f4f6" : "#e0e7ff", color: currentQuestionPage === 1 ? "#9ca3af" : "#3730a3"}} onClick={() => setQuestionPage(page => Math.max(1, page - 1))} disabled={currentQuestionPage === 1}>Prev</button>
+                            <span style={{fontSize: "0.82rem", color: "#374151", fontWeight: 800}}>Page {currentQuestionPage} of {totalQuestionPages}</span>
+                            <button style={{...s.btn, background: currentQuestionPage === totalQuestionPages ? "#f3f4f6" : "#e0e7ff", color: currentQuestionPage === totalQuestionPages ? "#9ca3af" : "#3730a3"}} onClick={() => setQuestionPage(page => Math.min(totalQuestionPages, page + 1))} disabled={currentQuestionPage === totalQuestionPages}>Next</button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
