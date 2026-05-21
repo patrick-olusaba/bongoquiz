@@ -1178,3 +1178,271 @@
         font-size: 1.45rem;
     }
 }
+
+
+/* Arcade play screen */
+.sb-play-shell {
+    position: relative;
+    width: min(100%, 1120px);
+    padding: clamp(14px, 2.5vw, 26px);
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+        repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.045) 0 1px, transparent 1px 78px);
+    border: 1px solid rgba(125, 211, 252, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 28px 80px rgba(0, 0, 0, 0.22);
+}
+
+.sb-play-shell .sb-question-top {
+    padding: 0 2px;
+}
+
+.sb-play-shell .sb-question-top h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.25), 0 0 24px rgba(255, 211, 61, 0.12);
+}
+
+.sb-play-shell .sb-kicker {
+    width: fit-content;
+    color: #04111f;
+    background: #7dd3fc;
+    border-radius: 8px;
+    padding: 6px 9px;
+    box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.16);
+}
+
+.sb-play-shell .sb-question-level,
+.sb-play-shell .sb-level {
+    color: #1c1600;
+    background: #ffd33d;
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: 0 8px 18px rgba(255, 211, 61, 0.18);
+}
+
+.sb-play-shell .sb-score span {
+    min-width: 118px;
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.44);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.sb-play-shell .sb-progress {
+    min-height: 42px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sb-play-shell .sb-dot {
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sb-play-shell .sb-question-card {
+    position: relative;
+    overflow: hidden;
+    min-height: clamp(330px, 52vh, 560px);
+    padding: clamp(28px, 5vw, 58px);
+    background:
+        radial-gradient(circle at 90% 12%, rgba(255, 211, 61, 0.16), transparent 22%),
+        linear-gradient(180deg, #fff, #f4f7fb);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 8px solid #7dd3fc;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+}
+
+.sb-play-shell .sb-question-card::before {
+    content: "QUESTION";
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    color: rgba(17, 24, 39, 0.06);
+    font-weight: 950;
+    font-size: clamp(2.4rem, 8vw, 6rem);
+    letter-spacing: 0.02em;
+}
+
+.sb-play-shell .sb-question-card.correct {
+    border-left-color: #17b26a;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32), 0 0 0 4px rgba(23, 178, 106, 0.18);
+}
+
+.sb-play-shell .sb-question-card.wrong {
+    border-left-color: #ef4444;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32), 0 0 0 4px rgba(239, 68, 68, 0.18);
+}
+
+.sb-play-shell .sb-question-card h2 {
+    position: relative;
+    z-index: 1;
+    max-width: 20ch;
+    font-size: clamp(2.15rem, 4.8vw, 4.3rem);
+    line-height: 1.04;
+}
+
+.sb-play-shell .sb-level,
+.sb-play-shell .sb-answer,
+.sb-play-shell .sb-visual {
+    position: relative;
+    z-index: 1;
+}
+
+.sb-play-shell .sb-answer {
+    background: #dcfce7;
+    border: 1px solid rgba(23, 178, 106, 0.28);
+    box-shadow: 0 10px 24px rgba(23, 178, 106, 0.12);
+}
+
+.sb-play-shell .sb-host-controls {
+    gap: 10px;
+}
+
+.sb-play-shell .sb-host-controls button {
+    border-radius: 8px;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.sb-play-shell .sb-correct {
+    background: linear-gradient(180deg, #12d37b, #08a85f);
+}
+
+.sb-play-shell .sb-wrong {
+    background: linear-gradient(180deg, #ff1f63, #db174e);
+}
+
+.sb-play-shell .sb-stop {
+    background: linear-gradient(180deg, #1f2937, #101827);
+}
+
+@media (max-width: 760px) {
+    .sb-play-shell {
+        min-height: calc(100dvh - 58px);
+        padding: 10px;
+        gap: 10px;
+        border-radius: 8px;
+    }
+
+    .sb-play-shell .sb-question-top {
+        display: grid;
+        grid-template-columns: 1fr;
+        text-align: left;
+        gap: 10px;
+    }
+
+    .sb-play-shell .sb-question-top h1 {
+        gap: 8px;
+        font-size: clamp(1.45rem, 7.5vw, 2rem);
+        line-height: 1.02;
+    }
+
+    .sb-play-shell .sb-kicker {
+        font-size: 0.6rem;
+        padding: 5px 7px;
+    }
+
+    .sb-play-shell .sb-question-level {
+        margin-top: 6px;
+        font-size: 0.68rem;
+        padding: 5px 8px;
+    }
+
+    .sb-play-shell .sb-score {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .sb-play-shell .sb-score span {
+        max-width: none;
+        min-width: 0;
+        padding: 8px 7px;
+        font-size: 0.9rem;
+    }
+
+    .sb-play-shell .sb-progress {
+        min-height: 36px;
+        padding: 7px 8px;
+        justify-content: center;
+    }
+
+    .sb-play-shell .sb-dot {
+        width: 24px;
+        height: 24px;
+        font-size: 0.78rem;
+    }
+
+    .sb-play-shell .sb-progress strong {
+        flex-basis: 100%;
+        margin: 2px 0 0;
+        font-size: 0.86rem;
+        text-align: center;
+    }
+
+    .sb-play-shell .sb-question-card {
+        min-height: clamp(270px, 40dvh, 380px);
+        padding: 28px;
+        border-left-width: 0;
+        border-top: 7px solid #7dd3fc;
+    }
+
+    .sb-play-shell .sb-question-card.correct {
+        border-top-color: #17b26a;
+    }
+
+    .sb-play-shell .sb-question-card.wrong {
+        border-top-color: #ef4444;
+    }
+
+    .sb-play-shell .sb-question-card::before {
+        top: 12px;
+        right: 12px;
+        font-size: 2.8rem;
+    }
+
+    .sb-play-shell .sb-level {
+        font-size: 0.68rem;
+        padding: 5px 8px;
+    }
+
+    .sb-play-shell .sb-question-card h2 {
+        max-width: 100%;
+        font-size: clamp(1.7rem, 8vw, 2.35rem);
+        line-height: 1.08;
+    }
+
+    .sb-play-shell .sb-host-controls {
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+    }
+
+    .sb-play-shell .sb-host-controls .sb-secondary,
+    .sb-play-shell .sb-host-controls .sb-stop {
+        grid-column: 1 / -1;
+    }
+
+    .sb-play-shell .sb-host-controls button {
+        min-height: 46px;
+        padding: 9px 10px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 430px) {
+    .sb-play-shell {
+        padding: 8px;
+    }
+
+    .sb-play-shell .sb-question-card {
+        min-height: 280px;
+        padding: 24px 20px;
+    }
+
+    .sb-play-shell .sb-question-card h2 {
+        font-size: clamp(1.55rem, 8.2vw, 2rem);
+    }
+}

@@ -42,7 +42,7 @@ const STREET_BONGO_LEVELS: Array<{id: StreetBongoDifficulty; label: string; desc
 ];
 
 export default function StreetBongo() {
-    const [phase, setPhase] = useState<Phase>("start");
+    const [phase, setPhase] = useState<Phase>("category");
     const [category, setCategory] = useState<StreetBongoCategory>("general");
     const [difficulty, setDifficulty] = useState<StreetBongoDifficulty>("easy");
     const [questions, setQuestions] = useState<StreetBongoQuestion[]>([]);
@@ -222,7 +222,7 @@ export default function StreetBongo() {
     if (phase === "category") {
         return (
             <main className="street-bongo">
-                <button className="sb-back" onClick={() => setPhase("start")}><ArrowLeft size={18}/> Back</button>
+                <button className="sb-back" onClick={() => window.location.href = "/"}><ArrowLeft size={18}/> Back</button>
                 <section className="sb-panel sb-select-panel">
                     <span className="sb-kicker">Host setup</span>
                     <h1>Choose Challenge</h1>
@@ -289,7 +289,7 @@ export default function StreetBongo() {
     return (
         <main className="street-bongo">
             <button className="sb-back" onClick={() => setPhase("level")}><ArrowLeft size={18}/> Level</button>
-            <section className="sb-question-shell">
+            <section className="sb-question-shell sb-play-shell">
                 <div className="sb-question-top">
                     <div>
                         <span className="sb-kicker">Question {questionNumber} of {questions.length} · {answers.length} answered</span>
