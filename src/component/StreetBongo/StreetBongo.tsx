@@ -53,6 +53,7 @@ export default function StreetBongo() {
     const [lastResult, setLastResult] = useState<AnswerResult | null>(null);
     const [saving, setSaving] = useState(false);
     const sessionSavedRef = useRef(false);
+    const preloadedImageUrlsRef = useRef(new Set<string>());
 
     const correctCount = answers.filter(a => a.result === "correct").length;
     const wrongCount = answers.filter(a => a.result === "wrong").length;
@@ -80,6 +81,29 @@ export default function StreetBongo() {
         fetchQuestionBank().catch(() => setQuestionBank(DEFAULT_STREET_BONGO_QUESTIONS));
     }, []);
 
+    const preloadImageUrl = (url?: string | null) => {
+        if (!url || preloadedImageUrlsRef.current.has(url)) return Promise.resolve();
+
+        return new Promise<void>(resolve => {
+            const img = new Image();
+            img.decoding = "async";
+            img.onload = () => {
+                preloadedImageUrlsRef.current.add(url);
+                resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = url;
+        });
+    };
+
+    const preloadQuestionImages = async (items: StreetBongoQuestion[], priorityCount = 4) => {
+        const urls = Array.from(new Set(items.map(q => q.visualImageUrl).filter(Boolean))) as string[];
+        const priority = urls.slice(0, priorityCount).map(preloadImageUrl);
+        const rest = urls.slice(priorityCount).map(preloadImageUrl);
+        if (rest.length) void Promise.allSettled(rest);
+        if (priority.length) await Promise.allSettled(priority);
+    };
+
     const buildQuestionLoop = (pool: StreetBongoQuestion[], nextCategory: StreetBongoCategory, nextDifficulty: StreetBongoDifficulty) => {
         const storageKey = "street_bongo_recent_" + nextCategory + "_" + nextDifficulty;
         const recent = JSON.parse(localStorage.getItem(storageKey) || "[]") as string[];
@@ -94,6 +118,9 @@ export default function StreetBongo() {
         setCategory(nextCategory);
         setDifficulty("easy");
         setPhase("level");
+
+        const pool = questionBank.filter(q => nextCategory === "random" ? true : q.category === nextCategory);
+        void preloadQuestionImages(pool, 0);
     };
 
     const startChallenge = async (nextDifficulty: StreetBongoDifficulty) => {
@@ -106,8 +133,10 @@ export default function StreetBongo() {
             alert("Add at least 1 " + nextDifficulty + " Street Bongo question in this category before starting.");
             return;
         }
+        const selectedQuestions = buildQuestionLoop(pool, category, nextDifficulty);
+        await preloadQuestionImages(selectedQuestions, 5);
         setDifficulty(nextDifficulty);
-        setQuestions(buildQuestionLoop(pool, category, nextDifficulty));
+        setQuestions(selectedQuestions);
         setIndex(0);
         setAnswers([]);
         sessionSavedRef.current = false;
@@ -162,13 +191,18 @@ export default function StreetBongo() {
 
         const nextCorrect = nextAnswers.filter(a => a.result === "correct").length;
         window.setTimeout(() => {
-            if (nextCorrect >= 10 && correctCount < 10) {
-                playSound(victorySfx);
-                confetti({particleCount: 160, spread: 80, origin: {y: 0.62}});
-            }
-            setIndex(i => questions.length > 0 ? (i + 1) % questions.length : 0);
-            setAnswerVisible(false);
-            setLastResult(null);
+            const nextIndex = questions.length > 0 ? (index + 1) % questions.length : 0;
+            const followingIndex = questions.length > 0 ? (index + 2) % questions.length : 0;
+            preloadImageUrl(questions[nextIndex]?.visualImageUrl).finally(() => {
+                if (nextCorrect >= 10 && correctCount < 10) {
+                    playSound(victorySfx);
+                    confetti({particleCount: 160, spread: 80, origin: {y: 0.62}});
+                }
+                void preloadImageUrl(questions[followingIndex]?.visualImageUrl);
+                setIndex(nextIndex);
+                setAnswerVisible(false);
+                setLastResult(null);
+            });
         }, 650);
     };
 
@@ -312,7 +346,7 @@ export default function StreetBongo() {
                 {currentQuestion && (
                     <div className={`sb-question-card ${lastResult ?? ""}`}>
                         {currentQuestion.visualImageUrl ? (
-                            <div className="sb-visual image"><img src={currentQuestion.visualImageUrl} alt={currentQuestion.visual || "Question visual"}/></div>
+                            <div className="sb-visual image"><img src={currentQuestion.visualImageUrl} alt={currentQuestion.visual || "Question visual"} loading="eager" decoding="async"/></div>
                         ) : currentQuestion.visual && <div className="sb-visual">{currentQuestion.visual}</div>}
                         <div className="sb-level">{currentQuestion.difficulty ?? "easy"}</div>
                         <h2>{currentQuestion.prompt}</h2>
