@@ -9,7 +9,8 @@
 .sb-primary,
 .sb-secondary,
 .sb-correct,
-.sb-wrong {
+.sb-wrong,
+.sb-stop {
     min-height: 44px;
     border: 0;
     border-radius: 8px;
@@ -51,9 +52,16 @@
     color: #fff;
 }
 
+.sb-stop {
+    background: #111827;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
 .sb-primary:disabled,
 .sb-correct:disabled,
-.sb-wrong:disabled {
+.sb-wrong:disabled,
+.sb-stop:disabled {
     opacity: 0.48;
     cursor: not-allowed;
 }
@@ -176,7 +184,7 @@
 
 .sb-category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(2,1fr);
     gap: 14px;
     margin-top: 18px;
 }
@@ -188,11 +196,12 @@
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     padding: 18px;
-    display: grid;
-    justify-items: start;
+    display: flex;
+    flex-direction: column;
+    justify-items: center;
     align-content: center;
     gap: 8px;
-    text-align: left;
+    /*text-align: left;*/
     cursor: pointer;
 }
 
@@ -207,6 +216,31 @@
 .sb-category small {
     color: rgba(255, 255, 255, 0.68);
     font-weight: 700;
+}
+
+.sb-level-card span {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 211, 61, 0.18);
+    border: 1px solid rgba(255, 211, 61, 0.32);
+    font-size: 1.2rem;
+    font-weight: 900;
+}
+
+.sb-question-level {
+    width: fit-content;
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 211, 61, 0.16);
+    border: 1px solid rgba(255, 211, 61, 0.28);
+    color: #ffd33d;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .sb-question-shell {
@@ -333,6 +367,17 @@
     gap: 8px;
     color: #166534;
     font-weight: 900;
+}
+
+.sb-level {
+    width: fit-content;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .sb-host-controls {
@@ -534,7 +579,7 @@
 }
 
 .sb-host-controls {
-    grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr);
+    grid-template-columns: minmax(130px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(160px, 1fr);
     margin-top: 0;
 }
 
@@ -912,5 +957,224 @@
         right: 10px;
         padding: 9px;
         font-size: 0.88rem;
+    }
+}
+
+@media (min-width: 760px){
+    .sb-category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+}
+
+/* Arcade selection screens */
+.sb-select-panel {
+    position: relative;
+    width: min(100%, 1120px);
+    min-height: calc(100dvh - 116px);
+    padding: clamp(18px, 3vw, 34px);
+    display: grid;
+    align-content: center;
+    overflow: hidden;
+}
+
+.sb-select-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background:
+        repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.08) 0 1px, transparent 1px 82px),
+        repeating-linear-gradient(0deg, rgba(255, 211, 61, 0.06) 0 1px, transparent 1px 82px),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025));
+    border: 1px solid rgba(125, 211, 252, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 28px 80px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+.sb-select-panel > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sb-select-panel .sb-kicker {
+    width: fit-content;
+    padding: 7px 11px;
+    border-radius: 8px;
+    color: #04111f;
+    background: #7dd3fc;
+    box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.2), 0 10px 28px rgba(125, 211, 252, 0.18);
+}
+
+.sb-select-panel h1 {
+    max-width: 12ch;
+    margin: 14px 0 22px;
+    color: #fff;
+    text-shadow: 0 5px 0 rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 211, 61, 0.16);
+}
+
+.sb-game-grid,
+.sb-level-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: clamp(12px, 1.6vw, 18px);
+    margin-top: 0;
+}
+
+.sb-select-panel .sb-category {
+    position: relative;
+    min-height: 172px;
+    padding: 18px 16px 16px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
+        linear-gradient(135deg, rgba(125, 211, 252, 0.1), rgba(255, 211, 61, 0.08));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 34px rgba(0, 0, 0, 0.22);
+    transform: translateY(0);
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.sb-select-panel .sb-category::after {
+    content: "PLAY";
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    padding: 4px 7px;
+    border-radius: 6px;
+    background: rgba(255, 211, 61, 0.18);
+    border: 1px solid rgba(255, 211, 61, 0.28);
+    color: #ffd33d;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.sb-select-panel .sb-category:hover,
+.sb-select-panel .sb-category:focus-visible {
+    transform: translateY(-5px);
+    border-color: rgba(255, 211, 61, 0.7);
+    background:
+        linear-gradient(180deg, rgba(255, 211, 61, 0.18), rgba(255, 255, 255, 0.06)),
+        linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(23, 178, 106, 0.1));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 42px rgba(0, 0, 0, 0.28), 0 0 0 3px rgba(255, 211, 61, 0.12);
+}
+
+.sb-select-panel .sb-category:hover::after,
+.sb-select-panel .sb-category:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.sb-select-panel .sb-category:active {
+    transform: translateY(-1px) scale(0.99);
+}
+
+.sb-select-panel .sb-category span {
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-size: 2.25rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.sb-select-panel .sb-category strong {
+    font-size: clamp(1rem, 1.6vw, 1.18rem);
+    line-height: 1.1;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+}
+
+.sb-select-panel .sb-category small {
+    color: rgba(255, 255, 255, 0.74);
+    line-height: 1.25;
+}
+
+.sb-select-panel .sb-level-card span {
+    border-radius: 50%;
+    color: #1c1600;
+    background: #ffd33d;
+    border-color: rgba(255, 255, 255, 0.4);
+    font-size: 1.5rem;
+}
+
+@media (max-width: 760px) {
+    .sb-select-panel {
+        min-height: auto;
+        padding: 14px;
+        align-content: start;
+    }
+
+    .sb-select-panel h1 {
+        max-width: none;
+        margin: 12px 0 16px;
+        font-size: clamp(2.1rem, 12vw, 3.1rem);
+    }
+
+    .sb-game-grid,
+    .sb-level-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .sb-select-panel .sb-category {
+        min-height: 142px;
+        padding: 12px 9px;
+        gap: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 211, 61, 0.14), rgba(255, 255, 255, 0.055)),
+            linear-gradient(135deg, rgba(125, 211, 252, 0.14), rgba(23, 178, 106, 0.08));
+        border-color: rgba(255, 211, 61, 0.26);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 24px rgba(0, 0, 0, 0.28);
+    }
+
+    .sb-select-panel .sb-category span {
+        width: 52px;
+        height: 52px;
+        font-size: 1.65rem;
+    }
+}
+
+@media (max-width: 430px) {
+    .sb-select-panel {
+        padding: 10px;
+    }
+
+    .sb-game-grid,
+    .sb-level-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .sb-select-panel .sb-category {
+        min-height: 132px;
+        padding: 11px 7px;
+    }
+
+    .sb-select-panel .sb-category strong {
+        font-size: 0.92rem;
+        line-height: 1.08;
+    }
+
+    .sb-select-panel .sb-category small {
+        font-size: 0.68rem;
+        line-height: 1.18;
+    }
+
+    .sb-select-panel .sb-category span {
+        width: 46px;
+        height: 46px;
+        font-size: 1.45rem;
     }
 }

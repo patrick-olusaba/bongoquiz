@@ -7,12 +7,15 @@ export type StreetBongoCategory =
     | "kenya"
     | "random";
 
+export type StreetBongoDifficulty = "easy" | "medium" | "hard";
+
 export interface StreetBongoQuestion {
     id: string;
     category: Exclude<StreetBongoCategory, "random">;
     prompt: string;
     options: string[];
     answer: string;
+    difficulty?: StreetBongoDifficulty;
     visual?: string;
     visualImageUrl?: string;
 }

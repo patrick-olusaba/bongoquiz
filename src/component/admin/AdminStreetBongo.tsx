@@ -5,6 +5,7 @@ import {db, storage} from "../../firebase";
 import {
     STREET_BONGO_CATEGORIES,
     StreetBongoCategory,
+    StreetBongoDifficulty,
     StreetBongoQuestion,
 } from "../StreetBongo/streetBongoQuestions";
 
@@ -25,11 +26,13 @@ const categories = STREET_BONGO_CATEGORIES.filter(c => c.id !== "random") as Arr
 
 type CategoryId = Exclude<StreetBongoCategory, "random">;
 type ManagedQuestion = StreetBongoQuestion & {docId: string; source?: string};
+type ParsedStreetBongoQuestion = {category: CategoryId; prompt: string; answer: string; difficulty: StreetBongoDifficulty; visual?: string; visualImageUrl?: string};
 
 const emptyForm = {
     category: "general" as CategoryId,
     prompt: "",
     answer: "",
+    difficulty: "easy" as StreetBongoDifficulty,
     visual: "",
     visualImageUrl: "",
 };
@@ -45,8 +48,8 @@ export function AdminStreetBongo() {
     const [imagePreview, setImagePreview] = useState("");
     const [draggingImage, setDraggingImage] = useState(false);
     const [uploading, setUploading] = useState(false);
-    const [bulkText, setBulkText] = useState("");
     const [bulkImporting, setBulkImporting] = useState(false);
+    const [csvImportMessage, setCsvImportMessage] = useState("");
 
     const setSelectedImage = (file: File | null) => {
         setImageFile(file);
@@ -117,63 +120,115 @@ export function AdminStreetBongo() {
         };
     }, [sessions]);
 
-    const categoryFromLine = (line: string): CategoryId | null => {
-        const value = line.toLowerCase();
-        if (value.includes("general knowledge")) return "general";
-        if (value.includes("sports")) return "sports";
-        if (value.includes("car logos")) return "carLogos";
-        if (value.includes("brand logos")) return "brandLogos";
-        if (value.includes("tricky") || value.includes("trick")) return "trick";
-        if (value.includes("kenya")) return "kenya";
+    const normalizeCategory = (value: string): CategoryId | null => {
+        const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (["general", "generalknowledge"].includes(normalized)) return "general";
+        if (normalized === "sports") return "sports";
+        if (["carlogos", "carlogo", "cars"].includes(normalized)) return "carLogos";
+        if (["brandlogos", "brandlogo", "brands"].includes(normalized)) return "brandLogos";
+        if (["trick", "tricky", "trickquestions", "trickyquestions"].includes(normalized)) return "trick";
+        if (["kenya", "kenyatrivia"].includes(normalized)) return "kenya";
         return null;
     };
 
-    const importBulkQuestions = async () => {
-        const lines = bulkText.split("\n").map(line => line.trim()).filter(Boolean);
-        let currentCategory: CategoryId = activeCategory;
-        let pendingPrompt = "";
-        const parsed: Array<{category: CategoryId; prompt: string; answer: string}> = [];
+    const normalizeDifficulty = (value: string): StreetBongoDifficulty => {
+        const normalized = value.toLowerCase().trim();
+        if (normalized === "medium") return "medium";
+        if (normalized === "hard") return "hard";
+        return "easy";
+    };
 
-        lines.forEach(line => {
-            const category = categoryFromLine(line);
-            if (category) {
-                currentCategory = category;
-                pendingPrompt = "";
-                return;
+    const parseCSVLine = (line: string) => {
+        const cells: string[] = [];
+        let current = "";
+        let quoted = false;
+
+        for (let i = 0; i < line.length; i += 1) {
+            const char = line[i];
+            const next = line[i + 1];
+            if (char === "\"" && quoted && next === "\"") {
+                current += "\"";
+                i += 1;
+            } else if (char === "\"") {
+                quoted = !quoted;
+            } else if (char === "," && !quoted) {
+                cells.push(current.trim());
+                current = "";
+            } else {
+                current += char;
             }
+        }
 
-            const answerMatch = line.match(/^answer\s*:\s*(.+)$/i);
-            if (answerMatch) {
-                if (pendingPrompt) {
-                    parsed.push({category: currentCategory, prompt: pendingPrompt, answer: answerMatch[1].trim()});
-                    pendingPrompt = "";
-                }
-                return;
+        cells.push(current.trim());
+        return cells;
+    };
+
+    const parseStreetBongoCSV = (text: string): ParsedStreetBongoQuestion[] => {
+        const rows = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(parseCSVLine);
+        if (!rows.length) return [];
+
+        const header = rows[0].map(cell => cell.toLowerCase().replace(/[^a-z0-9]/g, ""));
+        const hasHeader = header.includes("category") && (header.includes("prompt") || header.includes("question")) && header.includes("answer");
+        const dataRows = hasHeader ? rows.slice(1) : rows;
+        const indexOf = (...names: string[]) => names.map(name => header.indexOf(name)).find(index => index >= 0) ?? -1;
+        const categoryIndex = hasHeader ? indexOf("category") : -1;
+        const promptIndex = hasHeader ? indexOf("prompt", "question") : -1;
+        const answerIndex = hasHeader ? indexOf("answer", "correctanswer") : -1;
+        const difficultyIndex = hasHeader ? indexOf("difficulty", "level") : -1;
+        const visualIndex = hasHeader ? indexOf("visual", "visuallabel") : -1;
+        const imageIndex = hasHeader ? indexOf("visualimageurl", "imageurl", "image") : -1;
+
+        return dataRows.reduce<ParsedStreetBongoQuestion[]>((parsed, row) => {
+            const rowCategory = hasHeader ? normalizeCategory(row[categoryIndex] ?? "") : normalizeCategory(row[0] ?? "");
+            const category = rowCategory ?? activeCategory;
+            const prompt = hasHeader ? row[promptIndex]?.trim() : (rowCategory ? row[1]?.trim() : row[0]?.trim());
+            const answer = hasHeader ? row[answerIndex]?.trim() : (rowCategory ? row[2]?.trim() : row[1]?.trim());
+            const difficulty = hasHeader ? normalizeDifficulty(row[difficultyIndex] ?? "") : normalizeDifficulty(rowCategory ? row[3] ?? "" : row[2] ?? "");
+            const visual = hasHeader ? row[visualIndex]?.trim() : (rowCategory ? row[4]?.trim() : row[3]?.trim());
+            const visualImageUrl = hasHeader ? row[imageIndex]?.trim() : (rowCategory ? row[5]?.trim() : row[4]?.trim());
+
+            if (prompt && answer) {
+                parsed.push({category, prompt, answer, difficulty, visual, visualImageUrl});
             }
+            return parsed;
+        }, []);
+    };
 
-            pendingPrompt = pendingPrompt ? pendingPrompt + " " + line : line;
-        });
+    const saveImportedQuestions = async (parsed: ParsedStreetBongoQuestion[], source: string) => {
+        if (!parsed.length) {
+            setCsvImportMessage("No valid questions found. Use columns: category, question, answer, difficulty, visual, visualImageUrl.");
+            return;
+        }
 
-        if (!parsed.length) return;
         setBulkImporting(true);
+        setCsvImportMessage("");
+        const createdAt = Date.now();
         try {
             await Promise.all(parsed.map((question, index) => addDoc(collection(db, "streetBongoQuestions"), {
-                id: `bulk-${Date.now()}-${index}`,
+                id: source + "-" + createdAt + "-" + index,
                 category: question.category,
                 prompt: question.prompt,
                 options: [],
                 answer: question.answer,
-                visual: null,
-                visualImageUrl: null,
+                difficulty: question.difficulty,
+                visual: question.visual || null,
+                visualImageUrl: question.visualImageUrl || null,
                 source: "admin",
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             })));
-            setBulkText("");
+            setCsvImportMessage("Imported " + parsed.length + " question" + (parsed.length === 1 ? "" : "s") + ".");
             await load();
         } finally {
             setBulkImporting(false);
         }
+    };
+
+    const importCsvFile = (file: File | null) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = event => saveImportedQuestions(parseStreetBongoCSV(String(event.target?.result ?? "")), "csv");
+        reader.readAsText(file);
     };
 
     const uploadImage = async () => {
@@ -196,6 +251,7 @@ export function AdminStreetBongo() {
                 prompt: form.prompt.trim(),
                 options: [],
                 answer: form.answer.trim(),
+                difficulty: form.difficulty,
                 visual: form.visual.trim() || null,
                 visualImageUrl: visualImageUrl || null,
                 source: editingId ? (questions.find(q => q.docId === editingId)?.source ?? "admin") : "admin",
@@ -222,6 +278,7 @@ export function AdminStreetBongo() {
             category: q.category,
             prompt: q.prompt,
             answer: q.answer,
+            difficulty: q.difficulty ?? "easy",
             visual: q.visual ?? "",
             visualImageUrl: q.visualImageUrl ?? "",
         });
@@ -288,17 +345,18 @@ export function AdminStreetBongo() {
             {/*</div>*/}
 
             <div style={{...s.card, display: activeTab === "overview" ? "none" : "block"}}>
-                <h2 style={s.h2}>Bulk Paste Questions</h2>
-                <p style={s.p}>Paste questions in this format: question line, then Answer: answer line. Category headings like General Knowledge, Sports, Tricky Questions, and Kenya Trivia are detected automatically.</p>
-                <textarea
-                    style={{...s.input, minHeight: 180, resize: "vertical"}}
-                    value={bulkText}
-                    placeholder={"🧠 General Knowledge\nWhat is the smallest country in the world?\nAnswer: Vatican City"}
-                    onChange={e => setBulkText(e.target.value)}
-                />
-                <button style={{...s.btn, marginTop: 10, background: "#6d28d9", color: "#fff", opacity: bulkImporting ? 0.65 : 1}} onClick={importBulkQuestions} disabled={bulkImporting || !bulkText.trim()}>
-                    {bulkImporting ? "Importing..." : "Import Bulk Questions"}
-                </button>
+                <h2 style={s.h2}>CSV Upload Questions</h2>
+                <p style={s.p}>Upload a CSV with columns: <code>category, question, answer, difficulty, visual, visualImageUrl</code>. Difficulty can be easy, medium, or hard. Category can be general, sports, carLogos, brandLogos, trick, or kenya.</p>
+                <div style={{display: "grid", gap: 8, padding: 12, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#f8fafc"}}>
+                    <input type="file" accept=".csv,text/csv" style={{font: "inherit", fontSize: "0.84rem"}} disabled={bulkImporting} onChange={e => importCsvFile(e.target.files?.[0] ?? null)}/>
+                    <a
+                        href={"data:text/csv;charset=utf-8,category,question,answer,difficulty,visual,visualImageUrl%0Ageneral,What is the smallest country in the world?,Vatican City,easy,,%0Asports,How many players does one football team have on the pitch?,11,medium,,"}
+                        download="street_bongo_questions_template.csv"
+                        style={{fontSize: "0.82rem", color: "#4361ee", fontWeight: 800, textDecoration: "none"}}
+                    >Download CSV template</a>
+                </div>
+                {csvImportMessage && <p style={{...s.p, marginTop: 10, color: csvImportMessage.startsWith("Imported") ? "#047857" : "#b45309", fontWeight: 800}}>{csvImportMessage}</p>}
+                {bulkImporting && <p style={{...s.p, marginTop: 10, color: "#6d28d9", fontWeight: 800}}>Importing...</p>}
             </div>
 
             <div id="street-question-form" style={{...s.card, display: activeTab === "overview" ? "none" : "block"}}>
@@ -306,6 +364,11 @@ export function AdminStreetBongo() {
                 <div style={{display: "grid", gridTemplateColumns: "minmax(140px, 220px) 1fr", gap: 10}}>
                     <select style={s.input} value={form.category} onChange={e => setForm({...form, category: e.target.value as CategoryId})}>
                         {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                    </select>
+                    <select style={s.input} value={form.difficulty} onChange={e => setForm({...form, difficulty: e.target.value as StreetBongoDifficulty})}>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
                     </select>
                     <input style={s.input} value={form.visual} placeholder="Visual label, optional" onChange={e => setForm({...form, visual: e.target.value})}/>
                     <label
@@ -357,13 +420,14 @@ export function AdminStreetBongo() {
                 <h2 style={s.h2}>{activeLabel} Question Bank</h2>
                 <div style={{overflowX: "auto"}}>
                     <table style={{width: "100%", borderCollapse: "collapse", fontSize: "0.82rem"}}>
-                        <thead><tr>{["Visual", "Question", "Answer", "Source", "Actions"].map(h => <th key={h} style={{textAlign: "left", padding: 10, background: "#f5f5ff", color: "#4361ee"}}>{h}</th>)}</tr></thead>
+                        <thead><tr>{["Visual", "Question", "Answer", "Level", "Source", "Actions"].map(h => <th key={h} style={{textAlign: "left", padding: 10, background: "#f5f5ff", color: "#4361ee"}}>{h}</th>)}</tr></thead>
                         <tbody>
                         {filteredQuestions.map(q => (
                             <tr key={q.docId}>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.visualImageUrl ? <img src={q.visualImageUrl} alt="" style={{width: 54, height: 38, objectFit: "contain", background: "#f8fafc", borderRadius: 6}}/> : q.visual ?? "-"}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7", minWidth: 240}}>{q.prompt}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.answer}</td>
+                                <td style={{padding: 10, borderBottom: "1px solid #eef0f7", textTransform: "capitalize", fontWeight: 800}}>{q.difficulty ?? "easy"}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>{q.source === "default" ? "Default" : "Admin"}</td>
                                 <td style={{padding: 10, borderBottom: "1px solid #eef0f7"}}>
                                     <div style={{display: "flex", gap: 8}}>
@@ -373,7 +437,7 @@ export function AdminStreetBongo() {
                                 </td>
                             </tr>
                         ))}
-                        {filteredQuestions.length === 0 && <tr><td colSpan={5} style={{padding: 18, color: "#6b7280", textAlign: "center"}}>No questions in this category yet.</td></tr>}
+                        {filteredQuestions.length === 0 && <tr><td colSpan={6} style={{padding: 18, color: "#6b7280", textAlign: "center"}}>No questions in this category yet.</td></tr>}
                         </tbody>
                     </table>
                 </div>
