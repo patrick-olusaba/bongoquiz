@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 export function PWAInstallBanner() {
     const [show, setShow] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
         if (window.matchMedia("(display-mode: standalone)").matches) return;
@@ -11,7 +10,7 @@ export function PWAInstallBanner() {
 
         const ua = navigator.userAgent;
         const ios = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
-        setIsIOS(ios);
+        if (ios) return;
 
         // Always show banner — install button only works on HTTPS with Chrome
         setShow(true);
@@ -50,15 +49,13 @@ export function PWAInstallBanner() {
             <div style={{ flex: 1 }}>
                 <div style={{ color: "#fff", fontWeight: 700, fontSize: "0.9rem" }}>Install Bongo Quiz</div>
                 <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginTop: 2 }}>
-                    {isIOS
-                        ? <>Tap <strong style={{ color: "#4da6ff" }}>Share ↑</strong> → <strong style={{ color: "#4da6ff" }}>Add to Home Screen</strong></>
-                        : deferredPrompt
-                            ? "Tap Install to add the app to your phone"
-                            : "Open in Chrome on HTTPS to install"
+                    {deferredPrompt
+                        ? "Tap Install to add the app to your phone"
+                        : "Open in Chrome on HTTPS to install"
                     }
                 </div>
             </div>
-            {!isIOS && deferredPrompt && (
+            {deferredPrompt && (
                 <button onClick={install} style={{
                     background: "#4da6ff", border: "none", color: "#fff",
                     fontSize: "0.85rem", fontWeight: 700, cursor: "pointer",

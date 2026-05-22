@@ -51,6 +51,7 @@ export default function StreetBongo() {
     const [answers, setAnswers] = useState<SessionAnswer[]>([]);
     const [answerVisible, setAnswerVisible] = useState(false);
     const [lastResult, setLastResult] = useState<AnswerResult | null>(null);
+    const [startingDifficulty, setStartingDifficulty] = useState<StreetBongoDifficulty | null>(null);
     const [saving, setSaving] = useState(false);
     const sessionSavedRef = useRef(false);
     const preloadedImageUrlsRef = useRef(new Set<string>());
@@ -124,25 +125,31 @@ export default function StreetBongo() {
     };
 
     const startChallenge = async (nextDifficulty: StreetBongoDifficulty) => {
-        const latestQuestions = await fetchQuestionBank().catch(() => questionBank);
-        const pool = latestQuestions.filter(q => {
-            const matchesCategory = category === "random" ? true : q.category === category;
-            return matchesCategory && (q.difficulty ?? "easy") === nextDifficulty;
-        });
-        if (pool.length < 1) {
-            alert("Add at least 1 " + nextDifficulty + " Street Bongo question in this category before starting.");
-            return;
+        if (startingDifficulty) return;
+        setStartingDifficulty(nextDifficulty);
+        try {
+            const latestQuestions = await fetchQuestionBank().catch(() => questionBank);
+            const pool = latestQuestions.filter(q => {
+                const matchesCategory = category === "random" ? true : q.category === category;
+                return matchesCategory && (q.difficulty ?? "easy") === nextDifficulty;
+            });
+            if (pool.length < 1) {
+                alert("Add at least 1 " + nextDifficulty + " Street Bongo question in this category before starting.");
+                return;
+            }
+            const selectedQuestions = buildQuestionLoop(pool, category, nextDifficulty);
+            await preloadQuestionImages(selectedQuestions, 5);
+            setDifficulty(nextDifficulty);
+            setQuestions(selectedQuestions);
+            setIndex(0);
+            setAnswers([]);
+            sessionSavedRef.current = false;
+            setAnswerVisible(false);
+            setLastResult(null);
+            setPhase("question");
+        } finally {
+            setStartingDifficulty(null);
         }
-        const selectedQuestions = buildQuestionLoop(pool, category, nextDifficulty);
-        await preloadQuestionImages(selectedQuestions, 5);
-        setDifficulty(nextDifficulty);
-        setQuestions(selectedQuestions);
-        setIndex(0);
-        setAnswers([]);
-        sessionSavedRef.current = false;
-        setAnswerVisible(false);
-        setLastResult(null);
-        setPhase("question");
     };
     const saveSession = async (finalAnswers: SessionAnswer[]) => {
         if (sessionSavedRef.current) return;
@@ -277,19 +284,25 @@ export default function StreetBongo() {
     if (phase === "level") {
         return (
             <main className="street-bongo">
-                <button className="sb-back" onClick={() => setPhase("category")}><ArrowLeft size={18}/> Categories</button>
+                <button className="sb-back" onClick={() => setPhase("category")} disabled={!!startingDifficulty}><ArrowLeft size={18}/> Categories</button>
                 <section className="sb-panel sb-select-panel">
                     <span className="sb-kicker">{selectedCategory.icon} {selectedCategory.label}</span>
                     <h1>Choose Level</h1>
                     <div className="sb-category-grid sb-level-grid">
                         {STREET_BONGO_LEVELS.map(level => (
-                            <button className="sb-category sb-level-card" key={level.id} onClick={() => startChallenge(level.id)}>
+                            <button className="sb-category sb-level-card" key={level.id} onClick={() => startChallenge(level.id)} disabled={!!startingDifficulty}>
                                 <span>{level.id === "easy" ? "1" : level.id === "medium" ? "2" : "3"}</span>
                                 <strong>{level.label}</strong>
                                 <small>{level.description}</small>
                             </button>
                         ))}
                     </div>
+                    {startingDifficulty && (
+                        <div className="sb-level-loading" role="status" aria-live="polite">
+                            <span className="sb-loader" aria-hidden="true"/>
+                            <strong>Loading {STREET_BONGO_LEVELS.find(level => level.id === startingDifficulty)?.label} images</strong>
+                        </div>
+                    )}
                 </section>
             </main>
         );
