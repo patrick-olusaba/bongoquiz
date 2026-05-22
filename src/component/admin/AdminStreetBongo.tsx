@@ -365,7 +365,7 @@ export function AdminStreetBongo() {
     };
 
     return (
-        <div>
+        <div style={{color:"black"}}>
             <div style={s.card}>
                 <h2 style={s.h2}>Street Bongo</h2>
                 <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
@@ -543,7 +543,7 @@ export function AdminStreetBongo() {
                     </table>
                 </div>
                 {filteredQuestions.length > pageSize && (
-                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12}}>
+                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12,color:"black"}}>
                         <span style={{fontSize: "0.82rem", color: "#6b7280", fontWeight: 700}}>
                             Showing {(currentQuestionPage - 1) * pageSize + 1}-{Math.min(currentQuestionPage * pageSize, filteredQuestions.length)} of {filteredQuestions.length}
                         </span>
