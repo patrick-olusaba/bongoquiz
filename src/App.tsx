@@ -16,6 +16,7 @@ const AdminView     = lazy(() => import("./component/admin/AdminView.tsx").then(
 const SummaryView   = lazy(() => import("./component/summary/SummaryView.tsx").then(m => ({ default: m.SummaryView })));
 const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPapers.tsx").then(m => ({ default: m.KCSEPastPapers })));
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
+const StreetBongoAdminRoute = lazy(() => import("./component/admin/StreetBongoAdminRoute.tsx"));
 const SupportView    = lazy(() => import("./component/support/SupportView.tsx").then(m => ({ default: m.SupportView })));
 const ContactSupport = lazy(() => import("./component/support/ContactSupport.tsx").then(m => ({ default: m.ContactSupport })));
 const AdminSupport   = lazy(() => import("./component/support/AdminSupport.tsx").then(m => ({ default: m.AdminSupport })));
@@ -128,6 +129,7 @@ function App() {
                 <Route path="/kcse-admin"  element={<KCSEAdminRoute />} />
                 <Route path="/bible-quiz"   element={<BibleQuiz />} />
                 <Route path="/bible-admin" element={<AdminView initialTab="biblequiz" />} />
+                <Route path="/street-bongo-admin" element={<StreetBongoAdminRoute />} />
                 <Route path="/biology-quiz" element={<BiologyQuiz />} />
                 <Route path="/math-quiz"    element={<MathQuiz />} />
                 <Route path="/general-knowledge" element={<GeneralKnowledge />} />
