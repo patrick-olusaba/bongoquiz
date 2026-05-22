@@ -88,14 +88,29 @@ function SummaryRoute() {
 
 function LoadingScreen() {
     return (
-        <div style={{
-            position: 'fixed', inset: 0,
-            background: 'radial-gradient(ellipse at 30% 40%, #0f0035 0%, #000 45%, #0a001a 100%)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', zIndex: 9999
-        }}>
-            <div style={{ width: '60px', height: '60px', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid #FFD700', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', fontFamily: 'Segoe UI, sans-serif', letterSpacing: '1px' }}>Loading...</p>
-            <style>{`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>
+        <div className="loader-main">
+
+
+                <div className="app-loader-orbit" aria-hidden="true">
+                    <span/>
+                </div>
+
+            <style>{`
+                .app-loader { position:fixed; inset:0; z-index:9999; min-height:100dvh; display:grid; place-items:center; padding:22px; box-sizing:border-box; color:#fff; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:repeating-linear-gradient(90deg,rgba(125,211,252,.055) 0 1px,transparent 1px 92px),repeating-linear-gradient(0deg,rgba(255,211,61,.045) 0 1px,transparent 1px 92px),linear-gradient(135deg,#090014,#180024 48%,#03111c); }
+                .app-loader-board { position:relative; width:min(100%,440px); min-height:270px; padding:clamp(20px,4vw,34px); border:1px solid rgba(125,211,252,.28); border-radius:8px; box-sizing:border-box; display:grid; align-content:center; gap:24px; overflow:hidden; background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.035)),rgba(5,8,24,.76); box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 28px 84px rgba(0,0,0,.46); }
+                .app-loader-board::before { content:""; position:absolute; inset:12px; border:1px solid rgba(255,211,61,.14); border-radius:6px; pointer-events:none; }
+                .app-loader-brand { position:relative; display:grid; grid-template-columns:88px minmax(0,1fr); align-items:center; gap:16px; }
+                .app-loader-brand img { width:88px; height:88px; object-fit:contain; border:1px solid rgba(255,211,61,.32); border-radius:8px; background:rgba(0,0,0,.28); box-shadow:0 12px 30px rgba(0,0,0,.3); }
+                .app-loader-brand span { display:block; width:fit-content; margin-bottom:8px; padding:6px 9px; border-radius:6px; background:#7dd3fc; color:#04111f; font-size:.72rem; font-weight:950; text-transform:uppercase; }
+                .app-loader-brand strong { display:block; font-size:clamp(1.8rem,7vw,3.15rem); line-height:.96; letter-spacing:0; text-shadow:0 4px 0 rgba(0,0,0,.28); }
+                .app-loader-orbit { position:relative; width:112px; height:112px; margin:auto; display:grid; place-items:center; border-radius:50%; background:radial-gradient(circle,rgba(6,182,212,.1),rgba(0,0,0,.12) 54%,transparent 70%); }
+                .app-loader-orbit::before { content:""; width:72px; height:72px; border:3px solid rgba(34,211,238,.92); border-right-color:rgba(34,211,238,.16); border-radius:50%; box-shadow:inset 0 0 18px rgba(34,211,238,.08),0 0 20px rgba(34,211,238,.28); }
+                .app-loader-orbit span { position:absolute; inset:8px; border:5px solid transparent; border-left-color:#00efff; border-bottom-color:#00efff; border-radius:50%; filter:drop-shadow(0 0 8px rgba(0,239,255,.95)); animation:app-loader-orbit 1.1s cubic-bezier(.55,.1,.35,.92) infinite; }
+                .app-loader-board p { position:relative; margin:0; color:rgba(255,255,255,.76); font-size:.92rem; font-weight:750; }
+                @keyframes app-loader-orbit { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+                @media (max-width:480px) { .app-loader { padding:14px; } .app-loader-board { min-height:248px; gap:18px; } .app-loader-brand { grid-template-columns:66px minmax(0,1fr); gap:12px; } .app-loader-brand img { width:66px; height:66px; } .app-loader-orbit { width:96px; height:96px; } .app-loader-orbit::before { width:62px; height:62px; } }
+            `}</style>
+        {/*</div>*/}
         </div>
     );
 }
