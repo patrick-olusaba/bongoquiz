@@ -128,7 +128,7 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
             />
 
             {/* Top Nav Bar */}
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1.5rem', alignItems: 'center', zIndex: 40, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0.45rem 0.1rem', alignItems: 'center', zIndex: 40, background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <img src={logo} alt="Biology Quiz Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />
                     {playerPhone && /^07\d{8}$/.test(playerPhone) && totalPoints > 0 && (
@@ -378,13 +378,13 @@ export const LandingPage: React.FC<Props> = ({ onStartGame, playerName, setPlaye
                 <div className="main-container" style={{ maxWidth: '480px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem 1rem 2rem' }}>
 
                     {/* Badge */}
-                    <div style={{ background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: '2rem', padding: '0.35rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                        <span style={{ fontSize: '1rem' }}>🧬</span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4ade80', letterSpacing: '2px', textTransform: 'uppercase' }}>How well do you know Biology?</span>
-                    </div>
+                    {/*<div style={{ background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: '2rem', padding: '0.35rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>*/}
+                    {/*    <span style={{ fontSize: '1rem' }}>🧬</span>*/}
+                    {/*    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4ade80', letterSpacing: '2px', textTransform: 'uppercase' }}>How well do you know Biology?</span>*/}
+                    {/*</div>*/}
 
                     {/* Title */}
-                    <h1 style={{ margin: '0 0 0.25rem', lineHeight: 0.9, textAlign: 'center' }}>
+                    <h1 style={{ margin: '0 0 0.25rem', lineHeight: 0.9, textAlign: 'center',marginTop:"10px" }}>
                         <span style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', fontSize: 'clamp(3.5rem, 14vw, 6rem)', fontWeight: 900, color: '#4ade80', textShadow: '0 0 40px rgba(74,222,128,0.6), 0 4px 0 rgba(0,0,0,0.4)', letterSpacing: '-2px' }}>
                             {"BIOLOGY".split('').map((char, i) => (
                                 <motion.span key={i}

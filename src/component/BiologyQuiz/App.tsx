@@ -14,7 +14,7 @@ export default function App() {
 
     return (
         <>
-        <div className="app-wrapper">
+        <div className="app-wrapper bio-app-wrapper">
             <AviatorBackground />
             <>
                 {quizState.currentScreen === 'landing' && (

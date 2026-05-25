@@ -335,6 +335,7 @@ export function AdminQuestions() {
         });
         return Array.from(groups.values()).filter(g => g.length > 1);
     })();
+    const duplicateExtraCount = duplicateGroups.reduce((a, g) => a + g.length - 1, 0);
 
     // Category counts across all rounds
     const categoryCounts: { category: string; r1: number; r2: number; r3: number; total: number }[] = (() => {
@@ -389,6 +390,22 @@ export function AdminQuestions() {
         await batch.commit();
         setQs([]);
         setSelected(new Set());
+    };
+
+    const deleteDuplicateQuestions = async () => {
+        if (duplicateExtraCount === 0) return;
+        if (!confirm(`Delete ${duplicateExtraCount} duplicate question${duplicateExtraCount > 1 ? "s" : ""}? This will keep the first copy in each duplicate group.`)) return;
+
+        const idsToDelete = duplicateGroups.flatMap(group => group.slice(1).map(q => q.id!).filter(Boolean));
+        for (let i = 0; i < idsToDelete.length; i += 450) {
+            const batch = writeBatch(db);
+            idsToDelete.slice(i, i + 450).forEach(id => batch.delete(doc(db, "questions", id)));
+            await batch.commit();
+        }
+        idsToDelete.forEach(id => fetch(`${API}/api/admin/questions/${id}`, { method: "DELETE" }).catch(() => {}));
+        setQs(prev => prev.filter(q => !q.id || !idsToDelete.includes(q.id)));
+        setSelected(new Set());
+        clearQuestionsCache();
     };
 
     const bulkSetActive = async (active: boolean) => {
@@ -501,12 +518,18 @@ export function AdminQuestions() {
                 </button>
                 <button onClick={() => setTab("duplicates")}
                     style={{ ...s.btn, background: tab === "duplicates" ? "#dc2626" : "#f0f0f8", color: tab === "duplicates" ? "#fff" : "#444" }}>
-                    ⚠️ Duplicates {duplicateGroups.length > 0 && `(${duplicateGroups.reduce((a, g) => a + g.length - 1, 0)} extra)`}
+                    ⚠️ Duplicates {duplicateExtraCount > 0 && `(${duplicateExtraCount} extra)`}
                 </button>
                 <button onClick={() => setTab("categories")}
                     style={{ ...s.btn, background: tab === "categories" ? "#7c3aed" : "#f0f0f8", color: tab === "categories" ? "#fff" : "#444" }}>
                     📊 Categories ({categoryCounts.length})
                 </button>
+                {tab === "duplicates" && (
+                    <button onClick={deleteDuplicateQuestions} disabled={duplicateExtraCount === 0}
+                        style={{ ...s.btn, background: duplicateExtraCount > 0 ? "#b91c1c" : "#f0f0f8", color: duplicateExtraCount > 0 ? "#fff" : "#9ca3af", cursor: duplicateExtraCount > 0 ? "pointer" : "not-allowed" }}>
+                        🗑️ Delete All Duplicates
+                    </button>
+                )}
             </div>
 
             {tab === "categories" ? (

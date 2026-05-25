@@ -1,4 +1,4 @@
-import { type FC, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FC, useEffect, useRef, useState } from "react";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../../../firebase.ts";
 import type { Player } from "../types/type.ts";
@@ -188,21 +188,21 @@ const MainMenu: FC<MainMenuProps> = ({ player, onStartGame, onShowTutorial }) =>
 
         <div className="mm-cta-wrap">
           {/* Game flow cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, width: "100%", marginBottom: 14 }}>
+          <div className="mm-flow-grid">
             {[
               { step: "STEP 01", icon: "💳", title: "Pay & Enter", desc: "KES 20 via M-Pesa STK push", color: "#f43f5e" },
               { step: "STEP 02", icon: "📖", title: "Answer Fast", desc: "60s · +100 correct · −50 wrong", color: "#fbbf24" },
               { step: "STEP 03", icon: "🏆", title: "Climb Ranks", desc: "Score high · beat others · own the leaderboard", color: "#a78bfa" },
             ].map(c => (
-              <div key={c.step} style={{
-                background: "rgba(10,5,30,0.7)", border: `1px solid ${c.color}30`,
-                borderRadius: 16, padding: "12px 8px", textAlign: "center",
-                boxShadow: `0 4px 20px ${c.color}15`, backdropFilter: "blur(8px)",
-              }}>
-                <p style={{ color: c.color, fontSize: "0.55rem", fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase", margin: "0 0 6px" }}>{c.step}</p>
-                <div style={{ fontSize: "1.6rem", marginBottom: 4 }}>{c.icon}</div>
-                <p style={{ color: "#fff", fontSize: "0.75rem", fontWeight: 800, margin: "0 0 4px" }}>{c.title}</p>
-                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.65rem", margin: 0, lineHeight: 1.4 }}>{c.desc}</p>
+              <div
+                key={c.step}
+                className="mm-flow-card"
+                style={{ "--mm-flow-color": c.color } as CSSProperties}
+              >
+                <p className="mm-flow-step">{c.step}</p>
+                <div className="mm-flow-icon">{c.icon}</div>
+                <p className="mm-flow-title">{c.title}</p>
+                <p className="mm-flow-desc">{c.desc}</p>
               </div>
             ))}
           </div>

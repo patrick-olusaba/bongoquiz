@@ -214,6 +214,22 @@ function BQQuestions() {
         setShowConfirm(false);
     };
 
+    const deleteDuplicateQuestions = async () => {
+        if (extraCount === 0) return;
+        if (!auth.currentUser) return;
+        await auth.currentUser.getIdToken(true);
+        const confirmed = window.confirm(`Delete ${extraCount} duplicate question${extraCount > 1 ? "s" : ""}? This will keep the first copy in each duplicate group.`);
+        if (!confirmed) return;
+
+        const idsToDelete = dupGroups.flatMap(group => group.slice(1).map(q => q.id!).filter(Boolean));
+        for (let i = 0; i < idsToDelete.length; i += 450) {
+            const batch = writeBatch(db);
+            idsToDelete.slice(i, i + 450).forEach(id => batch.delete(doc(db, "bioQuizQuestions", id)));
+            await batch.commit();
+        }
+        setQuestions(prev => prev.filter(q => !q.id || !idsToDelete.includes(q.id)));
+    };
+
     const exportToCSV = () => {
         const csvContent = [
             "question,optionA,optionB,optionC,optionD,correct(A-D),category",
@@ -293,6 +309,12 @@ function BQQuestions() {
                     style={{ ...s.btn, background: qTab === "duplicates" ? "#dc2626" : "#f0f0f8", color: qTab === "duplicates" ? "#fff" : "#444" }}>
                     ⚠️ Duplicates {extraCount > 0 && `(${extraCount} extra)`}
                 </button>
+                {qTab === "duplicates" && (
+                    <button onClick={deleteDuplicateQuestions} disabled={extraCount === 0}
+                        style={{ ...s.btn, background: extraCount > 0 ? "#b91c1c" : "#f0f0f8", color: extraCount > 0 ? "#fff" : "#9ca3af", cursor: extraCount > 0 ? "pointer" : "not-allowed" }}>
+                        🗑️ Delete All Duplicates
+                    </button>
+                )}
             </div>
 
             {qTab === "duplicates" ? (
