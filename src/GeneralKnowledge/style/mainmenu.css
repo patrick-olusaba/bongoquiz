@@ -357,7 +357,6 @@
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .mm-content { padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); }
   .mm-title-emoji { font-size: clamp(52px, 18vw, 80px); }
   .mm-title-text { font-size: clamp(1.3rem, 7vw, 2rem); }
   .mm-subtitle { font-size: 0.85rem; margin-bottom: 16px; }
