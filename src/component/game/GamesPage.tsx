@@ -89,17 +89,17 @@ const GAMES = [
         new: false,
         timed: true
     },
-    {
-        label: 'Street Bongo',
-        poster: bongoPoster,
-        tag: 'NEW',
-        path: '/street-bongo',
-        desc: 'Fast host-led 2 out of 3 challenge for street shoots',
-        category: 'quiz',
-        hot: true,
-        new: true,
-        timed: true
-    },
+    // {
+    //     label: 'Street Bongo',
+    //     poster: bongoPoster,
+    //     tag: 'NEW',
+    //     path: '/street-bongo',
+    //     desc: 'Fast host-led 2 out of 3 challenge for street shoots',
+    //     category: 'quiz',
+    //     hot: true,
+    //     new: true,
+    //     timed: true
+    // },
     {
         label: 'General Knowledge',
         poster: gkPoster,
