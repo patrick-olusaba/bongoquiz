@@ -11,10 +11,24 @@ body, html {
 
 .app-container {
     min-height: 100vh;
-    min-height: 100dvh;
+    /*min-height: 100dvh;*/
     display: flex;
     flex-direction: column;
     color: #111827;
+}
+
+.connect-dots-shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+    .connect-dots-shell {
+        padding-bottom: 0;
+    }
 }
 
 /* Game container */
@@ -294,12 +308,72 @@ body, html {
     }
 }
 
+.level-complete-modal {
+    width: min(92%, 360px);
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.1);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.level-complete-kicker {
+    color: #6d28d9;
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
 .solved-text {
-    font-weight: bold;
+    font-weight: 900;
     font-size: 1.875rem;
     color: #16a34a;
-    margin-bottom: 1rem;
+    margin: 0;
     animation: bounce 1s infinite;
+}
+
+.level-complete-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    width: 100%;
+}
+
+.level-complete-stat {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    min-width: 0;
+    text-align: center;
+}
+
+.level-complete-stat-wide {
+    grid-column: 1 / -1;
+}
+
+.level-complete-stat span {
+    display: block;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+}
+
+.level-complete-stat strong {
+    color: #111827;
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 900;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
 }
 
 .next-button {

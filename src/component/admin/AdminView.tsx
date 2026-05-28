@@ -23,6 +23,7 @@ import {AdminMathQuiz} from "./AdminMathQuiz.tsx";
 import {AdminBioQuiz} from "./AdminBioQuiz.tsx";
 import {AdminGenQuiz} from "./AdminGenQuiz.tsx";
 import {AdminSudoku} from "./AdminSudoku.tsx";
+import {AdminConnectDots} from "./AdminConnectDots.tsx";
 import {AdminStreetBongo} from "./AdminStreetBongo.tsx";
 
 type AdminTab =
@@ -40,6 +41,7 @@ type AdminTab =
     | "bioquiz"
     | "genquiz"
     | "sudoku"
+    | "connectdots"
     | "streetbongo";
 
 const TABS: { id: AdminTab; label: string }[] = [
@@ -57,6 +59,7 @@ const TABS: { id: AdminTab; label: string }[] = [
     {id: "bioquiz", label: "🧬 Biology Quiz"},
     {id: "genquiz", label: "🌍 General Knowledge"},
     {id: "sudoku", label: "🧮 Sudoku"},
+    {id: "connectdots", label: "🔗 Connect Dots"},
     {id: "streetbongo", label: "🎤 Street Bongo"},
 ];
 
@@ -1605,7 +1608,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                     ))}
                     <div className="adm-sidebar-divider"/>
                     <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "streetbongo"].includes(t.id)).map(t => (
+                    {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => (
                         <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
                                 onClick={() => changeTab(t.id)}>
                             <span className="adm-dot"/>{t.label}
@@ -1625,7 +1628,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 ))}
                 <div className="adm-sidebar-divider"/>
                 <div className="adm-sidebar-label">Other Games</div>
-                {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "streetbongo"].includes(t.id)).map(t => (
+                {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => (
                     <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
                             onClick={() => changeTab(t.id)}>
                         <span className="adm-dot"/>{t.label}
@@ -1648,6 +1651,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 {tab === "bioquiz" && <AdminBioQuiz/>}
                 {tab === "genquiz" && <AdminGenQuiz/>}
                 {tab === "sudoku" && <AdminSudoku/>}
+                {tab === "connectdots" && <AdminConnectDots/>}
                 {tab === "streetbongo" && <AdminStreetBongo/>}
             </main>
         </div>

@@ -8,7 +8,9 @@ import React, {
 import { Settings, X, Volume2, VolumeX, Info } from "lucide-react";
 import { Instructions } from "./Instructions";
 import { GameCanvas } from "./GameCanvas";
-import { saveScoreToLeaderboard } from "../lib/leaderboard";
+import { saveScoreToLocalLeaderboard } from "../lib/leaderboard";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { collection, getDocs, getFirestore, limit, query, where } from "firebase/firestore";
 import {
   getExpectedNextNumber,
   isAdjacent,
@@ -20,12 +22,123 @@ import type { Point, LevelData } from "../types";
 import { useSoundEffects } from "../hooks/useSoundEffects";
 
 interface GameProps {
+  paidLevel: number;
   onClose?: () => void;
 }
 
-export const Game: React.FC<GameProps> = ({ onClose }) => {
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [currentStage, setCurrentStage] = useState(1);
+const normalizePhone07 = (phone: string) => {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.startsWith("254") && digits.length === 12) return "0" + digits.slice(3);
+  if (digits.startsWith("7") && digits.length === 9) return "0" + digits;
+  return digits;
+};
+
+const getConnectDotsUser = () => ({
+  name: localStorage.getItem("bongo_player_name") || "",
+  phone: normalizePhone07(localStorage.getItem("bongo_player_phone") || ""),
+});
+
+interface SavedConnectDotsProgress {
+  level: number;
+  stage: number;
+  score: number;
+  updatedAt: number;
+}
+
+interface CompletionStats {
+  level: number;
+  stage: number;
+  maxStages: number;
+  score: number;
+  mistakes: number;
+  hintsUsed: number;
+  isLevelComplete: boolean;
+}
+
+const readPositiveInt = (value: unknown, fallback: number) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+};
+
+const getProgressKey = (phone: string) => `connectDotsProgress:${phone || "guest"}`;
+
+const loadConnectDotsProgress = (paidLevel: number): SavedConnectDotsProgress | null => {
+  const user = getConnectDotsUser();
+  try {
+    const raw = localStorage.getItem(getProgressKey(user.phone));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedConnectDotsProgress>;
+    const level = readPositiveInt(parsed.level, paidLevel);
+
+    return {
+      level,
+      stage: readPositiveInt(parsed.stage, 1),
+      score: Math.max(0, Number(parsed.score ?? 0)),
+      updatedAt: Number(parsed.updatedAt ?? 0),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const saveConnectDotsProgress = (level: number, stage: number, score: number) => {
+  const user = getConnectDotsUser();
+  if (!user.phone) return;
+  localStorage.setItem(getProgressKey(user.phone), JSON.stringify({
+    level,
+    stage,
+    score: Math.max(0, Math.round(score)),
+    updatedAt: Date.now(),
+  }));
+};
+
+const getMaxStagesForLevel = (_level: number) => 10;
+
+const timestampToMillis = (value: any) => {
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (typeof value?.seconds === "number") return value.seconds * 1000;
+  return 0;
+};
+
+const loadServerConnectDotsProgress = async (phone: string): Promise<SavedConnectDotsProgress | null> => {
+  const phone07 = normalizePhone07(phone);
+  if (!/^07\d{8}$/.test(phone07)) return null;
+
+  const snap = await getDocs(query(
+      collection(getFirestore(), "connectDotsSessions"),
+      where("phone", "==", phone07),
+      limit(50),
+  ));
+
+  if (snap.empty) return null;
+
+  const latest = snap.docs
+      .map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          level: readPositiveInt(data.level, 1),
+          stage: readPositiveInt(data.stage, 1),
+          score: Math.max(0, Number(data.score ?? 0)),
+          playedAt: timestampToMillis(data.playedAt),
+        };
+      })
+      .sort((a, b) => b.playedAt - a.playedAt || b.level - a.level || b.stage - a.stage)[0];
+
+  const maxStages = getMaxStagesForLevel(latest.level);
+  if (latest.stage >= maxStages) return null;
+
+  return {
+    level: latest.level,
+    stage: latest.stage + 1,
+    score: latest.score,
+    updatedAt: Date.now(),
+  };
+};
+
+export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
+  const initialProgress = useMemo(() => loadConnectDotsProgress(Math.max(1, paidLevel)), [paidLevel]);
+  const [currentLevel, setCurrentLevel] = useState(() => initialProgress?.level ?? Math.max(1, paidLevel));
+  const [currentStage, setCurrentStage] = useState(() => initialProgress?.stage ?? 1);
 
   // Derive level instead of storing in state to avoid setState in effect
   const level = useMemo(
@@ -43,24 +156,9 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [showSolved, setShowSolved] = useState(false);
   const [showEarnedPopup, setShowEarnedPopup] = useState(false);
+  const [completionStats, setCompletionStats] = useState<CompletionStats | null>(null);
   const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
-  const [score, setScore] = useState<number>(() => {
-    const name = localStorage.getItem('sudokuPlayerName');
-    const phone = localStorage.getItem('sudokuPlayerPhone');
-    if (name && phone) {
-      try {
-        const data = localStorage.getItem('sudokuLeaderboard');
-        if (data) {
-          const lb = JSON.parse(data);
-          const existing = lb.find((p: { name: string; pts: number }) => p.name === name);
-          if (existing) return Number(existing.pts);
-        }
-      } catch (error) {
-        console.error('Failed to fetch leaderboard score', error);
-      }
-    }
-    return 0;
-  });
+  const [score, setScore] = useState<number>(() => initialProgress?.score ?? 0);
   const [isMuted, setIsMuted] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
@@ -74,6 +172,36 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
   const lastErrorRef = useRef(0);
   const prevLevelRef = useRef(level);
   const hasAwardedScoreRef = useRef(false);
+  const savedStageRef = useRef<Set<string>>(new Set());
+  const hintsUsedRef = useRef(0);
+  const mistakesRef = useRef(0);
+
+  useEffect(() => {
+    if (initialProgress) return;
+
+    let cancelled = false;
+    const user = getConnectDotsUser();
+    loadServerConnectDotsProgress(user.phone)
+        .then((serverProgress) => {
+          if (cancelled || !serverProgress) return;
+          saveConnectDotsProgress(serverProgress.level, serverProgress.stage, serverProgress.score);
+          localStorage.setItem("connectDotsNextLevel", String(serverProgress.level));
+          setCurrentLevel(serverProgress.level);
+          setCurrentStage(serverProgress.stage);
+          setScore(serverProgress.score);
+          setPath(getInitialPath(generateLevel(serverProgress.level, serverProgress.stage)));
+          setShowSolved(false);
+          setCompletionStats(null);
+          hasAwardedScoreRef.current = false;
+        })
+        .catch((error) => {
+          console.error("Failed to restore Connect Dots progress", error);
+        });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getInitialPath, initialProgress]);
 
   const {
     playConnectSound,
@@ -82,14 +210,19 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
     playLevelCompleteSound,
   } = useSoundEffects(isMuted);
 
-  // Sync score to leaderboard
+  // Keep a local cache for instant leaderboard fallback; authoritative scores are saved via Cloud Functions.
   useEffect(() => {
-    const name = localStorage.getItem('sudokuPlayerName');
-    const phone = localStorage.getItem('sudokuPlayerPhone');
-    if (name && phone) {
-      saveScoreToLeaderboard(name, phone, score);
+    const user = getConnectDotsUser();
+    if (user.name && user.phone) {
+      saveScoreToLocalLeaderboard(user.name, user.phone, score);
     }
   }, [score]);
+
+  const solved = isLevelSolved(path, level);
+
+  useEffect(() => {
+    if (!solved) saveConnectDotsProgress(currentLevel, currentStage, score);
+  }, [currentLevel, currentStage, score, solved]);
 
   // Keep pathRef in sync with path state
   useEffect(() => {
@@ -143,17 +276,49 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
     };
   }, []);
 
-  const solved = isLevelSolved(path, level);
 
   // Handle solved state and play sounds
   useEffect(() => {
+    const maxStagesCurrentLevel = 10;
     if (solved && !isDrawing) {
       if (!hasAwardedScoreRef.current) {
         hasAwardedScoreRef.current = true;
-        setScore((s: number) => s + 100);
+        const nextScore = score + 100;
+        const nextProgressLevel = currentStage >= maxStagesCurrentLevel ? currentLevel + 1 : currentLevel;
+        const nextProgressStage = currentStage >= maxStagesCurrentLevel ? 1 : currentStage + 1;
+        const nextProgressScore = currentStage >= maxStagesCurrentLevel ? 0 : nextScore;
+        setScore(nextScore);
+        setCompletionStats({
+          level: currentLevel,
+          stage: currentStage,
+          maxStages: maxStagesCurrentLevel,
+          score: nextScore,
+          mistakes: mistakesRef.current,
+          hintsUsed: hintsUsedRef.current,
+          isLevelComplete: currentStage >= maxStagesCurrentLevel,
+        });
+        saveConnectDotsProgress(nextProgressLevel, nextProgressStage, nextProgressScore);
+
+        const user = getConnectDotsUser();
+        const stageKey = `${currentLevel}:${currentStage}:${nextScore}`;
+        if (user.name && /^0\d{9}$/.test(user.phone) && !savedStageRef.current.has(stageKey)) {
+          savedStageRef.current.add(stageKey);
+          const saveConnectDotsScore = httpsCallable(getFunctions(), "saveConnectDotsScore");
+          saveConnectDotsScore({
+            name: user.name,
+            phone: user.phone,
+            score: nextScore,
+            level: currentLevel,
+            stage: currentStage,
+            hintsUsed: hintsUsedRef.current,
+            mistakes: mistakesRef.current,
+          }).catch((error) => {
+            savedStageRef.current.delete(stageKey);
+            console.error("saveConnectDotsScore failed", error);
+          });
+        }
       }
 
-      const maxStagesCurrentLevel = 10 + (currentLevel - 1) * 5;
       if (currentStage >= maxStagesCurrentLevel) {
         playLevelCompleteSound();
       } else {
@@ -178,6 +343,7 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
     currentStage,
     playStageCompleteSound,
     playLevelCompleteSound,
+    score,
   ]);
 
   // Handle grid size calculation
@@ -209,16 +375,25 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
 
   const handleNextLevel = useCallback(() => {
     hasAwardedScoreRef.current = false;
-    const maxStagesCurrentLevel = 10 + (currentLevel - 1) * 5;
+    const maxStagesCurrentLevel = 10;
     if (currentStage >= maxStagesCurrentLevel) {
-      setCurrentLevel((l: number) => l + 1);
-      setCurrentStage(1);
-    } else {
-      setCurrentStage((s: number) => s + 1);
+      const nextLevel = currentLevel + 1;
+      localStorage.setItem('connectDotsNextLevel', String(nextLevel));
+      localStorage.removeItem('connectDotsPaidLevel');
+      setScore(0);
+      saveConnectDotsProgress(nextLevel, 1, 0);
+      setShowSolved(false);
+      setCompletionStats(null);
+      if (onClose) onClose();
+      return;
     }
-    // Reset showSolved when moving to next level/stage
+
+    const nextStage = currentStage + 1;
+    saveConnectDotsProgress(currentLevel, nextStage, score);
+    setCurrentStage(nextStage);
     setShowSolved(false);
-  }, [currentLevel, currentStage]);
+    setCompletionStats(null);
+  }, [currentLevel, currentStage, onClose, score]);
 
   const getPointFromEvent = useCallback(
       (e: React.PointerEvent): Point | null => {
@@ -307,7 +482,8 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
             if (now - lastErrorRef.current > 300) {
               playErrorSound();
               lastErrorRef.current = now;
-              setScore((s: number) => s - 50);
+              mistakesRef.current += 1;
+              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -340,7 +516,8 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
             if (now - lastErrorRef.current > 300) {
               playErrorSound();
               lastErrorRef.current = now;
-              setScore((s: number) => s - 50);
+              mistakesRef.current += 1;
+              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -355,7 +532,8 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
             if (now - lastErrorRef.current > 300) {
               playErrorSound();
               lastErrorRef.current = now;
-              setScore((s: number) => s - 50);
+              mistakesRef.current += 1;
+              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -504,7 +682,8 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
     );
 
     if (hintPoints.length > 0) {
-      setScore((s: number) => s - 50);
+      hintsUsedRef.current += 1;
+      setScore((s: number) => Math.max(0, s - 50));
       setHintCells(hintPoints);
       setTimeout(() => {
         setHintCells((currentHints) => {
@@ -516,7 +695,7 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
     }
   }, [showSolved, path, level]);
 
-  const maxStagesCurrentLevel = 10 + (currentLevel - 1) * 5;
+  const maxStagesCurrentLevel = 10;
 
   return (
       <div className="game-wrapper">
@@ -597,10 +776,37 @@ export const Game: React.FC<GameProps> = ({ onClose }) => {
 
             {showSolved && (
                 <div className="solved-overlay">
-                  <div className="solved-text">Solved!</div>
-                  <button onClick={handleNextLevel} className="next-button">
-                    {currentStage >= maxStagesCurrentLevel ? "Next level" : "Next"}
-                  </button>
+                  <div className="level-complete-modal">
+                    <div className="level-complete-kicker">
+                      {completionStats?.isLevelComplete ? "Level Complete" : "Stage Complete"}
+                    </div>
+                    <div className="solved-text">Solved!</div>
+                    <div className="level-complete-grid">
+                      <div className="level-complete-stat">
+                        <span>Total Score</span>
+                        <strong>{completionStats?.score ?? score}</strong>
+                      </div>
+                      <div className="level-complete-stat">
+                        <span>Mistakes</span>
+                        <strong>{completionStats?.mistakes ?? mistakesRef.current}</strong>
+                      </div>
+                      <div className="level-complete-stat">
+                        <span>Level</span>
+                        <strong>{completionStats?.level ?? currentLevel}</strong>
+                      </div>
+                      <div className="level-complete-stat">
+                        <span>Stage</span>
+                        <strong>{completionStats ? String(completionStats.stage) + "/" + String(completionStats.maxStages) : String(currentStage) + "/" + String(maxStagesCurrentLevel)}</strong>
+                      </div>
+                      <div className="level-complete-stat level-complete-stat-wide">
+                        <span>Hints Used</span>
+                        <strong>{completionStats?.hintsUsed ?? hintsUsedRef.current}</strong>
+                      </div>
+                    </div>
+                    <button onClick={handleNextLevel} className="next-button">
+                      {currentStage >= maxStagesCurrentLevel ? "Pay for level " + (currentLevel + 1) : "Next Stage"}
+                    </button>
+                  </div>
                 </div>
             )}
           </div>

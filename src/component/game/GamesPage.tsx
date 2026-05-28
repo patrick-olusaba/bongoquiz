@@ -6,6 +6,7 @@ import bongobanner from '../../assets/gamesbanners/bongoquizbanner.png';
 import biblebanner from '../../assets/gamesbanners/biblebanner.png';
 import mathbanner from '../../assets/gamesbanners/MathQuiz-banner.png';
 import sudokubanner from '../../assets/gamesbanners/sudokubanner.png';
+import ConnectDots from '../../assets/gamesposter/ConnectDots.png';
 import biologyPoster from '../../assets/gamesposter/biologyquizposter.png';
 import bongoPoster from '../../assets/gamesposter/bongoquizb.png';
 import mathPoster from '../../assets/gamesposter/MathQuiz.png';
@@ -35,17 +36,17 @@ const SliderGAMES = [
         timed: true
     },
     // { label: 'General Knowledge', poster: gkPoster, tag: 'NEW', path: '/general-knowledge', desc: 'Science, history, geography & more', category: 'quiz', new: true, timed: true },
-    {
-        label: 'Street Bongo',
-        poster: bongobanner,
-        tag: 'NEW',
-        path: '/street-bongo',
-        desc: '2 out of 3 street challenge · chicken meal prize',
-        category: 'quiz',
-        hot: true,
-        new: true,
-        timed: true
-    },
+    // {
+    //     label: 'Street Bongo',
+    //     poster: bongobanner,
+    //     tag: 'NEW',
+    //     path: '/street-bongo',
+    //     desc: '2 out of 3 street challenge · chicken meal prize',
+    //     category: 'quiz',
+    //     hot: true,
+    //     new: true,
+    //     timed: true
+    // },
     {
         label: 'Bible Quiz',
         poster: biblebanner,
@@ -88,6 +89,15 @@ const GAMES = [
         hot: true,
         new: false,
         timed: true
+    },
+    {
+        label: 'Sudoku',
+        poster: sudokuPoster,
+        tag: 'HOT',
+        path: '/sudoku',
+        desc: 'Logic puzzle · stages · score ranking',
+        category: 'puzzle',
+        new: true
     },
     // {
     //     label: 'Street Bongo',
@@ -140,10 +150,10 @@ const GAMES = [
         timed: true
     },
     {
-        label: 'Sudoku',
-        poster: sudokuPoster,
+        label: 'Connect Dots',
+        poster: ConnectDots,
         tag: 'NEW',
-        path: '/sudoku',
+        path: '/connect-dots',
         desc: 'Logic puzzle · stages · score ranking',
         category: 'puzzle',
         new: true

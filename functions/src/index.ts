@@ -40,7 +40,8 @@ type GameTimerName =
     | "math"
     | "biology"
     | "generalKnowledge"
-    | "sudoku";
+    | "sudoku"
+    | "connectDots";
 
 type GameTimerPhase =
     | "session"
@@ -69,6 +70,7 @@ const DEFAULT_TIMER_SECONDS: Record<GameTimerName, Partial<Record<GameTimerPhase
     biology: { session: 60, question: 30, payment: 90 },
     generalKnowledge: { session: 60, question: 30, payment: 90 },
     sudoku: { payment: 90 },
+    connectDots: { payment: 90 },
 };
 
 const MAX_TIMER_SECONDS = 60 * 60;
@@ -100,7 +102,7 @@ function getTimerState(startedAtMs: number, durationSeconds: number, nowMs = Dat
 }
 
 export const startGameTimer = functions.https.onCall(async (data: StartGameTimerData) => {
-    const validGames: GameTimerName[] = ["bongo", "bible", "math", "biology", "generalKnowledge", "sudoku"];
+    const validGames: GameTimerName[] = ["bongo", "bible", "math", "biology", "generalKnowledge", "sudoku", "connectDots"];
     const validPhases: GameTimerPhase[] = ["session", "round1", "round2", "round3", "question", "payment"];
 
     if (!validGames.includes(data.game)) {
@@ -924,148 +926,6 @@ export const calculateScore = functions.https.onCall(async (data: {
 
     return { score: Math.round(s) };
 });
-//
-// // ─────────────────────────────────────────────────────────────────────────────
-// // SUDOKU BACKEND
-// // ─────────────────────────────────────────────────────────────────────────────
-//
-// export const sudokuDeposit = functions.https.onRequest(async (req, res) => {
-//     res.set("Access-Control-Allow-Origin", "*");
-//     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-//     res.set("Access-Control-Allow-Headers", "Content-Type");
-//     if (req.method === "OPTIONS") { res.status(204).send(""); return; }
-//     if (req.method !== "POST")   { res.status(405).json({ error: "Method not allowed" }); return; }
-//
-//     try {
-//         const body = req.body;
-//
-//         if (body.trans_id) {
-//             if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
-//             const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
-//             const existing = await db.collection("sudokuPayments")
-//                 .where("phone", "==", phone).where("status", "==", "pending")
-//                 .orderBy("createdAt", "desc").limit(1).get();
-//             if (!existing.empty) {
-//                 await existing.docs[0].ref.update({ status: "paid", trans_id, trans_time, business_shortcode, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-//             } else {
-//                 await db.collection("sudokuPayments").add({ name, phone, amount, trans_id, trans_time, business_shortcode, status: "paid", createdAt: admin.firestore.FieldValue.serverTimestamp() });
-//             }
-//             res.status(200).json({ success: true }); return;
-//         }
-//
-//         const { name, phone, amount } = body;
-//         if (typeof name !== "string" || !name.trim())               { res.status(400).json({ error: "Invalid name" });   return; }
-//         if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
-//         if (typeof amount !== "number" || amount <= 0)              { res.status(400).json({ error: "Invalid amount" }); return; }
-//
-//         const trigger = "R1R2";
-//         const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
-//         const result = await new Promise<any>((resolve, reject) => {
-//             const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
-//             const request = http.request(options, (response) => { let data = ""; response.on("data", c => { data += c; }); response.on("end", () => { try { resolve(JSON.parse(data)); } catch { resolve({ raw: data }); } }); });
-//             request.on("error", reject); request.write(payload); request.end();
-//         });
-//
-//         const docRef = await db.collection("sudokuPayments").add({ name: name.trim(), phone, amount, trigger, status: "pending", checkoutRequestId: result?.CheckoutRequestID ?? null, createdAt: admin.firestore.FieldValue.serverTimestamp() });
-//         res.status(200).json({ success: true, paymentId: docRef.id, result });
-//     } catch (error) {
-//         console.error("sudokuDeposit error:", error);
-//         res.status(500).json({ error: "Internal error" });
-//     }
-// });
-//
-// interface SudokuScoreData { name: string; phone: string; score: number; difficulty: string; stage: number; hintsUsed: number; }
-//
-// export const saveSudokuScore = functions.https.onCall(
-//     async (data: SudokuScoreData) => {
-//         if (typeof data.name  !== "string" || !data.name.trim())             throw new functions.https.HttpsError("invalid-argument", "Invalid name");
-//         if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
-//         if (typeof data.score !== "number" || data.score < 0)                throw new functions.https.HttpsError("invalid-argument", "Invalid score");
-//
-//         const name   = data.name.trim().slice(0, 20);
-//         const msisdn = data.phone.replace(/^0/, "254");
-//
-//         const payload = JSON.stringify({ msisdn, score: data.score });
-//         await new Promise<void>((resolve) => {
-//             const options = { hostname: "142.93.47.187", port: 2027, path: "/api/savewebscore", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
-//             const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
-//             req.on("error", () => resolve()); req.write(payload); req.end();
-//         });
-//
-//         await db.collection("sudokuSessions").add({
-//             name, phone: data.phone, score: data.score,
-//             difficulty: data.difficulty, stage: data.stage, hintsUsed: data.hintsUsed,
-//             playedAt: admin.firestore.FieldValue.serverTimestamp(),
-//         });
-//
-//         const lbRef = db.collection("sudokuLeaderboard").doc(data.phone);
-//         const lbSnap = await lbRef.get();
-//         if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < data.score) {
-//             await lbRef.set({ name, phone: data.phone, score: data.score, playedAt: admin.firestore.FieldValue.serverTimestamp() });
-//         }
-//         return { success: true };
-//     }
-// );
-//
-// // Sudoku puzzle generator helpers (server-side)
-// function _shuffle<T>(arr: T[]): T[] {
-//     for (let i = arr.length - 1; i > 0; i--) {
-//         const j = Math.floor(Math.random() * (i + 1));
-//         [arr[i], arr[j]] = [arr[j], arr[i]];
-//     }
-//     return arr;
-// }
-//
-// function _isValid(board: (number | null)[][], r: number, c: number, num: number): boolean {
-//     for (let i = 0; i < 9; i++) {
-//         if (board[r][i] === num || board[i][c] === num) return false;
-//     }
-//     const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-//     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
-//         if (board[br + i][bc + j] === num) return false;
-//     }
-//     return true;
-// }
-//
-// function _fill(board: (number | null)[][]): boolean {
-//     for (let r = 0; r < 9; r++) {
-//         for (let c = 0; c < 9; c++) {
-//             if (board[r][c] === null) {
-//                 for (const num of _shuffle([1,2,3,4,5,6,7,8,9])) {
-//                     if (_isValid(board, r, c, num)) {
-//                         board[r][c] = num;
-//                         if (_fill(board)) return true;
-//                         board[r][c] = null;
-//                     }
-//                 }
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
-// }
-//
-// function _generatePuzzle(clues: number): { puzzle: (number|null)[][], solution: number[][] } {
-//     const solution: (number|null)[][] = Array.from({ length: 9 }, () => Array(9).fill(null));
-//     _fill(solution);
-//     const puzzle = solution.map(row => [...row]) as (number|null)[][];
-//     const cells = _shuffle(Array.from({ length: 81 }, (_, i) => i));
-//     let removed = 0;
-//     for (const idx of cells) {
-//         if (removed >= 81 - clues) break;
-//         puzzle[Math.floor(idx / 9)][idx % 9] = null;
-//         removed++;
-//     }
-//     return { puzzle, solution: solution as number[][] };
-// }
-//
-// export const generateSudokuPuzzle = functions.https.onCall(
-//     async (data: { difficulty: string }) => {
-//         const cluesMap: Record<string, number> = { Easy: 36, Medium: 30, Hard: 24 };
-//         const clues = cluesMap[data.difficulty] ?? 30;
-//         return _generatePuzzle(clues);
-//     }
-// );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUDOKU BACKEND
@@ -1143,6 +1003,93 @@ export const saveSudokuScore = functions.https.onCall(
         const lbSnap = await lbRef.get();
         if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < data.score) {
             await lbRef.set({ name, phone: data.phone, score: data.score, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        return { success: true };
+    }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONNECT DOTS BACKEND
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const connectDotsDeposit = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+    if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
+
+    try {
+        const body = req.body;
+
+        if (body.trans_id) {
+            if (!isValidCallback(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
+            const { name, phone, amount, trans_id, trans_time, business_shortcode } = body;
+            const existing = await db.collection("connectDotsPayments")
+                .where("phone", "==", phone).where("status", "==", "pending")
+                .orderBy("createdAt", "desc").limit(1).get();
+            if (!existing.empty) {
+                await existing.docs[0].ref.update({ status: "paid", trans_id, trans_time, business_shortcode, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+            } else {
+                await db.collection("connectDotsPayments").add({ name, phone, amount, trans_id, trans_time, business_shortcode, status: "paid", createdAt: admin.firestore.FieldValue.serverTimestamp() });
+            }
+            res.status(200).json({ success: true }); return;
+        }
+
+        const { name, phone, amount } = body;
+        if (typeof name !== "string" || !name.trim())               { res.status(400).json({ error: "Invalid name" });   return; }
+        if (typeof phone !== "string" || !/^254\d{9}$/.test(phone)) { res.status(400).json({ error: "Invalid phone" });  return; }
+        if (typeof amount !== "number" || amount <= 0)              { res.status(400).json({ error: "Invalid amount" }); return; }
+
+        const trigger = "R1R2";
+        const payload = JSON.stringify({ name: name.trim(), phone, amount, trigger });
+        const result = await new Promise<any>((resolve, reject) => {
+            const options = { hostname: "142.93.47.187", port: 2610, path: "/ngomma/bongo/stkrequest", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
+            const request = http.request(options, (response) => { let data = ""; response.on("data", c => { data += c; }); response.on("end", () => { try { resolve(JSON.parse(data)); } catch { resolve({ raw: data }); } }); });
+            request.on("error", reject); request.write(payload); request.end();
+        });
+
+        const docRef = await db.collection("connectDotsPayments").add({ name: name.trim(), phone, amount, trigger, status: "pending", checkoutRequestId: result?.CheckoutRequestID ?? null, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+        res.status(200).json({ success: true, paymentId: docRef.id, result });
+    } catch (error) {
+        console.error("connectDotsDeposit error:", error);
+        res.status(500).json({ error: "Internal error" });
+    }
+});
+
+interface ConnectDotsScoreData { name: string; phone: string; score: number; level: number; stage: number; hintsUsed: number; mistakes: number; }
+
+export const saveConnectDotsScore = functions.https.onCall(
+    async (data: ConnectDotsScoreData) => {
+        if (typeof data.name  !== "string" || !data.name.trim())            throw new functions.https.HttpsError("invalid-argument", "Invalid name");
+        if (typeof data.phone !== "string" || !/^0\d{9}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+        if (typeof data.score !== "number" || data.score < 0)               throw new functions.https.HttpsError("invalid-argument", "Invalid score");
+        if (typeof data.level !== "number" || data.level < 1)               throw new functions.https.HttpsError("invalid-argument", "Invalid level");
+        if (typeof data.stage !== "number" || data.stage < 1)               throw new functions.https.HttpsError("invalid-argument", "Invalid stage");
+
+        const name = data.name.trim().slice(0, 20);
+        const score = Math.round(data.score);
+        const msisdn = data.phone.replace(/^0/, "254");
+        const payload = JSON.stringify({ msisdn, score });
+        await new Promise<void>((resolve) => {
+            const options = { hostname: "142.93.47.187", port: 2027, path: "/api/savewebscore", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } };
+            const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
+            req.on("error", () => resolve());
+            req.write(payload); req.end();
+        });
+
+        await db.collection("connectDotsSessions").add({
+            name, phone: data.phone, score,
+            level: Math.round(data.level), stage: Math.round(data.stage),
+            hintsUsed: Math.max(0, Math.round(data.hintsUsed || 0)),
+            mistakes: Math.max(0, Math.round(data.mistakes || 0)),
+            playedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const lbRef = db.collection("connectDotsLeaderboard").doc(data.phone);
+        const lbSnap = await lbRef.get();
+        if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < score) {
+            await lbRef.set({ name, phone: data.phone, score, level: Math.round(data.level), stage: Math.round(data.stage), playedAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         return { success: true };
     }

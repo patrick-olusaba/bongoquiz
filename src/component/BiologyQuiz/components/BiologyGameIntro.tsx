@@ -8,7 +8,7 @@ const BiologyGameIntro: FC<Props> = ({ onDone }) => {
     const [showLogo,  setShowLogo]  = useState(false);
     const [showTitle, setShowTitle] = useState(false);
     const [showSub,   setShowSub]   = useState(false);
-    const [showRays,  setShowRays]  = useState(false);
+    // const [showRays,  setShowRays]  = useState(false);
 
     useEffect(() => {
         const audio = new Audio(transitionSfx);
@@ -16,7 +16,7 @@ const BiologyGameIntro: FC<Props> = ({ onDone }) => {
         audio.play().catch(() => {});
 
         const timers = [
-            setTimeout(() => setShowRays(true),   50),
+            // setTimeout(() => setShowRays(true),   50),
             setTimeout(() => setShowLogo(true),  150),
             setTimeout(() => setShowTitle(true), 380),
             setTimeout(() => setShowSub(true),   620),

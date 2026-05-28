@@ -1,67 +1,236 @@
-import React, { useState } from 'react';
-import { User, Pencil, CreditCard, Medal, Target, Trophy, X, Phone, Info, Loader } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { User, Pencil, CreditCard, Medal, Target, Info, Loader } from 'lucide-react';
 import { LiveBackground } from './LiveBackground';
 import logoImage from '../assets/logo.png';
 import '../styles/styles.css';
 
-import { getLeaderboard } from '../lib/leaderboard';
-import type { LeaderboardEntry } from '../lib/leaderboard';
+// import { getLeaderboard } from '../lib/leaderboard';
+import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, where } from 'firebase/firestore';
+// import type { LeaderboardEntry } from '../lib/leaderboard';
 import { initAudio } from '../hooks/useSoundEffects';
+import { PlayerNameModal } from '../../game/Playernamemodal';
 
 interface LandingPageProps {
     onPlay: () => void;
 }
 
+const normalizePhone07 = (phone: string) => {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (digits.startsWith('254') && digits.length === 12) return '0' + digits.slice(3);
+    if (digits.startsWith('7') && digits.length === 9) return '0' + digits;
+    return digits;
+};
+
+const normalizePhone254 = (phone: string) => normalizePhone07(phone).replace(/^0/, '254');
+
+const getStoredName = () => localStorage.getItem('bongo_player_name') || '';
+const getStoredPhone = () => normalizePhone07(localStorage.getItem('bongo_player_phone') || '');
+
+const readPositiveLevel = (value: string | null) => {
+    const raw = Number(value || '1');
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
+};
+
+const getPendingLevel = () => readPositiveLevel(localStorage.getItem('connectDotsNextLevel'));
+const hasPaidPendingLevel = () => {
+    const paidLevel = localStorage.getItem('connectDotsPaidLevel');
+    return paidLevel !== null && readPositiveLevel(paidLevel) === getPendingLevel();
+};
+
+async function hasRestoredConnectDotsSession(phone: string) {
+    const phone07 = normalizePhone07(phone);
+    if (!/^07\d{8}$/.test(phone07)) return false;
+
+    const db = getFirestore();
+    const grantSnap = await getDoc(doc(db, 'grantedConnectDotsSessions', phone07));
+    if (grantSnap.exists()) return true;
+
+    const phone254 = normalizePhone254(phone07);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [connectDotsPaymentsSnap, sharedPaymentsSnap] = await Promise.all([
+        getDocs(query(
+            collection(db, 'connectDotsPayments'),
+            where('phone', '==', phone254),
+            where('status', '==', 'paid'),
+            limit(5),
+        )),
+        getDocs(query(
+            collection(db, 'payments'),
+            where('phone', '==', phone254),
+            where('status', '==', 'paid'),
+            where('game', '==', 'CONNECT_DOTS'),
+            limit(5),
+        )),
+    ]);
+
+    const paidDocs = [...connectDotsPaymentsSnap.docs, ...sharedPaymentsSnap.docs];
+    if (!paidDocs.length) return false;
+
+    const latest = paidDocs
+        .map(d => ({...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0)}))
+        .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime())[0];
+
+    if (latest._paidAt < since) return false;
+
+    const sessionsSnap = await getDocs(query(
+        collection(db, 'connectDotsSessions'),
+        where('phone', '==', phone07),
+        limit(10),
+    ));
+
+    return !sessionsSnap.docs.some(d => (d.data().playedAt?.toDate?.() ?? new Date(0)) > latest._paidAt);
+}
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
-    const [name, setName] = useState(() => localStorage.getItem('sudokuPlayerName') || '');
-    const [phone, setPhone] = useState(() => localStorage.getItem('sudokuPlayerPhone') || '');
+    const [name, setName] = useState(() => getStoredName());
+    const [phone, setPhone] = useState(() => getStoredPhone());
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+    const [paymentError, setPaymentError] = useState('');
+    const [hasPaidSession, setHasPaidSession] = useState(false);
+    // const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+    //
+    // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+    //
+    // const handleOpenLeaderboard = async () => {
+    //     setLeaderboard(await getLeaderboard());
+    //     setIsLeaderboardOpen(true);
+    // };
 
-    const [tempName, setTempName] = useState('');
-    const [tempPhone, setTempPhone] = useState('');
-    const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-
-    const handleOpenLeaderboard = () => {
-        setLeaderboard(getLeaderboard());
-        setIsLeaderboardOpen(true);
-    };
-
-    const handlePayClick = () => {
+    const handlePayClick = async () => {
         initAudio();
         setIsProcessingPayment(true);
-        setTimeout(() => {
+        setPaymentError('');
+        try {
+            const phone07 = normalizePhone07(phone);
+            const res = await fetch('https://us-central1-bongoquiz-23ad4.cloudfunctions.net/deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, phone: normalizePhone254(phone07), amount: 20, trigger: 'R1R2', game: 'CONNECT_DOTS' }),
+            }).then(r => r.json());
+
+            if (!res.paymentId) throw new Error(res.error || 'Payment failed');
+
+            const paidSince = new Date();
+            let confirmed = false;
+            let stopFallbackPolling: number | undefined;
+
+            const handleConfirmed = () => {
+                if (confirmed) return;
+                confirmed = true;
+                unsub();
+                if (stopFallbackPolling) window.clearInterval(stopFallbackPolling);
+                localStorage.setItem('connectDotsPaidLevel', String(getPendingLevel()));
+                setIsProcessingPayment(false);
+                setIsPaymentModalOpen(false);
+                onPlay();
+            };
+
+            const unsub = onSnapshot(doc(getFirestore(), 'payments', res.paymentId), snap => {
+                const data = snap.data();
+                if (data?.trans_id || data?.status === 'paid') handleConfirmed();
+            }, () => {});
+
+            const checkFallbackPayment = async () => {
+                const paidSnap = await getDocs(query(
+                    collection(getFirestore(), 'payments'),
+                    where('phone', '==', normalizePhone254(phone07)),
+                    where('status', '==', 'paid'),
+                    where('game', '==', 'CONNECT_DOTS'),
+                    limit(10),
+                )).catch(() => null);
+
+                const matched = paidSnap?.docs.some(d => {
+                    const data = d.data();
+                    const createdAt = data.createdAt?.toDate?.() ?? new Date(0);
+                    return Number(data.amount ?? 0) === 20 && createdAt >= paidSince;
+                });
+
+                if (matched) handleConfirmed();
+            };
+
+            stopFallbackPolling = window.setInterval(checkFallbackPayment, 2500);
+
+            setTimeout(() => {
+                if (stopFallbackPolling) window.clearInterval(stopFallbackPolling);
+                setIsProcessingPayment(current => {
+                    if (!current) return false;
+                    setPaymentError('Still waiting for payment confirmation. Keep this open or contact admin if you paid.');
+                    return false;
+                });
+            }, 90000);
+        } catch (error) {
+            setPaymentError(error instanceof Error ? error.message : 'Payment failed');
             setIsProcessingPayment(false);
-            setIsPaymentModalOpen(false);
-            onPlay();
-        }, 1000);
+        }
     };
 
-    const handlePlayClick = () => {
+    const handlePlayClick = async () => {
         initAudio();
-        if (!name || !phone) {
-            setTempName(name);
-            setTempPhone(phone);
+        const phone07 = normalizePhone07(phone);
+        if (!name || !/^07\d{8}$/.test(phone07)) {
             setIsEditModalOpen(true);
+        } else if (hasPaidPendingLevel()) {
+            onPlay();
+        } else if (hasPaidSession || await hasRestoredConnectDotsSession(phone07).catch(() => false)) {
+            setHasPaidSession(false);
+            localStorage.setItem('connectDotsPaidLevel', String(getPendingLevel()));
+            deleteDoc(doc(getFirestore(), 'grantedConnectDotsSessions', phone07)).catch(() => {});
+            onPlay();
         } else {
             setIsPaymentModalOpen(true);
         }
     };
 
-    const handleSaveProfile = () => {
+    const handleSaveProfile = (savedName: string, savedPhone: string) => {
         initAudio();
-        if (tempName && tempPhone) {
-            setName(tempName);
-            setPhone(tempPhone);
-            localStorage.setItem('sudokuPlayerName', tempName);
-            localStorage.setItem('sudokuPlayerPhone', tempPhone);
-            setIsEditModalOpen(false);
-            setIsPaymentModalOpen(true);
-        }
+        const phone07 = normalizePhone07(savedPhone);
+        setName(savedName.trim());
+        setPhone(phone07);
+        localStorage.setItem('bongo_player_name', savedName.trim());
+        localStorage.setItem('bongo_player_phone', phone07);
+        localStorage.setItem('bongo_last_activity', Date.now().toString());
+        setIsEditModalOpen(false);
+        setIsPaymentModalOpen(true);
     };
+
+    useEffect(() => {
+        const syncGlobalProfile = () => {
+            setName(getStoredName());
+            setPhone(getStoredPhone());
+        };
+
+        window.addEventListener('storage', syncGlobalProfile);
+        window.addEventListener('focus', syncGlobalProfile);
+        return () => {
+            window.removeEventListener('storage', syncGlobalProfile);
+            window.removeEventListener('focus', syncGlobalProfile);
+        };
+    }, []);
+
+    useEffect(() => {
+        const phone07 = normalizePhone07(phone);
+        if (!/^07\d{8}$/.test(phone07)) {
+            setHasPaidSession(false);
+            return;
+        }
+
+        let cancelled = false;
+        hasRestoredConnectDotsSession(phone07)
+            .then(hasSession => { if (!cancelled) setHasPaidSession(hasSession); })
+            .catch(() => { if (!cancelled) setHasPaidSession(false); });
+
+        const unsub = onSnapshot(doc(getFirestore(), 'grantedConnectDotsSessions', phone07), snap => {
+            if (snap.exists()) setHasPaidSession(true);
+        }, () => {});
+
+        return () => {
+            cancelled = true;
+            unsub();
+        };
+    }, [phone]);
 
     return (
         <div className="landing-container">
@@ -91,11 +260,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
                     <div className="user-pill">
                         <User size={16} className="user-icon" />
                         <span>{name} | {phone}</span>
-                        <button className="edit-btn" onClick={() => {
-                            setTempName(name);
-                            setTempPhone(phone);
-                            setIsEditModalOpen(true);
-                        }}>
+                        <button className="edit-btn" onClick={() => setIsEditModalOpen(true)}>
                             <Pencil size={14} />
                         </button>
                     </div>
@@ -129,18 +294,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
                 <div className="action-buttons">
                     <button className="btn-play-now" onClick={handlePlayClick}>
                         <Target size={20} />
-                        <span>PLAY NOW</span>
+                        <span>{getPendingLevel() > 1 ? `LEVEL ${getPendingLevel()}` : 'PLAY NOW'}</span>
                     </button>
 
-                    <button className="btn-leaderboard" onClick={handleOpenLeaderboard}>
-                        <Trophy size={18} className="text-yellow" />
-                        <span>LEADERBOARD</span>
-                    </button>
+                    {/*<button className="btn-leaderboard" onClick={handleOpenLeaderboard}>*/}
+                    {/*    <Trophy size={18} className="text-yellow" />*/}
+                    {/*    <span>LEADERBOARD</span>*/}
+                    {/*</button>*/}
                 </div>
 
                 {/* Footer info */}
                 <div className="landing-footer">
-                    Entry: KES 20 | 100-400 points per stage | -50 pts hint
+                    Entry: KES 20 per level | 100 points per stage | -50 pts hint
                 </div>
             </div>
 
@@ -151,14 +316,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
                         <div className="modal-icon-wrapper">
                             <CreditCard size={28} className="modal-icon text-white" />
                         </div>
-                        <h2 className="modal-title">Speed Quiz Ticket</h2>
+                        <h2 className="modal-title">Connect Dots Entry</h2>
                         <p className="modal-desc">
-                            Hi <strong>{name}!</strong> To start this round, please confirm payment of <strong>20/-</strong> via your mobile number.
+                            Hi <strong>{name}!</strong> To start Level <strong>{getPendingLevel()}</strong>, please confirm payment of <strong>20/-</strong> via your mobile number.
                         </p>
                         <div className="phone-prompt-box">
                             <div className="prompt-text">M-Pesa prompt will be sent to</div>
-                            <div className="prompt-phone">{phone}</div>
+                            <div className="prompt-phone">{normalizePhone07(phone)}</div>
                         </div>
+                        {paymentError && <p style={{ color: '#fca5a5', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>{paymentError}</p>}
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={() => setIsPaymentModalOpen(false)} disabled={isProcessingPayment}>CANCEL</button>
                             <button className="btn-pay" onClick={handlePayClick} disabled={isProcessingPayment}>
@@ -180,87 +346,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
             )}
 
             {isEditModalOpen && (
-                <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
-                    <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Edit Profile</h2>
-                            <button className="btn-close" onClick={() => setIsEditModalOpen(false)}>
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <p className="modal-desc">
-                            Your name shows on the leaderboard. Phone is used for M-Pesa.
-                        </p>
-
-                        <div className="form-group">
-                            <label>YOUR NAME</label>
-                            <div className="input-wrapper">
-                                <User size={16} className="input-icon" />
-                                <input
-                                    type="text"
-                                    value={tempName}
-                                    onChange={(e) => setTempName(e.target.value)}
-                                    placeholder="Name"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>PHONE NUMBER</label>
-                            <div className="input-wrapper">
-                                <Phone size={16} className="input-icon" />
-                                <input
-                                    type="text"
-                                    value={tempPhone}
-                                    onChange={(e) => setTempPhone(e.target.value)}
-                                    placeholder="0700..."
-                                />
-                            </div>
-                            <div className="input-hint">Used for M-Pesa payments (format: 0712345678 or 254712345678)</div>
-                        </div>
-
-                        <div className="modal-actions split">
-                            <button className="btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
-                            <button className="btn-primary" onClick={handleSaveProfile} disabled={!tempName || !tempPhone}>Save &amp; Play</button>
-                        </div>
-                    </div>
-                </div>
+                <PlayerNameModal
+                    currentName={name || 'Player'}
+                    currentPhone={phone}
+                    onSave={handleSaveProfile}
+                    onClose={() => setIsEditModalOpen(false)}
+                />
             )}
 
-            {isLeaderboardOpen && (
-                <div className="modal-overlay" onClick={() => setIsLeaderboardOpen(false)}>
-                    <div className="modal-content leaderboard-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Leaderboard</h2>
-                            <button className="btn-close" onClick={() => setIsLeaderboardOpen(false)}>
-                                <X size={18} />
-                            </button>
-                        </div>
+            {/*{isLeaderboardOpen && (*/}
+            {/*    <div className="modal-overlay" onClick={() => setIsLeaderboardOpen(false)}>*/}
+            {/*        <div className="modal-content leaderboard-modal" onClick={(e) => e.stopPropagation()}>*/}
+            {/*            <div className="modal-header">*/}
+            {/*                <h2 className="modal-title">Leaderboard</h2>*/}
+            {/*                <button className="btn-close" onClick={() => setIsLeaderboardOpen(false)}>*/}
+            {/*                    <X size={18} />*/}
+            {/*                </button>*/}
+            {/*            </div>*/}
 
-                        <div className="leaderboard-list">
-                            {leaderboard.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                                    No players yet. Play a game to see your name here!
-                                </div>
-                            ) : (
-                                leaderboard.map((item, idx) => (
-                                    <div key={item.id} className="leaderboard-item">
-                                        <div className="lb-rank">#{idx + 1}</div>
-                                        <div className="lb-details">
-                                            <div className="lb-name">{item.name}</div>
-                                            <div className="lb-phone">{item.phone}</div>
-                                        </div>
-                                        <div className="lb-stats">
-                                            <div className="lb-pts">{item.pts} pts</div>
-                                            <div className="lb-date">{item.date}</div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/*            <div className="leaderboard-list">*/}
+            {/*                {leaderboard.length === 0 ? (*/}
+            {/*                    <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>*/}
+            {/*                        No players yet. Play a game to see your name here!*/}
+            {/*                    </div>*/}
+            {/*                ) : (*/}
+            {/*                    leaderboard.map((item, idx) => (*/}
+            {/*                        <div key={item.id} className="leaderboard-item">*/}
+            {/*                            <div className="lb-rank">#{idx + 1}</div>*/}
+            {/*                            <div className="lb-details">*/}
+            {/*                                <div className="lb-name">{item.name}</div>*/}
+            {/*                                <div className="lb-phone">{item.phone}</div>*/}
+            {/*                            </div>*/}
+            {/*                            <div className="lb-stats">*/}
+            {/*                                <div className="lb-pts">{item.pts} pts</div>*/}
+            {/*                                <div className="lb-date">{item.date}</div>*/}
+            {/*                            </div>*/}
+            {/*                        </div>*/}
+            {/*                    ))*/}
+            {/*                )}*/}
+            {/*            </div>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*)}*/}
         </div>
     );
 };
