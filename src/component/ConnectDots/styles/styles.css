@@ -9,6 +9,7 @@ body, html {
     overscroll-behavior-y: none;
 }
 
+
 .app-container {
     min-height: 100vh;
     /*min-height: 100dvh;*/
