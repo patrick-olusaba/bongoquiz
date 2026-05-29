@@ -305,7 +305,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onPlay }) => {
 
                 {/* Footer info */}
                 <div className="landing-footer">
-                    Entry: KES 20 per level | 100 points per stage | -50 pts hint
+                    Entry: KES 20 per level | 100 points per stage | -25 pts hint
                 </div>
             </div>
 

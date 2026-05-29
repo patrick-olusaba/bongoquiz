@@ -483,7 +483,6 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
               playErrorSound();
               lastErrorRef.current = now;
               mistakesRef.current += 1;
-              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -517,7 +516,6 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
               playErrorSound();
               lastErrorRef.current = now;
               mistakesRef.current += 1;
-              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -533,7 +531,6 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
               playErrorSound();
               lastErrorRef.current = now;
               mistakesRef.current += 1;
-              setScore((s: number) => Math.max(0, s - 50));
             }
             const newErrorPath = [pt];
             errorPathRef.current = newErrorPath;
@@ -653,6 +650,7 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
 
   const handleHint = useCallback(() => {
     if (showSolved) return;
+    if (score <= 25) return;
     if (!level.solutionPath) return;
 
     const sp = level.solutionPath;
@@ -683,7 +681,7 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
 
     if (hintPoints.length > 0) {
       hintsUsedRef.current += 1;
-      setScore((s: number) => Math.max(0, s - 50));
+      setScore((s: number) => s - 25);
       setHintCells(hintPoints);
       setTimeout(() => {
         setHintCells((currentHints) => {
@@ -693,7 +691,7 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
         });
       }, 2500);
     }
-  }, [showSolved, path, level]);
+  }, [showSolved, score, path, level]);
 
   const maxStagesCurrentLevel = 10;
 
@@ -826,7 +824,7 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
               </button>
               <button
                   onClick={handleHint}
-                  disabled={showSolved}
+                  disabled={showSolved || score <= 25}
                   className="control-btn btn-hint"
               >
                 Hint
@@ -875,7 +873,7 @@ export const Game: React.FC<GameProps> = ({ paidLevel, onClose }) => {
                     <li>The line cannot cross itself or intersect.</li>
                     <li>The path must end exactly at the last numbered dot.</li>
                     <li>You earn 100 points for solving a puzzle.</li>
-                    <li>Using a hint will deduct 50 points from your total score.</li>
+                    <li>Using a hint will deduct 25 points from your total score.</li>
                   </ul>
                 </div>
               </div>
