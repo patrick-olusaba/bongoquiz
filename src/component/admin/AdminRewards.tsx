@@ -12,6 +12,7 @@ export type Quest = {
     targetCount: number;
     rewardPoints: number;
     active: boolean;
+    icon: string;
 };
 
 const BLANK_QUEST: Omit<Quest, "id"> = {
@@ -21,6 +22,7 @@ const BLANK_QUEST: Omit<Quest, "id"> = {
     targetCount: 5,
     rewardPoints: 100,
     active: true,
+    icon: "gamepad",
 };
 
 const s: Record<string, React.CSSProperties> = {
@@ -181,22 +183,36 @@ function QuestModal({ quest, onSave, onClose }: { quest: Quest, onSave: (q: Ques
                             </select>
                         </div>
                         <div>
-                            <label style={s.label}>Target Count</label>
-                            <input type="number" style={s.input} value={form.targetCount} onChange={e => setForm({ ...form, targetCount: parseInt(e.target.value) })} required />
+                            <label style={s.label}>Icon</label>
+                            <select style={s.input} value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })}>
+                                <option value="gamepad">Gamepad</option>
+                                <option value="sparkles">Sparkles</option>
+                                <option value="gift">Gift</option>
+                                <option value="coins">Coins</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="facebook">Facebook</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="clock">Clock</option>
+                                <option value="bell">Bell</option>
+                            </select>
                         </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                         <div>
+                            <label style={s.label}>Target Count</label>
+                            <input type="number" style={s.input} value={form.targetCount} onChange={e => setForm({ ...form, targetCount: parseInt(e.target.value) })} required />
+                        </div>
+                        <div>
                             <label style={s.label}>Reward Points</label>
                             <input type="number" style={s.input} value={form.rewardPoints} onChange={e => setForm({ ...form, rewardPoints: parseInt(e.target.value) })} required />
                         </div>
-                        <div>
-                            <label style={s.label}>Status</label>
-                            <select style={s.input} value={form.active ? "yes" : "no"} onChange={e => setForm({ ...form, active: e.target.value === "yes" })}>
-                                <option value="yes">Active</option>
-                                <option value="no">Inactive</option>
-                            </select>
-                        </div>
+                    </div>
+                    <div style={s.row}>
+                        <label style={s.label}>Status</label>
+                        <select style={s.input} value={form.active ? "yes" : "no"} onChange={e => setForm({ ...form, active: e.target.value === "yes" })}>
+                            <option value="yes">Active</option>
+                            <option value="no">Inactive</option>
+                        </select>
                     </div>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
                         <button type="button" style={{ ...s.btn, background: "#f1f5f9", color: "#475569" }} onClick={onClose}>Cancel</button>

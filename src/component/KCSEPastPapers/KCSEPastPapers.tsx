@@ -1,118 +1,421 @@
-import { useEffect, useMemo, useState } from "react";
+// import { useEffect, useMemo, useState } from "react";
+import {JSX, useEffect, useMemo, useState} from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.ts";
+import {
+  Search, BookOpen, Dna, FlaskConical, Globe, CheckCircle2,
+  ChevronRight, Home, LayoutGrid, Trophy, User, ArrowLeft,
+  // Target,
+  // Zap,
+  BarChart2, XCircle, FileText, ClipboardList,
+  RotateCcw, Play,
+  // Bell,
+  Download, Smartphone, ShieldCheck,
+  ArrowRight, Star,
+  // GraduationCap,
+  // Bot,
+  ChevronDown,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { type RevisionQuestion, type Difficulty,
+  // SUBJECTS,
+  DIFFICULTY_COLORS } from "./types.ts";
+import "./kcse.css";
 
-const PRICE_RANGE = "KSh 20-50";
+type View = "home" | "subject" | "quiz" | "results";
 
-const css = `
-html,body{overflow:auto!important;height:auto!important;display:block!important;place-items:unset!important}
-.kcse-root{min-height:100vh;background:#f4f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827}
-.kcse-topbar{background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20}.kcse-topbar-inner{max-width:1180px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:12px}.kcse-back{width:34px;height:34px;border:1px solid #e2e8f0;background:#fff;color:#111827;border-radius:8px;cursor:pointer;font-size:1rem;display:grid;place-items:center;flex:0 0 auto}.kcse-back:hover{border-color:#00a651;color:#00a651}.kcse-brand{min-width:0}.kcse-brand-title{font-weight:900;color:#00a651;font-size:1.05rem;line-height:1.1}.kcse-brand-sub{color:#64748b;font-size:0.78rem;margin-top:2px}
-.kcse-market{max-width:1180px;margin:0 auto;padding:18px}.kcse-hero{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;box-shadow:0 10px 30px rgba(15,23,42,.05)}.kcse-eyebrow{color:#047857;font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}.kcse-hero h1{margin:0;color:#111827;font-size:clamp(1.55rem,3vw,2.45rem);line-height:1.05;letter-spacing:0}.kcse-hero p{max-width:680px;margin:10px 0 0;color:#475569;font-size:.95rem;line-height:1.55}.kcse-price-pill{display:inline-flex;align-items:center;justify-content:center;min-width:160px;padding:16px 20px;border-radius:8px;background:#00a651;color:#fff;font-size:1.4rem;font-weight:900;box-shadow:0 12px 28px rgba(0,166,81,.22)}
-.kcse-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;max-width:620px}.kcse-stat{background:#e8f8ef;border:1px solid #c8efd8;border-radius:8px;padding:10px 12px}.kcse-stat strong{display:block;font-size:1rem;color:#047857}.kcse-stat span{display:block;color:#64748b;font-size:.74rem;margin-top:2px}
-.kcse-toolbar{margin-top:16px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:10px;align-items:center}.kcse-search,.kcse-select{height:40px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#111827;font:inherit;font-size:.9rem;outline:none}.kcse-search{padding:0 13px;min-width:0}.kcse-select{padding:0 34px 0 12px;cursor:pointer}.kcse-years{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.kcse-year-btn{padding:8px 15px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .15s}.kcse-year-btn:hover{border-color:#00a651;color:#00a651}.kcse-year-btn.active{background:#00a651;border-color:#00a651;color:#fff}
-.kcse-section{margin-top:22px}.kcse-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px}.kcse-section-title{font-size:1rem;font-weight:900;color:#111827;margin:0}.kcse-section-sub{color:#64748b;font-size:.82rem;margin-top:3px}.kcse-count{color:#047857;font-size:.82rem;font-weight:900;background:#e8f8ef;border:1px solid #c8efd8;border-radius:999px;padding:6px 10px;white-space:nowrap}.kcse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
-.kcse-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.06);display:flex;flex-direction:column;min-height:390px;transition:transform .15s,box-shadow .15s,border-color .15s}.kcse-card:hover{transform:translateY(-2px);border-color:#b7e4c7;box-shadow:0 14px 34px rgba(15,23,42,.1)}.kcse-card-thumb{width:100%;aspect-ratio:4/3;position:relative;overflow:hidden;background:linear-gradient(135deg,#f8fafc,#e2e8f0);border-bottom:1px solid #e2e8f0;flex-shrink:0}.kcse-card-thumb iframe{width:200%;height:200%;transform:scale(.5);transform-origin:top left;border:none;pointer-events:none;background:#fff}.kcse-doc-placeholder{height:100%;display:grid;place-items:center;color:#475569;font-weight:900;font-size:1.1rem}.kcse-card-badge{position:absolute;top:10px;left:10px;background:rgba(17,24,39,.82);color:#fff;font-size:.68rem;font-weight:900;padding:5px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kcse-card-price{position:absolute;right:10px;bottom:10px;background:#f97316;color:#fff;font-weight:900;font-size:.88rem;padding:7px 9px;border-radius:8px;box-shadow:0 8px 18px rgba(249,115,22,.25)}
-.kcse-card-body{padding:13px 13px 14px;display:flex;flex-direction:column;gap:10px;flex:1}.kcse-card-label{font-size:1rem;font-weight:900;color:#111827;line-height:1.25;margin:0}.kcse-card-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:#64748b;font-size:.8rem}.kcse-tag{border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:4px 8px;font-size:.74rem;font-weight:800;color:#475569}.kcse-card-desc{color:#475569;font-size:.82rem;line-height:1.45;margin:0;min-height:36px}.kcse-card-actions{display:grid;grid-template-columns:1fr 1.1fr;gap:8px;margin-top:auto}.kcse-btn-preview,.kcse-btn-buy{height:40px;border-radius:8px;font-size:.84rem;font-weight:900;cursor:pointer;font-family:inherit;white-space:nowrap}.kcse-btn-preview{border:1.5px solid #00a651;background:#fff;color:#00a651}.kcse-btn-preview:hover{background:#e8f8ef}.kcse-btn-buy{border:none;background:#f97316;color:#fff}.kcse-btn-buy:hover{background:#c2410c}
-.kcse-empty{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:44px 20px;text-align:center;color:#64748b;box-shadow:0 8px 24px rgba(15,23,42,.05)}.kcse-empty strong{display:block;color:#111827;font-size:1.05rem;margin-bottom:5px}.kcse-preview-overlay{position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:100;display:flex;flex-direction:column}.kcse-preview-bar{background:#fff;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;gap:12px}.kcse-preview-title{font-weight:900;font-size:.95rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kcse-preview-actions{display:flex;gap:8px;align-items:center;flex:0 0 auto}.kcse-preview-buy{padding:8px 13px;border-radius:8px;background:#f97316;color:#fff;font-size:.82rem;font-weight:900;border:none;cursor:pointer}.kcse-preview-close{width:34px;height:34px;background:#fff;border:1px solid #e2e8f0;font-size:1.15rem;cursor:pointer;border-radius:8px;display:grid;place-items:center;color:#111827}.kcse-preview-close:hover{background:#f8fafc}.kcse-preview-iframe{flex:1;border:none;width:100%}
-.kcse-buy-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}.kcse-buy-modal{background:#fff;border-radius:8px;padding:24px;max-width:380px;width:100%;text-align:left;box-shadow:0 24px 70px rgba(15,23,42,.24)}.kcse-buy-kicker{font-size:.75rem;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}.kcse-buy-title{font-size:1.2rem;font-weight:900;color:#111827;margin-bottom:5px}.kcse-buy-sub{font-size:.88rem;color:#475569;margin-bottom:18px}.kcse-buy-price{display:flex;align-items:baseline;gap:8px;color:#f97316;font-size:2rem;font-weight:950;margin-bottom:16px}.kcse-buy-price span{color:#64748b;font-size:.8rem;font-weight:700}.kcse-buy-confirm{width:100%;height:44px;border-radius:8px;border:none;background:#f97316;color:#fff;font-size:.95rem;font-weight:900;cursor:pointer;margin-bottom:10px}.kcse-buy-confirm:hover{background:#c2410c}.kcse-buy-cancel{width:100%;height:40px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;font-size:.9rem;font-weight:800;cursor:pointer;color:#475569}
-@media (max-width:760px){.kcse-market{padding:14px}.kcse-hero{grid-template-columns:1fr;padding:18px}.kcse-price-pill{width:100%;min-width:0}.kcse-stats{grid-template-columns:1fr}.kcse-toolbar{grid-template-columns:1fr}.kcse-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}.kcse-card{min-height:360px}.kcse-card-actions{grid-template-columns:1fr}.kcse-preview-bar{align-items:flex-start}.kcse-preview-actions{flex-direction:column;align-items:stretch}.kcse-preview-buy{height:34px}}
-`;
-
-type PaperType = "paper" | "paper1" | "paper2" | "paper3" | "answers";
-type TypeFilter = "all" | "questions" | "answers";
-
-const PAPER_TYPE_LABELS: Record<PaperType, string> = {
-    paper: "Question Paper",
-    paper1: "Paper 1",
-    paper2: "Paper 2",
-    paper3: "Paper 3",
-    answers: "Marking Scheme",
+const SUBJ_COLOR: Record<string, string> = {
+  Mathematics:"#2563eb", English:"#7c3aed", Biology:"#d97706",
+  Chemistry:"#0891b2", Physics:"#9333ea", Geography:"#059669",
+  CRE:"#16a34a", Kiswahili:"#dc2626", History:"#9333ea",
+  "Business Studies":"#0284c7", Agriculture:"#65a30d",
+  "Computer Studies":"#6366f1", "Home Science":"#ec4899", IRE:"#16a34a",
+};
+const SUBJ_BG: Record<string, string> = {
+  Mathematics:"#eff6ff", English:"#f5f3ff", Biology:"#fffbeb",
+  Chemistry:"#ecfeff", Physics:"#faf5ff", Geography:"#ecfdf5",
+  CRE:"#dcfce7", Kiswahili:"#fef2f2", History:"#faf5ff",
+  "Business Studies":"#e0f2fe", Agriculture:"#f7fee7",
+  "Computer Studies":"#eef2ff", "Home Science":"#fdf2f8", IRE:"#dcfce7",
 };
 
-interface Paper {
-    id: string;
-    subject: string;
-    year: number;
-    paperUrl: string;
-    fileName?: string;
-    answersUrl?: string;
-    type: PaperType;
+function SubjIcon({ subject, size = 22 }: { subject: string; size?: number }) {
+  const c = SUBJ_COLOR[subject] || "#00a651";
+  if (subject === "Biology") return <Dna size={size} color={c}/>;
+  if (subject === "Chemistry") return <FlaskConical size={size} color={c}/>;
+  if (subject === "Geography") return <Globe size={size} color={c}/>;
+  if (subject === "History") return <BarChart2 size={size} color={c}/>;
+  if (subject === "Mathematics") return <span style={{color:c,fontWeight:900,fontSize:size*0.7}}>x²</span>;
+  return <BookOpen size={size} color={c}/>;
 }
+//
+// const CATEGORIES = [
+//   { name:"Revision Papers", desc:"KCSE-style revision papers with marking schemes.", icon:<FileText size={28}/>, link:"Browse Papers →" },
+//   { name:"Topic Packs", desc:"In-depth revision packs for specific topics.", icon:<ClipboardList size={28}/>, link:"Browse Packs →" },
+//   { name:"Mock Exams", desc:"School, County & National mock examinations.", icon:<ClipboardList size={28}/>, link:"Browse Mocks →" },
+//   { name:"Prediction Papers", desc:"Handpicked prediction papers for 2026.", icon:<Target size={28}/>, link:"View Predictions →" },
+//   { name:"AI Paper Generator", desc:"Generate unique papers on any topic instantly.", icon:<Bot size={28}/>, link:"Generate Paper →" },
+// ];
+
+const POPULAR_SUBJECTS = ["Mathematics","Biology","Chemistry","Physics","English","Kiswahili","Geography","History"];
 
 export function KCSEPastPapers({ onBack }: { onBack: () => void }) {
-    const [papers, setPapers] = useState<Paper[]>([]);
-    const [years, setYears] = useState<number[]>([]);
-    const [selYear, setSelYear] = useState<number | null>(null);
-    const [subjectFilter, setSubjectFilter] = useState("all");
-    const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-    const [search, setSearch] = useState("");
-    const [preview, setPreview] = useState<{ url: string; title: string; paper: Paper } | null>(null);
-    const [buying, setBuying] = useState<Paper | null>(null);
+  const [questions, setQuestions] = useState<RevisionQuestion[]>([]);
+  const [view, setView] = useState<View>("home");
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
+  const [selYear, setSelYear] = useState<number | "all">("all");
+  const [quizQs, setQuizQs] = useState<RevisionQuestion[]>([]);
+  const [qIndex, setQIndex] = useState(0);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [timerOn, setTimerOn] = useState(false);
 
-    useEffect(() => {
-        getDocs(collection(db, "kcsePapers"))
-            .then(snap => {
-                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Paper));
-                const sorted = docs.sort((a, b) => b.year - a.year || a.subject.localeCompare(b.subject));
-                setPapers(sorted);
-                const uniqueYears = [...new Set(sorted.map(p => p.year))];
-                setYears(uniqueYears);
-                if (uniqueYears.length) setSelYear(uniqueYears[0]);
-            }).catch(() => {});
-    }, []);
+  useEffect(() => {
+    getDocs(collection(db, "kcseRevision"))
+      .then(snap => setQuestions(snap.docs.map(d => ({ id: d.id, ...d.data() } as RevisionQuestion))))
+      .catch(() => {});
+  }, []);
 
-    const subjects = useMemo(() => [...new Set(papers.map(p => p.subject))].sort(), [papers]);
-    const visiblePapers = papers.filter(paper => {
-        const query = search.trim().toLowerCase();
-        const matchesYear = selYear ? paper.year === selYear : true;
-        const matchesSubject = subjectFilter === "all" || paper.subject === subjectFilter;
-        const matchesType = typeFilter === "all" || (typeFilter === "answers" ? paper.type === "answers" : paper.type !== "answers");
-        const matchesSearch = !query || paper.subject.toLowerCase().includes(query) || paperTypeLabel(paper.type).toLowerCase().includes(query) || String(paper.year).includes(query);
-        return matchesYear && matchesSubject && matchesType && matchesSearch;
-    });
-    const questionPapers = visiblePapers.filter(p => p.type !== "answers");
-    const answerPapers = visiblePapers.filter(p => p.type === "answers");
-    const previewIsPdf = preview ? isPdfPaper(preview.paper) : false;
+  useEffect(() => {
+    if (!timerOn) return;
+    if (timeLeft === 0) { handleAnswer(null); return; }
+    const t = setTimeout(() => setTimeLeft(n => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timerOn, timeLeft]);
 
-    return (
-        <>
-            <style>{css}</style>
-            <div className="kcse-root">
-                <div className="kcse-topbar"><div className="kcse-topbar-inner"><button className="kcse-back" onClick={onBack} aria-label="Back">←</button><div className="kcse-brand"><div className="kcse-brand-title">KCSE Paper Market</div><div className="kcse-brand-sub">Past papers, marking schemes, and instant downloads</div></div></div></div>
-                <main className="kcse-market">
-                    <section className="kcse-hero"><div><div className="kcse-eyebrow">High school exam marketplace</div><h1>Buy KCSE past papers from {PRICE_RANGE}</h1><p>Browse papers by year, subject, and paper type. Preview the first page, then buy and download the document for revision.</p><div className="kcse-stats"><div className="kcse-stat"><strong>{papers.length}</strong><span>Available files</span></div><div className="kcse-stat"><strong>{subjects.length || "All"}</strong><span>Subjects covered</span></div><div className="kcse-stat"><strong>{years.length || "Latest"}</strong><span>Exam years</span></div></div></div><div className="kcse-price-pill">{PRICE_RANGE}</div></section>
-                    <section className="kcse-toolbar" aria-label="Paper filters"><input className="kcse-search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search subject, year, or paper type" /><select className="kcse-select" value={subjectFilter} onChange={event => setSubjectFilter(event.target.value)}><option value="all">All subjects</option>{subjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}</select><select className="kcse-select" value={typeFilter} onChange={event => setTypeFilter(event.target.value as TypeFilter)}><option value="all">All documents</option><option value="questions">Question papers</option><option value="answers">Marking schemes</option></select></section>
-                    <div className="kcse-years">{years.map(year => <button key={year} className={"kcse-year-btn" + (selYear === year ? " active" : "")} onClick={() => setSelYear(year)}>{year}</button>)}</div>
-                    {papers.length === 0 ? <div className="kcse-empty"><strong>No papers available yet</strong>Check back soon for KCSE papers and marking schemes.</div> : visiblePapers.length === 0 ? <div className="kcse-empty"><strong>No matching papers</strong>Try another year, subject, or document type.</div> : <>{questionPapers.length > 0 && <PaperSection title="Question Papers" subtitle="Paper 1, Paper 2, Paper 3, and full question papers" papers={questionPapers} onPreview={setPreview} onBuy={setBuying} />}{answerPapers.length > 0 && <PaperSection title="Marking Schemes" subtitle="Answers and marking guides for fast revision" papers={answerPapers} onPreview={setPreview} onBuy={setBuying} />}</>}
-                </main>
+  const subjects = useMemo(() => [...new Set(questions.map(q => q.subject))].sort(), [questions]);
+  const years = useMemo(() => [...new Set(questions.filter(q => q.subject === selectedSubject).map(q => q.year))].sort((a,b)=>b-a), [questions, selectedSubject]);
+  const subjectCount = (s: string) => questions.filter(q => q.subject === s).length;
+
+  const startQuiz = () => {
+    let pool = questions.filter(q => q.subject === selectedSubject);
+    if (difficulty !== "all") pool = pool.filter(q => q.difficulty === difficulty);
+    if (selYear !== "all") pool = pool.filter(q => q.year === selYear);
+    pool = pool.sort(() => Math.random() - 0.5).slice(0, 20);
+    if (!pool.length) return;
+    setQuizQs(pool); setQIndex(0); setScore(0); setChosen(null);
+    setAnswers([]); setTimeLeft(30); setTimerOn(true); setView("quiz");
+  };
+
+  const handleAnswer = (idx: number | null) => {
+    if (chosen !== null) return;
+    setTimerOn(false); setChosen(idx);
+    if (idx === quizQs[qIndex]?.answer) setScore(s => s + 1);
+    setAnswers(prev => [...prev, idx]);
+  };
+
+  const nextQ = () => {
+    if (qIndex + 1 >= quizQs.length) { setView("results"); return; }
+    setQIndex(i => i + 1); setChosen(null); setTimeLeft(30); setTimerOn(true);
+  };
+
+  const goHome = () => { setView("home"); setSelectedSubject(null); setTimerOn(false); };
+  const goSubject = (s: string) => { setSelectedSubject(s); setDifficulty("all"); setSelYear("all"); setView("subject"); };
+
+  return (
+    <div className="kcse-root">
+      {/* Navbar */}
+      <nav className="bq-nav">
+        <div className="bq-nav-inner">
+          <div className="bq-logo" onClick={goHome}>
+            <div className="bq-logo-icon"><BookOpen size={20}/></div>
+            <span className="bq-logo-name">Bongo<span>Quiz</span></span>
+          </div>
+          <div className="bq-nav-links">
+            {["Home","Revision Papers","Topic Packs","Mock Exams","Predictions","AI Paper Generator","Pricing","Blog"].map(l=>(
+              <span key={l} className="bq-nav-link">{l}{["Revision Papers","Topic Packs","Mock Exams","Predictions"].includes(l)&&<ChevronDown size={12}/>}</span>
+            ))}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginLeft:"auto"}}>
+            <div className="bq-search"><Search size={15} color="#9ca3af"/><input placeholder="Search papers, topics..."/><button className="bq-search-btn"><Search size={14}/></button></div>
+            <button className="bq-login-btn">Login</button>
+            <button className="bq-signup-btn">Sign Up</button>
+          </div>
+        </div>
+      </nav>
+
+      <AnimatePresence mode="wait">
+        {view === "home" && <HomeView key="home" subjects={subjects} questions={questions} subjectCount={subjectCount} onSelectSubject={goSubject} onBack={onBack}/>}
+        {view === "subject" && selectedSubject && <SubjectView key="sub" subject={selectedSubject} questions={questions} difficulty={difficulty} setDifficulty={setDifficulty} selYear={selYear} setSelYear={setSelYear} years={years} onStart={startQuiz} onBack={goHome}/>}
+        {view === "quiz" && <QuizView key="quiz" questions={quizQs} qIndex={qIndex} chosen={chosen} score={score} timeLeft={timeLeft} onAnswer={handleAnswer} onNext={nextQ} onBack={goHome}/>}
+        {view === "results" && <ResultsView key="res" questions={quizQs} answers={answers} score={score} onRetry={startQuiz} onHome={goHome}/>}
+      </AnimatePresence>
+
+      <div className="bq-disclaimer">Disclaimer: Revision and practice materials prepared by BongoQuiz and are not official KNEC examinations.</div>
+
+      <nav className="kcse-bottom-nav">
+        {([["home","Home",<Home size={22}/>],["subject","Subjects",<LayoutGrid size={22}/>],["results","Top",<Trophy size={22}/>],["account","Account",<User size={22}/>]] as [string,string,JSX.Element][]).map(([v,l,ic])=>(
+          <div key={v} className={`kcse-bottom-nav-item ${view===v?"active":""}`} onClick={()=>v==="home"&&goHome()}>{ic}<span>{l}</span></div>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function HomeView({ subjects, questions, subjectCount, onSelectSubject, onBack }: any) {
+  const [search, setSearch] = useState("");
+  const displaySubjects = (subjects.length ? subjects : POPULAR_SUBJECTS).slice(0, 6);
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+      {/* Hero */}
+      <div className="hv-hero">
+        <div className="hv-hero-inner">
+          <div>
+            <h1 style={{fontSize:"2.6rem",fontWeight:800,lineHeight:1.15,marginBottom:12,letterSpacing:"-0.02em"}}>
+              Practice & Master<br/>KCSE Revision<br/><span style={{color:"var(--primary)"}}>Instantly</span>
+            </h1>
+            <p style={{color:"var(--text-muted)",fontSize:"1rem",marginBottom:28,maxWidth:440,lineHeight:1.6}}>
+              Access top quality KCSE revision questions with instant feedback. Practice by subject, topic and difficulty and track your progress.
+            </p>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:36}}>
+              <button className="bq-btn-green" style={{display:"flex",alignItems:"center",gap:8,padding:"14px 28px",fontSize:"1rem"}} onClick={() => document.getElementById("subjects-section")?.scrollIntoView({behavior:"smooth"})}>
+                <Play size={18}/> Browse Subjects
+              </button>
+              <button className="bq-btn-outline" style={{display:"flex",alignItems:"center",gap:8,padding:"13px 28px",fontSize:"1rem"}}>
+                <BookOpen size={18}/> View Packages
+              </button>
             </div>
-            {preview && <div className="kcse-preview-overlay"><div className="kcse-preview-bar"><span className="kcse-preview-title">{preview.title}</span><div className="kcse-preview-actions"><button className="kcse-preview-buy" onClick={() => { setBuying(preview.paper); setPreview(null); }}>Download for KSh {paperPrice(preview.paper)}</button><button className="kcse-preview-close" onClick={() => setPreview(null)} aria-label="Close preview">×</button></div></div>{previewIsPdf ? <iframe className="kcse-preview-iframe" src={preview.url + "#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH"} title={preview.title} style={{ pointerEvents: "none" }} /> : <div className="kcse-preview-iframe" style={{ display: "grid", placeItems: "center", background: "#f9fafb", color: "#6b7280", padding: 24 }}>Word documents cannot be previewed here. Use Download after payment to open the file.</div>}</div>}
-            {buying && <div className="kcse-buy-overlay" onClick={() => setBuying(null)}><div className="kcse-buy-modal" onClick={event => event.stopPropagation()}><div className="kcse-buy-kicker">Secure document checkout</div><div className="kcse-buy-title">{buying.subject} {buying.year}</div><div className="kcse-buy-sub">{paperTypeLabel(buying.type)} · PDF download</div><div className="kcse-buy-price">KSh {paperPrice(buying)} <span>one-time download</span></div><button className="kcse-buy-confirm" onClick={() => { alert("M-Pesa payment coming soon!"); setBuying(null); }}>Pay via M-Pesa</button><button className="kcse-buy-cancel" onClick={() => setBuying(null)}>Cancel</button></div></div>}
-        </>
-    );
+            {/* Feature pills */}
+            <div style={{display:"flex",gap:28,flexWrap:"wrap"}}>
+              {[[<Download size={18}/>, "Instant Practice"],[<Smartphone size={18}/>, "Free to Start"],[<ShieldCheck size={18}/>, "KCSE Aligned"],[<ClipboardList size={18}/>, "By Subject & Year"]].map(([ic,t],i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:"0.82rem",fontWeight:700,color:"var(--text-muted)"}}>
+                  <span style={{color:"var(--primary)"}}>{ic as JSX.Element}</span>{t as string}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hero image */}
+          <div style={{flexShrink:0,position:"relative"}}>
+            <img src="/src/assets/KCSEPastPaper/hero-image.png" alt="Student studying with BongoQuiz" className="hv-hero-img"/>
+          </div>
+        </div>
+      </div>
+
+      {/* Features bar */}
+      <div className="hv-feats">
+        <div className="hv-feats-inner">
+          {[[<Download size={20}/>, "Instant Practice","Start right after signup"],[<Smartphone size={20}/>, "Free Access","Core questions are free"],[<ShieldCheck size={20}/>, "KCSE Aligned","Matched to KNEC syllabus"],[<ClipboardList size={20}/>, "By Subject & Year","Organized for easy navigation"]].map(([ic,t,d],i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,fontWeight:700,fontSize:"0.875rem"}}>
+              <span style={{color:"var(--primary)"}}>{ic as JSX.Element}</span>
+              <div><div>{t as string}</div><div style={{fontSize:"0.72rem",color:"var(--text-muted)",fontWeight:500}}>{d as string}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="hv-search">
+        <div style={{display:"flex",background:"white",border:"1px solid var(--border)",borderRadius:10,padding:8,boxShadow:"0 8px 24px rgba(0,0,0,0.04)"}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",padding:"0 16px",gap:12}}>
+            <Search size={20} color="#9ca3af"/>
+            <input placeholder="Search by subject, topic, or year..." value={search} onChange={e=>setSearch(e.target.value)}
+              style={{flex:1,border:"none",outline:"none",fontFamily:"inherit",fontSize:"1rem",padding:"10px 0"}}/>
+          </div>
+          <button className="bq-btn-green" style={{padding:"12px 32px",borderRadius:7,fontSize:"1rem"}}>Search</button>
+        </div>
+      </div>
+
+      {/* Popular Subjects */}
+      <div id="subjects-section" className="hv-subjects">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{fontWeight:800,fontSize:"1.2rem"}}>Popular Subjects</div>
+          <span style={{color:"var(--primary)",fontSize:"0.875rem",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>View all subjects <ArrowRight size={16}/></span>
+        </div>
+        <div className="hv-subjects-grid">
+          {displaySubjects.filter((s:string)=>s.toLowerCase().includes(search.toLowerCase())).map((s:string)=>{
+            const color=SUBJ_COLOR[s]||"#00a651", bg=SUBJ_BG[s]||"#f3f4f6", count=subjectCount(s);
+            return (
+              <motion.div key={s} whileHover={{y:-4}} onClick={()=>onSelectSubject(s)}
+                style={{border:"1px solid var(--border)",borderRadius:12,padding:"20px 12px",textAlign:"center",cursor:"pointer",background:"white",transition:"box-shadow 0.2s"}}>
+                <div style={{width:56,height:56,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}>
+                  <SubjIcon subject={s} size={26}/>
+                </div>
+                <div style={{fontWeight:800,fontSize:"0.9rem",marginBottom:4}}>{s}</div>
+                <div style={{fontSize:"0.72rem",color:"var(--text-muted)",marginBottom:6}}>{count} Questions</div>
+                <div style={{color,fontSize:"0.75rem",fontWeight:700}}>From KSh 50</div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* How it Works */}
+      <div className="hv-how">
+        <h2 style={{fontSize:"1.6rem",fontWeight:800,marginBottom:8}}>How it Works</h2>
+        <div style={{width:40,height:4,background:"var(--primary)",margin:"0 auto 48px",borderRadius:2}}/>
+        <div className="hv-steps">
+          <div className="hv-step-connector"/>
+          {[[<Search size={32}/>, "Browse","Search by subject, topic and year."],[<Smartphone size={32}/>, "Start Practice","Pick difficulty and begin instantly."],[<Download size={32}/>, "Get Feedback","Instant correct/wrong with explanation."],[<BookOpen size={32}/>, "Study & Excel","Review results and track progress."]].map(([ic,t,d],i)=>(
+            <div key={i} style={{position:"relative",zIndex:1}}>
+              <div style={{width:32,height:32,background:"var(--primary)",color:"white",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,margin:"0 auto 16px",fontSize:"0.9rem",border:"4px solid var(--bg-light)",boxShadow:"0 0 0 1px #d1d5db"}}>{i+1}</div>
+              <div style={{width:80,height:80,background:"white",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 20px rgba(0,0,0,0.06)",color:"var(--primary)"}}>{ic as JSX.Element}</div>
+              <div style={{fontWeight:800,fontSize:"1.1rem",marginBottom:6}}>{t as string}</div>
+              <div style={{fontSize:"0.875rem",color:"var(--text-muted)",maxWidth:180,margin:"0 auto",lineHeight:1.5}}>{d as string}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="hv-stats">
+        <div className="hv-stats-inner">
+          {[[<CheckCircle2 size={28}/>, "10,000+","Happy Students"],[<FileText size={28}/>, "5,000+","Practice Questions"],[<Star size={28}/>, "4.8/5","Student Rating"],[<ShieldCheck size={28}/>, "100%","KCSE Aligned"]].map(([ic,v,l],i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:16}}>
+              <span style={{color:"var(--primary)"}}>{ic as JSX.Element}</span>
+              <div><div style={{fontWeight:800,fontSize:"1.3rem"}}>{v as string}</div><div style={{fontSize:"0.85rem",color:"var(--text-muted)",fontWeight:600}}>{l as string}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={onBack} style={{display:"block",margin:"0 auto 40px",background:"none",border:"1px solid var(--border)",padding:"10px 24px",borderRadius:8,fontWeight:600,cursor:"pointer",color:"var(--text-muted)"}}>← Back to App</button>
+    </motion.div>
+  );
 }
 
-function PaperSection({ title, subtitle, papers, onPreview, onBuy }: { title: string; subtitle: string; papers: Paper[]; onPreview: (paper: { url: string; title: string; paper: Paper }) => void; onBuy: (paper: Paper) => void; }) {
-    return <section className="kcse-section"><div className="kcse-section-head"><div><h2 className="kcse-section-title">{title}</h2><div className="kcse-section-sub">{subtitle}</div></div><div className="kcse-count">{papers.length} listed</div></div><div className="kcse-grid">{papers.map(paper => <PaperCard key={paper.id} paper={paper} onPreview={onPreview} onBuy={onBuy} />)}</div></section>;
+function SubjectView({ subject, questions, difficulty, setDifficulty, selYear, setSelYear, years, onStart, onBack }: any) {
+  const pool = questions.filter((q: RevisionQuestion) =>
+    q.subject === subject &&
+    (difficulty === "all" || q.difficulty === difficulty) &&
+    (selYear === "all" || q.year === selYear)
+  );
+  const color = SUBJ_COLOR[subject] || "#00a651";
+
+  return (
+    <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0}} style={{maxWidth:700,margin:"0 auto",padding:"24px 20px 100px"}}>
+      <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--text-muted)",fontWeight:600,marginBottom:20}}>
+        <ArrowLeft size={16}/> Back
+      </button>
+      <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
+        <div style={{width:52,height:52,borderRadius:"50%",background:SUBJ_BG[subject]||"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center"}}><SubjIcon subject={subject} size={26}/></div>
+        <div><h1 style={{fontSize:"1.4rem",fontWeight:800,margin:0}}>{subject} Revision</h1><div style={{color:"var(--text-muted)",fontSize:"0.85rem"}}>{questions.filter((q:RevisionQuestion)=>q.subject===subject).length} questions available</div></div>
+      </div>
+
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:"0.8rem",fontWeight:700,color:"var(--text-muted)",marginBottom:8,textTransform:"uppercase"}}>Difficulty</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {(["all","easy","medium","hard"] as const).map(d=>(
+            <button key={d} onClick={()=>setDifficulty(d)} style={{padding:"7px 18px",borderRadius:20,border:"1.5px solid",fontWeight:700,fontSize:"0.82rem",cursor:"pointer",borderColor:difficulty===d?(d==="all"?color:DIFFICULTY_COLORS[d]):"var(--border)",background:difficulty===d?(d==="all"?color:DIFFICULTY_COLORS[d]):"white",color:difficulty===d?"white":"var(--text-muted)"}}>
+              {d==="all"?"All":d.charAt(0).toUpperCase()+d.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:"0.8rem",fontWeight:700,color:"var(--text-muted)",marginBottom:8,textTransform:"uppercase"}}>Year</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setSelYear("all")} style={{padding:"7px 18px",borderRadius:20,border:"1.5px solid",fontWeight:700,fontSize:"0.82rem",cursor:"pointer",borderColor:selYear==="all"?color:"var(--border)",background:selYear==="all"?color:"white",color:selYear==="all"?"white":"var(--text-muted)"}}>All Years</button>
+          {years.map((y:number)=>(
+            <button key={y} onClick={()=>setSelYear(y)} style={{padding:"7px 18px",borderRadius:20,border:"1.5px solid",fontWeight:700,fontSize:"0.82rem",cursor:"pointer",borderColor:selYear===y?color:"var(--border)",background:selYear===y?color:"white",color:selYear===y?"white":"var(--text-muted)"}}>{y}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{background:"var(--primary-light)",border:"1px solid #bbf7d0",borderRadius:12,padding:20,textAlign:"center"}}>
+        <div style={{fontSize:"2rem",fontWeight:800,color:"var(--primary)"}}>{Math.min(pool.length,20)}</div>
+        <div style={{fontSize:"0.85rem",color:"var(--text-muted)",marginBottom:16}}>questions (max 20 per session)</div>
+        <button onClick={onStart} disabled={!pool.length} style={{background:pool.length?"var(--primary)":"#d1d5db",color:"white",border:"none",padding:"13px 36px",borderRadius:10,fontWeight:800,fontSize:"1rem",cursor:pool.length?"pointer":"not-allowed",display:"inline-flex",alignItems:"center",gap:8}}>
+          <Play size={18}/> Start Practice
+        </button>
+      </div>
+    </motion.div>
+  );
 }
 
-function PaperCard({ paper, onPreview, onBuy }: { paper: Paper; onPreview: (paper: { url: string; title: string; paper: Paper }) => void; onBuy: (paper: Paper) => void; }) {
-    const isAnswers = paper.type === "answers";
-    const title = paper.subject + " " + paper.year + " " + paperTypeLabel(paper.type);
-    return <article className="kcse-card"><div className="kcse-card-thumb">{isPdfPaper(paper) ? <iframe src={paper.paperUrl + "#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH"} title={title + " preview"} /> : <div className="kcse-doc-placeholder">DOCX</div>}<span className="kcse-card-badge">{isAnswers ? "Answers" : paperTypeLabel(paper.type)}</span><span className="kcse-card-price">KSh {paperPrice(paper)}</span></div><div className="kcse-card-body"><h3 className="kcse-card-label">{paper.subject}</h3><div className="kcse-card-meta"><span className="kcse-tag">{paper.year}</span><span className="kcse-tag">{paperTypeLabel(paper.type)}</span><span className="kcse-tag">PDF</span></div><p className="kcse-card-desc">Preview the first page, then buy and download this {isAnswers ? "marking scheme" : "exam paper"} for revision.</p><div className="kcse-card-actions"><button className="kcse-btn-preview" onClick={() => onPreview({ url: paper.paperUrl, title, paper })}>{isPdfPaper(paper) ? "Preview" : "View"}</button><button className="kcse-btn-buy" onClick={() => onBuy(paper)}>Buy KSh {paperPrice(paper)}</button></div></div></article>;
+function QuizView({ questions, qIndex, chosen, score, timeLeft, onAnswer, onNext, onBack }: any) {
+  const q = questions[qIndex];
+  if (!q) return null;
+  const pct = ((qIndex + (chosen!==null?1:0)) / questions.length) * 100;
+  const timerColor = timeLeft>15?"var(--primary)":timeLeft>7?"#d97706":"#dc2626";
+
+  return (
+    <motion.div initial={{opacity:0,x:30}} animate={{opacity:1,x:0}} exit={{opacity:0}} style={{maxWidth:700,margin:"0 auto",padding:"16px 16px 100px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.75rem",fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>
+            <span>Q{qIndex+1}/{questions.length}</span><span>Score: {score}</span>
+          </div>
+          <div style={{background:"#e5e7eb",borderRadius:4,height:6}}><div style={{background:"var(--primary)",height:"100%",width:`${pct}%`,borderRadius:4,transition:"width 0.4s"}}/></div>
+        </div>
+        <div style={{width:44,height:44,position:"relative",flexShrink:0}}>
+          <svg width={44} height={44} style={{transform:"rotate(-90deg)"}}>
+            <circle cx={22} cy={22} r={18} fill="none" stroke="#e5e7eb" strokeWidth={4}/>
+            <circle cx={22} cy={22} r={18} fill="none" stroke={timerColor} strokeWidth={4} strokeDasharray={`${2*Math.PI*18}`} strokeDashoffset={`${2*Math.PI*18*(1-timeLeft/30)}`} style={{transition:"stroke-dashoffset 1s linear"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.78rem",fontWeight:800,color:timerColor}}>{timeLeft}</div>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {[q.subject,q.topic,q.difficulty,String(q.year)].map((t,i)=><span key={i} style={{background:"var(--bg-light)",color:"var(--text-muted)",padding:"3px 10px",borderRadius:20,fontSize:"0.72rem",fontWeight:700}}>{t}</span>)}
+      </div>
+
+      <div style={{background:"white",border:"1px solid var(--border)",borderRadius:12,padding:20,marginBottom:16,fontSize:"1rem",fontWeight:600,lineHeight:1.6}}>{q.question}</div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:9}}>
+        {q.options.map((opt: string, i: number) => {
+          const isCorrect = i===q.answer, isChosen = i===chosen, revealed = chosen!==null;
+          let bg="white",border="var(--border)",color="var(--text-main)";
+          if(revealed&&isCorrect){bg="#dcfce7";border="#16a34a";color="#15803d";}
+          else if(revealed&&isChosen&&!isCorrect){bg="#fee2e2";border="#dc2626";color="#b91c1c";}
+          return (
+            <button key={i} onClick={()=>!revealed&&onAnswer(i)} style={{background:bg,border:`1.5px solid ${border}`,borderRadius:10,padding:"13px 16px",textAlign:"left",fontWeight:600,fontSize:"0.92rem",cursor:revealed?"default":"pointer",display:"flex",alignItems:"center",gap:12,color,fontFamily:"inherit",transition:"all 0.2s"}}>
+              <span style={{width:28,height:28,borderRadius:"50%",background:revealed&&isCorrect?"#16a34a":revealed&&isChosen&&!isCorrect?"#dc2626":"var(--bg-light)",color:revealed&&(isCorrect||isChosen)?"white":"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:"0.78rem",flexShrink:0}}>
+                {revealed&&isCorrect?<CheckCircle2 size={14}/>:revealed&&isChosen?<XCircle size={14}/>:String.fromCharCode(65+i)}
+              </span>{opt}
+            </button>
+          );
+        })}
+      </div>
+
+      <AnimatePresence>
+        {chosen!==null&&(
+          <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} style={{marginTop:14}}>
+            {q.explanation&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"11px 14px",fontSize:"0.85rem",color:"#15803d",marginBottom:10}}><strong>Explanation:</strong> {q.explanation}</div>}
+            <button onClick={onNext} style={{width:"100%",background:"var(--primary)",color:"white",border:"none",padding:14,borderRadius:10,fontWeight:800,fontSize:"1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {qIndex+1<questions.length?<>Next <ChevronRight size={18}/></>:<>See Results <Trophy size={18}/></>}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 }
 
-function isPdfPaper(paper: Paper) {
-    return (paper.fileName || paper.paperUrl).toLowerCase().includes(".pdf");
-}
-
-function paperTypeLabel(type: PaperType) {
-    return PAPER_TYPE_LABELS[type] ?? "Question Paper";
-}
-
-function paperPrice(paper: Paper) {
-    if (paper.type === "answers") return 20;
-    if (paper.type === "paper3") return 50;
-    return 30;
+function ResultsView({ questions, answers, score, onRetry, onHome }: any) {
+  const pct = Math.round((score/questions.length)*100);
+  const [review, setReview] = useState(false);
+  const grade = pct>=80?"Excellent! 🏆":pct>=60?"Good job! 🎯":pct>=40?"Keep going! 📚":"Needs work 💪";
+  return (
+    <motion.div initial={{opacity:0,scale:0.97}} animate={{opacity:1,scale:1}} exit={{opacity:0}} style={{maxWidth:600,margin:"0 auto",padding:"24px 16px 100px"}}>
+      <div style={{background:"linear-gradient(135deg,#f0faf5,#e8f8ef)",border:"1px solid #bbf7d0",borderRadius:16,padding:"32px 20px",textAlign:"center",marginBottom:20}}>
+        <div style={{fontSize:"3rem",marginBottom:8}}>{pct>=80?"🏆":pct>=60?"🎯":"📚"}</div>
+        <div style={{fontSize:"3rem",fontWeight:900,color:"var(--primary)",lineHeight:1}}>{score}<span style={{fontSize:"1.4rem",color:"var(--text-muted)"}}>/{questions.length}</span></div>
+        <div style={{fontWeight:700,fontSize:"1.1rem",marginTop:4}}>{grade}</div>
+        <div style={{color:"var(--primary)",fontWeight:800,fontSize:"1.3rem"}}>{pct}%</div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+        <button onClick={onRetry} style={{background:"var(--primary)",color:"white",border:"none",padding:14,borderRadius:10,fontWeight:800,fontSize:"1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><RotateCcw size={18}/>Try Again</button>
+        <button onClick={()=>setReview(!review)} style={{background:"white",border:"1px solid var(--border)",padding:13,borderRadius:10,fontWeight:700,fontSize:"0.95rem",cursor:"pointer"}}>{review?"Hide":"Review"} Answers</button>
+        <button onClick={onHome} style={{background:"var(--bg-light)",border:"none",padding:13,borderRadius:10,fontWeight:700,fontSize:"0.95rem",cursor:"pointer",color:"var(--text-muted)"}}>Back to Home</button>
+      </div>
+      {review&&questions.map((q: RevisionQuestion,i: number)=>{
+        const ua=answers[i],ok=ua===q.answer;
+        return(
+          <div key={q.id} style={{border:`1.5px solid ${ok?"#bbf7d0":"#fecaca"}`,borderRadius:10,padding:14,background:ok?"#f0fdf4":"#fff5f5",marginBottom:10}}>
+            <div style={{display:"flex",gap:8,marginBottom:6}}>{ok?<CheckCircle2 size={16} color="#16a34a"/>:<XCircle size={16} color="#dc2626"/>}<span style={{fontWeight:600,fontSize:"0.88rem"}}>{q.question}</span></div>
+            <div style={{fontSize:"0.8rem",color:"#15803d"}}><strong>Correct:</strong> {q.options[q.answer]}</div>
+            {!ok&&ua!==null&&<div style={{fontSize:"0.8rem",color:"#b91c1c"}}><strong>Your answer:</strong> {q.options[ua]}</div>}
+            {!ok&&ua===null&&<div style={{fontSize:"0.8rem",color:"#b91c1c"}}>Time expired</div>}
+          </div>
+        );
+      })}
+    </motion.div>
+  );
 }

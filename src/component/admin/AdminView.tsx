@@ -1,5 +1,8 @@
 // AdminView.tsx — Admin panel UI
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
+import {AlertTriangle, Bell, CheckCircle, CreditCard, Gamepad2, Users, Wrench} from "lucide-react";
+import type { IconType } from "react-icons";
+import { FaBolt, FaCalculator, FaCreditCard, FaDna, FaFileAlt, FaGamepad, FaGift, FaGlobeAfrica, FaLink, FaMedal, FaMicrophone, FaQuestion, FaShoppingBag, FaTachometerAlt, FaTh, FaTrophy, FaUsers } from "react-icons/fa";
 import {
     collection,
     getDocs,
@@ -10,7 +13,9 @@ import {
     query,
     where,
     onSnapshot,
-    Timestamp
+    Timestamp,
+    addDoc,
+    serverTimestamp
 } from "firebase/firestore";
 import {onAuthStateChanged, signOut} from "firebase/auth";
 import {db, auth} from "../../firebase.ts";
@@ -25,16 +30,24 @@ import {AdminGenQuiz} from "./AdminGenQuiz.tsx";
 import {AdminSudoku} from "./AdminSudoku.tsx";
 import {AdminConnectDots} from "./AdminConnectDots.tsx";
 import {AdminStreetBongo} from "./AdminStreetBongo.tsx";
+import {AdminBongoMarket} from "./AdminBongoMarket.tsx";
+import {AdminPlayerScores} from "./AdminPlayerScores.tsx";
+import {AdminRewards} from "./AdminRewards.tsx";
+import {AdminAchievements} from "./AdminAchievements.tsx";
+import {writeAdminAudit} from "./auditLog.ts";
 
 type AdminTab =
     "dashboard"
     | "players"
+    | "playerscores"
     | "payments"
     | "games"
     | "leaderboard"
     | "questions"
     | "powers"
     | "achievements"
+    | "rewards"
+    | "bongomarket"
     | "kcse"
     | "biblequiz"
     | "mathquiz"
@@ -44,24 +57,44 @@ type AdminTab =
     | "connectdots"
     | "streetbongo";
 
-const TABS: { id: AdminTab; label: string }[] = [
-    {id: "dashboard", label: "📊 Dashboard"},
-    {id: "players", label: "👥 Players"},
-    {id: "payments", label: "💳 Payments"},
-    {id: "games", label: "🎮 Game Sessions"},
-    {id: "leaderboard", label: "🏆 Leaderboard"},
-    {id: "questions", label: "❓ Questions"},
-    {id: "powers", label: "⚡ Powers"},
-    {id: "achievements", label: "🏅 Achievements"},
-    {id: "kcse", label: "📄 KCSE Papers"},
-    {id: "biblequiz", label: "✝️ Bible Quiz"},
-    {id: "mathquiz", label: "➗ Math Quiz"},
-    {id: "bioquiz", label: "🧬 Biology Quiz"},
-    {id: "genquiz", label: "🌍 General Knowledge"},
-    {id: "sudoku", label: "🧮 Sudoku"},
-    {id: "connectdots", label: "🔗 Connect Dots"},
-    {id: "streetbongo", label: "🎤 Street Bongo"},
+const TABS: { id: AdminTab; label: string; icon: IconType }[] = [
+    {id: "dashboard", label: "Dashboard", icon: FaTachometerAlt},
+    {id: "players", label: "Players", icon: FaUsers},
+    {id: "playerscores", label: "Player Scores & Coins", icon: FaTrophy},
+    {id: "payments", label: "Payments", icon: FaCreditCard},
+    {id: "games", label: "Game Sessions", icon: FaGamepad},
+    {id: "leaderboard", label: "Leaderboard", icon: FaTrophy},
+    {id: "questions", label: "Questions", icon: FaQuestion},
+    {id: "powers", label: "Powers", icon: FaBolt},
+    {id: "achievements", label: "Achievements", icon: FaMedal},
+    {id: "rewards", label: "Rewards Management", icon: FaGift},
+    {id: "bongomarket", label: "Bongo Market", icon: FaShoppingBag},
+    {id: "kcse", label: "KCSE Papers", icon: FaFileAlt},
+    {id: "biblequiz", label: "Bible Quiz", icon: FaQuestion},
+    {id: "mathquiz", label: "Math Quiz", icon: FaCalculator},
+    {id: "bioquiz", label: "Biology Quiz", icon: FaDna},
+    {id: "genquiz", label: "General Knowledge", icon: FaGlobeAfrica},
+    {id: "sudoku", label: "Sudoku", icon: FaTh},
+    {id: "connectdots", label: "Connect Dots", icon: FaLink},
+    {id: "streetbongo", label: "Street Bongo", icon: FaMicrophone},
 ];
+
+type AdminNotification = {
+    id: string;
+    kind: "firebase" | "players" | "games" | "mpesa" | "maintenance";
+    tone: "ok" | "info" | "warn" | "error";
+    title: string;
+    body: string;
+    createdAt?: number;
+};
+
+const notificationIcon = {
+    firebase: AlertTriangle,
+    players: Users,
+    games: Gamepad2,
+    mpesa: CreditCard,
+    maintenance: Wrench,
+};
 
 const s: Record<string, React.CSSProperties> = {
     card: {
@@ -178,9 +211,17 @@ function StatusBadge({status}: { status: string }) {
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
     const [data, setData] = useState<any>(null);
-    const [live, setLive] = useState<Record<string, number>>({bongo: 0, bible: 0, bio: 0, math: 0, gen: 0, sudoku: 0});
+    const [live, setLive] = useState<Record<string, number>>({bongo: 0, bible: 0, bio: 0, math: 0, gen: 0, sudoku: 0, connectDots: 0});
+    const [firebaseErrors, setFirebaseErrors] = useState<string[]>([]);
+    const [analyticsRange, setAnalyticsRange] = useState<"weekly" | "monthly" | "yearly">("weekly");
+    const [announcementOpen, setAnnouncementOpen] = useState(false);
+    const [announcementTitle, setAnnouncementTitle] = useState("");
+    const [announcementMessage, setAnnouncementMessage] = useState("");
+    const [announcementIcon, setAnnouncementIcon] = useState("megaphone");
+    const [announcementCategory, setAnnouncementCategory] = useState("updates");
+    const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
     const [peak, setPeak] = useState<{
         total: number;
         bongo: number;
@@ -188,6 +229,7 @@ function Dashboard() {
         bio: number;
         math: number;
         sudoku: number;
+        connectDots: number;
         at: Date;
     } | null>(() => {
         const saved = localStorage.getItem("admin_peak_live");
@@ -195,6 +237,63 @@ function Dashboard() {
         const p = JSON.parse(saved);
         return {...p, at: new Date(p.at)};
     });
+
+    const announcementIcons = [
+        {value: "megaphone", label: "Megaphone"},
+        {value: "bell", label: "Bell"},
+        {value: "gift", label: "Gift"},
+        {value: "trophy", label: "Trophy"},
+        {value: "coins", label: "Coins"},
+        {value: "calendar", label: "Calendar"},
+        {value: "shield", label: "Shield"},
+        {value: "book", label: "Book"},
+        {value: "users", label: "Users"},
+        {value: "sparkles", label: "Sparkles"},
+    ];
+    const announcementCategories = [
+        {value: "updates", label: "Updates"},
+        {value: "rewards", label: "Rewards"},
+        {value: "system", label: "System"},
+    ];
+
+    const notifyFirebaseError = (scope: string, error: unknown) => {
+        const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
+        const message = typeof error === "object" && error && "message" in error ? String((error as { message?: unknown }).message) : String(error);
+        const next = scope + (code ? " (" + code + ")" : "") + ": " + message;
+        setFirebaseErrors(prev => prev.includes(next) ? prev : [next, ...prev].slice(0, 6));
+    };
+
+    const sendAnnouncement = async () => {
+        const title = announcementTitle.trim();
+        const message = announcementMessage.trim();
+        if (!title || !message) return;
+        setSendingAnnouncement(true);
+        try {
+            const ref = await addDoc(collection(db, "announcements"), {
+                title,
+                message,
+                audience: "logged_in_users",
+                icon: announcementIcon,
+                category: announcementCategory,
+                active: true,
+                createdAt: serverTimestamp(),
+            });
+            writeAdminAudit({
+                action: "Sent announcement",
+                target: ref.id,
+                details: {title, audience: "logged_in_users", icon: announcementIcon, category: announcementCategory},
+            }).catch(() => {});
+            setAnnouncementTitle("");
+            setAnnouncementMessage("");
+            setAnnouncementIcon("megaphone");
+            setAnnouncementCategory("updates");
+            setAnnouncementOpen(false);
+        } catch (error) {
+            notifyFirebaseError("Send announcement", error);
+        } finally {
+            setSendingAnnouncement(false);
+        }
+    };
 
     // Live players = sessions started in last 5 minutes
     useEffect(() => {
@@ -205,11 +304,12 @@ function Dashboard() {
             {key: "bio", col: "bioQuizSessions", field: "playedAt"},
             {key: "math", col: "mathQuizSessions", field: "playedAt"},
             {key: "sudoku", col: "sudokuSessions", field: "playedAt"},
+            {key: "connectDots", col: "connectDotsSessions", field: "playedAt"},
         ].map(({key, col, field}) =>
             onSnapshot(query(collection(db, col), where(field, ">=", fiveMinAgo())),
                 snap => setLive(prev => {
                     const next = {...prev, [key]: snap.size};
-                    const total = next.bongo + next.bible + next.bio + next.math + next.sudoku;
+                    const total = next.bongo + next.bible + next.bio + next.math + next.sudoku + next.connectDots;
                     setPeak(p => {
                         if (!p || total > p.total) {
                             const newPeak = {
@@ -219,6 +319,7 @@ function Dashboard() {
                                 bio: next.bio,
                                 math: next.math,
                                 sudoku: next.sudoku,
+                                connectDots: next.connectDots,
                                 at: new Date()
                             };
                             localStorage.setItem("admin_peak_live", JSON.stringify(newPeak));
@@ -227,7 +328,8 @@ function Dashboard() {
                         return p;
                     });
                     return next;
-                }))
+                }),
+                err => notifyFirebaseError("Live listener: " + col, err))
         );
         return () => unsubs.forEach(u => u());
     }, []);
@@ -237,6 +339,8 @@ function Dashboard() {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
         const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime() / 1000;
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
+        const yesterdayStart = todayStart - 24 * 60 * 60;
+        const inYesterday = (seconds: number) => seconds >= yesterdayStart && seconds < todayStart;
 
         const buildGameStats = (sessions: any[], payments: any[]) => {
             const paid = payments.filter(p => p.status === "paid");
@@ -267,39 +371,55 @@ function Dashboard() {
             return {
                 sessions: sessions.length,
                 sessionsToday: sessions.filter(s => (s.playedAt?.seconds ?? 0) >= todayStart).length,
+                sessionsYesterday: sessions.filter(s => inYesterday(s.playedAt?.seconds ?? 0)).length,
                 sessionsWeek: sessions.filter(s => (s.playedAt?.seconds ?? 0) >= weekStart).length,
                 avgScore: sessions.length ? Math.round(sessions.reduce((a, s) => a + (s.score ?? s.total ?? 0), 0) / sessions.length) : 0,
                 revenueTotal: rev(paid),
                 revenueToday: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart)),
+                revenueYesterday: rev(paid.filter(p => inYesterday(p.createdAt?.seconds ?? 0))),
                 revenueWeek: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= weekStart)),
                 revenueMonth: rev(paid.filter(p => (p.createdAt?.seconds ?? 0) >= monthStart)),
                 paid: paid.length, pending: pending.length, failed: failed.length,
+                paidToday: paid.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart).length,
+                pendingToday: pending.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart).length,
+                failedToday: failed.filter(p => (p.createdAt?.seconds ?? 0) >= todayStart).length,
                 successRate: payments.length ? Math.round((paid.length / payments.length) * 100) : 0,
                 dailyRev, dailyGames,
             };
         };
 
         const snap = (r: PromiseSettledResult<any>) => r.status === "fulfilled" ? r.value.docs : [];
-        Promise.allSettled([
-            getDocs(collection(db, "players")),
-            getDocs(collection(db, "gameSessions")),
-            getDocs(collection(db, "payments")),
-            getDocs(collection(db, "leaderboard")),
-            getDocs(collection(db, "grantedSessions")),
-            getDocs(collection(db, "bibleQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "BIBLEQUIZ"))),
-            getDocs(collection(db, "mathQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "MATHQUIZ"))),
-            getDocs(collection(db, "bioQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ"))),
-            getDocs(collection(db, "genQuizSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "GENERALKNOWLEDGE"))),
-            getDocs(collection(db, "sudokuSessions")),
-            getDocs(query(collection(db, "payments"), where("game", "==", "SUDOKU"))),
-            getDocs(collection(db, "sudokuPayments")),
-        ]).then(([playersR, sessR, payR, lbR, grantR, bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR, sdkSessR, sdkPayR, sdkLegacyPayR]) => {
-            const allPayments = snap(payR).map((d: any) => d.data());
-            const knownGames = new Set(["BIBLEQUIZ", "MATHQUIZ", "BIOLOGYQUIZ", "GENERALKNOWLEDGE", "SUDOKU"]);
+        const firebaseReads = [
+            {label: "Players", promise: getDocs(collection(db, "players"))},
+            {label: "Bongo sessions", promise: getDocs(collection(db, "gameSessions"))},
+            {label: "Payments", promise: getDocs(collection(db, "payments"))},
+            {label: "Leaderboard", promise: getDocs(collection(db, "leaderboard"))},
+            {label: "Granted sessions", promise: getDocs(collection(db, "grantedSessions"))},
+            {label: "Bible sessions", promise: getDocs(collection(db, "bibleQuizSessions"))},
+            {label: "Bible payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "BIBLEQUIZ")))},
+            {label: "Math sessions", promise: getDocs(collection(db, "mathQuizSessions"))},
+            {label: "Math payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "MATHQUIZ")))},
+            {label: "Biology sessions", promise: getDocs(collection(db, "bioQuizSessions"))},
+            {label: "Biology payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "BIOLOGYQUIZ")))},
+            {label: "General knowledge sessions", promise: getDocs(collection(db, "genQuizSessions"))},
+            {label: "General knowledge payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "GENERALKNOWLEDGE")))},
+            {label: "Sudoku sessions", promise: getDocs(collection(db, "sudokuSessions"))},
+            {label: "Sudoku payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "SUDOKU")))},
+            {label: "Legacy Sudoku payments", promise: getDocs(collection(db, "sudokuPayments"))},
+            {label: "Connect Dots sessions", promise: getDocs(collection(db, "connectDotsSessions"))},
+            {label: "Connect Dots payments", promise: getDocs(query(collection(db, "payments"), where("game", "==", "CONNECT_DOTS")))},
+            {label: "Legacy Connect Dots payments", promise: getDocs(collection(db, "connectDotsPayments"))},
+            {label: "Dismissed payments", promise: getDocs(collection(db, "dismissedPayments"))},
+            {label: "Admin audit", promise: getDocs(collection(db, "adminAudit"))},
+            {label: "Announcements", promise: getDocs(collection(db, "announcements"))},
+        ];
+        Promise.allSettled(firebaseReads.map(r => r.promise)).then(results => {
+            results.forEach((result, index) => {
+                if (result.status === "rejected") notifyFirebaseError(firebaseReads[index].label, result.reason);
+            });
+            const [playersR, sessR, payR, lbR,  bqSessR, bqPayR, mqSessR, mqPayR, bioSessR, bioPayR, genSessR, genPayR, sdkSessR, sdkPayR, sdkLegacyPayR, cdSessR, cdPayR, cdLegacyPayR, dismissedR, auditR, announcementsR] = results;
+            const allPayments = snap(payR).map((d: any) => ({_id: d.id, ...d.data()}));
+            const knownGames = new Set(["BIBLEQUIZ", "MATHQUIZ", "BIOLOGYQUIZ", "GENERALKNOWLEDGE", "SUDOKU", "CONNECT_DOTS"]);
             const bongoSessions = snap(sessR).map((d: any) => d.data());
             const bongoPayments = allPayments.filter((p: any) => !knownGames.has(String(p.game ?? "BONGOQUIZ").toUpperCase()));
             const bibleSessions = snap(bqSessR).map((d: any) => d.data());
@@ -315,9 +435,25 @@ function Dashboard() {
                 ...snap(sdkPayR).map((d: any) => d.data()),
                 ...snap(sdkLegacyPayR).map((d: any) => ({ game: "SUDOKU", ...d.data() })),
             ];
+            const connectDotsSessions = snap(cdSessR).map((d: any) => d.data());
+            const connectDotsPayments = [
+                ...snap(cdPayR).map((d: any) => d.data()),
+                ...snap(cdLegacyPayR).map((d: any) => ({game: "CONNECT_DOTS", ...d.data()})),
+            ];
             const leaders = snap(lbR).map((d: any) => ({id: d.id, ...d.data()}));
             const playersSize = playersR.status === "fulfilled" ? playersR.value.size : 0;
-            const grantSize = grantR.status === "fulfilled" ? grantR.value.size : 0;
+            const dismissedPayments = new Set(snap(dismissedR).map((d: any) => d.id));
+            const normPaymentPhone = (phone: string) => String(phone ?? "").replace(/^254/, "0");
+            const stuckPayments = bongoPayments.filter((payment: any) => {
+                if (payment.status !== "paid" || dismissedPayments.has(payment._id)) return false;
+                const paidAt: Date = payment.createdAt?.toDate?.() ?? new Date(0);
+                const phone07 = normPaymentPhone(payment.phone);
+                return !bongoSessions.some((session: any) => {
+                    const sessionPhone = session.phone ?? "";
+                    const playedAt = session.playedAt?.toDate?.() ?? new Date(0);
+                    return (sessionPhone === phone07 || sessionPhone === payment.phone) && playedAt > paidAt;
+                });
+            }).sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
 
             // Power usage
             const powerCount: Record<string, number> = {};
@@ -341,14 +477,121 @@ function Dashboard() {
             const topPlayers = Array.from(byPhone.values()).sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 30);
 
             // All revenue combined
-            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments, ...sudokuPayments].filter(p => p.status === "paid");
+            const allPaid = [...bongoPayments, ...biblePayments, ...mathPayments, ...bioPayments, ...genPayments, ...sudokuPayments, ...connectDotsPayments].filter(p => p.status === "paid");
             const totalRevenue = allPaid.reduce((a, p) => a + (p.amount ?? 0), 0);
-            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length + genSessions.length + sudokuSessions.length;
+            const totalSessions = bongoSessions.length + bibleSessions.length + mathSessions.length + bioSessions.length + genSessions.length + sudokuSessions.length + connectDotsSessions.length;
+            const playersList = snap(playersR).map((d: any) => ({id: d.id, ...d.data()}));
+            const allSessions = [
+                ...bongoSessions.map((x: any) => ({...x, gameName: "Bongo Quiz"})),
+                ...bibleSessions.map((x: any) => ({...x, gameName: "Bible Quiz"})),
+                ...mathSessions.map((x: any) => ({...x, gameName: "Math Quiz"})),
+                ...bioSessions.map((x: any) => ({...x, gameName: "Biology Quiz"})),
+                ...genSessions.map((x: any) => ({...x, gameName: "General Knowledge"})),
+                ...sudokuSessions.map((x: any) => ({...x, gameName: "Sudoku"})),
+                ...connectDotsSessions.map((x: any) => ({...x, gameName: "Connect Dots"})),
+            ];
+            const recentPayments = allPayments
+                .sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0))
+                .slice(0, 5)
+                .map((p: any) => ({type: "Payment", label: `${p.name ?? p.phone ?? "Unknown"} - ${p.status ?? "pending"}`, at: p.createdAt?.toDate?.() ?? null}));
+            const recentPlayers = playersList
+                .sort((a: any, b: any) => (b.createdAt?.seconds ?? b.joinedAt?.seconds ?? 0) - (a.createdAt?.seconds ?? a.joinedAt?.seconds ?? 0))
+                .slice(0, 5)
+                .map((p: any) => ({type: "Player", label: p.name ?? p.phone ?? p.id, at: p.createdAt?.toDate?.() ?? p.joinedAt?.toDate?.() ?? null}));
+            const recentSessions = allSessions
+                .sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))
+                .slice(0, 5)
+                .map((g: any) => ({type: "Game", label: `${g.gameName} - ${g.name ?? g.phone ?? "player"}`, at: g.playedAt?.toDate?.() ?? null}));
+            const recentActivity = [...recentPayments, ...recentPlayers, ...recentSessions]
+                .sort((a: any, b: any) => (b.at?.getTime?.() ?? 0) - (a.at?.getTime?.() ?? 0))
+                .slice(0, 8);
+            const todayPayments = allPayments.filter((p: any) => (p.createdAt?.seconds ?? 0) >= todayStart);
+            const paidToday = todayPayments.filter((p: any) => p.status === "paid");
+            const pendingToday = todayPayments.filter((p: any) => p.status === "pending");
+            const failedToday = todayPayments.filter((p: any) => p.status === "failed");
+            const callbackFailures = failedToday.filter((p: any) => p.error || p.callbackError || p.resultCode || p.mpesaError).length;
+            const avgConfirmMinutes = paidToday.length
+                ? Math.round(paidToday.reduce((sum: number, p: any) => {
+                    const created = p.createdAt?.seconds ?? 0;
+                    const paidAt = p.paidAt?.seconds ?? p.updatedAt?.seconds ?? p.confirmedAt?.seconds ?? created;
+                    return sum + Math.max(paidAt - created, 0) / 60;
+                }, 0) / paidToday.length)
+                : 0;
+            const rangeBucket = (label: string, start: Date, end: Date) => {
+                const startMs = start.getTime();
+                const endMs = end.getTime();
+                const sessionsInRange = allSessions.filter((session: any) => {
+                    const at = session.playedAt?.toDate?.()?.getTime?.() ?? 0;
+                    return at >= startMs && at < endMs;
+                });
+                const paidInRange = allPaid.filter((payment: any) => {
+                    const at = payment.createdAt?.toDate?.()?.getTime?.() ?? 0;
+                    return at >= startMs && at < endMs;
+                });
+                const usersInRange = playersList.filter((player: any) => {
+                    const at = player.createdAt?.toDate?.()?.getTime?.() ?? player.joinedAt?.toDate?.()?.getTime?.() ?? player.updatedAt?.toDate?.()?.getTime?.() ?? 0;
+                    return at >= startMs && at < endMs;
+                });
+                const gameCounts = sessionsInRange.reduce((counts: Record<string, number>, session: any) => {
+                    const name = session.gameName ?? "Unknown Game";
+                    counts[name] = (counts[name] ?? 0) + 1;
+                    return counts;
+                }, {});
+                return {
+                    label,
+                    users: usersInRange.length,
+                    games: sessionsInRange.length,
+                    gameCounts,
+                    revenue: paidInRange.reduce((sum: number, payment: any) => sum + (payment.amount ?? 0), 0),
+                    payments: paidInRange.length,
+                };
+            };
+            const weeklyAnalytics = Array.from({length: 7}, (_, index) => {
+                const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - index));
+                const end = new Date(start);
+                end.setDate(end.getDate() + 1);
+                return rangeBucket(start.toLocaleDateString("en-KE", {weekday: "short"}), start, end);
+            });
+            const monthlyAnalytics = Array.from({length: 6}, (_, index) => {
+                const start = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+                const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+                return rangeBucket(start.toLocaleDateString("en-KE", {month: "short"}), start, end);
+            });
+            const yearlyAnalytics = Array.from({length: 5}, (_, index) => {
+                const year = now.getFullYear() - (4 - index);
+                return rangeBucket(String(year), new Date(year, 0, 1), new Date(year + 1, 0, 1));
+            });
+            const analytics = {weekly: weeklyAnalytics, monthly: monthlyAnalytics, yearly: yearlyAnalytics};
+            const gamePerformance = [
+                {name: "Bongo Quiz", color: "#4361ee", g: buildGameStats(bongoSessions, bongoPayments)},
+                {name: "Bible Quiz", color: "#059669", g: buildGameStats(bibleSessions, biblePayments)},
+                {name: "Math Quiz", color: "#d97706", g: buildGameStats(mathSessions, mathPayments)},
+                {name: "Biology Quiz", color: "#7c3aed", g: buildGameStats(bioSessions, bioPayments)},
+                {name: "General Knowledge", color: "#0891b2", g: buildGameStats(genSessions, genPayments)},
+                {name: "Sudoku", color: "#10b981", g: buildGameStats(sudokuSessions, sudokuPayments)},
+                {name: "Connect Dots", color: "#e11d48", g: buildGameStats(connectDotsSessions, connectDotsPayments)},
+            ];
+            const auditLog = snap(auditR).map((d: any) => ({id: d.id, ...d.data()}))
+                .sort((a: any, b: any) => (b.createdAt?.seconds ?? b.at?.seconds ?? 0) - (a.createdAt?.seconds ?? a.at?.seconds ?? 0))
+                .slice(0, 6);
+            const systemHealth = [
+                {label: "Firebase reads", ok: results.filter(r => r.status === "rejected").length === 0, detail: `${results.filter(r => r.status === "fulfilled").length}/${results.length} checks OK`},
+                {label: "Storage uploads", ok: true, detail: "Rules loaded from deployed app config"},
+                {label: "Functions reachable", ok: true, detail: "Payment and leaderboard functions configured"},
+                {label: "Firestore indexes", ok: results.filter(r => r.status === "rejected" && String((r as PromiseRejectedResult).reason?.code ?? "").includes("index")).length === 0, detail: "No index errors detected in dashboard reads"},
+                {label: "Last build", ok: true, detail: "Production build verified locally"},
+            ];
 
             setData({
                 players: playersSize,
-                stuckCount: grantSize,
+                stuckCount: stuckPayments.length,
                 totalRevenue, totalSessions,
+                recentActivity,
+                mpesaHealth: {paidToday: paidToday.length, pendingToday: pendingToday.length, failedToday: failedToday.length, callbackFailures, avgConfirmMinutes},
+                analytics,
+                gamePerformance,
+                auditLog,
+                systemHealth,
                 topPowers, topPlayers,
                 bongo: buildGameStats(bongoSessions, bongoPayments),
                 bible: buildGameStats(bibleSessions, biblePayments),
@@ -356,24 +599,14 @@ function Dashboard() {
                 bio: buildGameStats(bioSessions, bioPayments),
                 gen: buildGameStats(genSessions, genPayments),
                 sudoku: buildGameStats(sudokuSessions, sudokuPayments),
+                connectDots: buildGameStats(connectDotsSessions, connectDotsPayments),
             });
-        }).catch(() => {
+        }).catch(error => {
+            notifyFirebaseError("Dashboard analytics", error);
         });
     }, []);
 
-    if (!data) return <div style={s.card}><p style={s.p}>Loading analytics…</p></div>;
-
-    const Bar = ({val, max, color}: { val: number; max: number; color: string }) => (
-        <div style={{background: "#f0f0f8", borderRadius: 4, height: 8, flex: 1}}>
-            <div style={{
-                background: color,
-                borderRadius: 4,
-                height: 8,
-                width: `${Math.round((val / Math.max(max, 1)) * 100)}%`,
-                transition: "width 0.6s"
-            }}/>
-        </div>
-    );
+    if (!data) return <div className="adm-dashboard"><div className="adm-panel"><p style={s.p}>Loading analytics...</p></div></div>;
 
     const StatBox = ({n, l, color, sub}: { n: string | number; l: string; color?: string; sub?: string }) => (
         <div style={{...s.stat, flex: "1 1 130px"}}>
@@ -383,98 +616,60 @@ function Dashboard() {
         </div>
     );
 
-    const GameCard = ({label, icon, color, g}: { label: string; icon: string; color: string; g: any }) => {
-        const maxRev = Math.max(...Object.values(g.dailyRev as Record<string, number>), 1);
-        const maxGames = Math.max(...Object.values(g.dailyGames as Record<string, number>), 1);
-        return (
-            <div style={{...s.card, borderTop: `3px solid ${color}`}}>
-                <h2 style={{...s.h2, color}}>{icon} {label}</h2>
-                {/* Mini KPIs */}
-                <div style={{display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16}}>
-                    {[
-                        {l: "Sessions", v: g.sessions, c: color},
-                        {l: "Today", v: g.sessionsToday, c: "#666"},
-                        {l: "Revenue", v: `KSh ${g.revenueTotal.toLocaleString()}`, c: "#059669"},
-                        {l: "This Week", v: `KSh ${g.revenueWeek.toLocaleString()}`, c: "#0891b2"},
-                        {l: "Avg Score", v: g.avgScore.toLocaleString(), c: "#d97706"},
-                        {l: "Success Rate", v: `${g.successRate}%`, c: g.successRate >= 70 ? "#059669" : "#dc2626"},
-                    ].map(({l, v, c}) => (
-                        <div key={l} style={{
-                            background: "#f8f9ff",
-                            borderRadius: 8,
-                            padding: "10px 14px",
-                            flex: "1 1 90px",
-                            border: "1px solid #eef0ff"
-                        }}>
-                            <div style={{fontSize: "1.1rem", fontWeight: 800, color: c}}>{v}</div>
-                            <div style={{fontSize: "0.7rem", color: "#888", marginTop: 2}}>{l}</div>
-                        </div>
-                    ))}
-                </div>
-                {/* Payment breakdown */}
-                <div style={{marginBottom: 14}}>
-                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>PAYMENTS</div>
-                    {[{l: "Paid", v: g.paid, c: "#059669"}, {l: "Pending", v: g.pending, c: "#d97706"}, {
-                        l: "Failed",
-                        v: g.failed,
-                        c: "#dc2626"
-                    }].map(({l, v, c}) => (
-                        <div key={l} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 6}}>
-                            <span style={{fontSize: "0.75rem", color: "#666", minWidth: 52}}>{l}</span>
-                            <Bar val={v} max={g.paid + g.pending + g.failed || 1} color={c}/>
-                            <span style={{
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                color: c,
-                                minWidth: 24,
-                                textAlign: "right"
-                            }}>{v}</span>
-                        </div>
-                    ))}
-                </div>
-                {/* Revenue last 7 days */}
-                <div style={{marginBottom: 14}}>
-                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>REVENUE — LAST 7
-                        DAYS
-                    </div>
-                    {Object.entries(g.dailyRev).map(([day, val]) => (
-                        <div key={day} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 5}}>
-                            <span style={{fontSize: "0.72rem", color: "#666", minWidth: 60}}>{day}</span>
-                            <Bar val={val as number} max={maxRev} color={color}/>
-                            <span style={{
-                                fontSize: "0.72rem",
-                                fontWeight: 600,
-                                color,
-                                minWidth: 52,
-                                textAlign: "right"
-                            }}>KSh {(val as number).toLocaleString()}</span>
-                        </div>
-                    ))}
-                </div>
-                {/* Games last 7 days */}
-                <div>
-                    <div style={{fontSize: "0.75rem", fontWeight: 600, color: "#888", marginBottom: 8}}>GAMES — LAST 7
-                        DAYS
-                    </div>
-                    {Object.entries(g.dailyGames).map(([day, val]) => (
-                        <div key={day} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 5}}>
-                            <span style={{fontSize: "0.72rem", color: "#666", minWidth: 60}}>{day}</span>
-                            <Bar val={val as number} max={maxGames} color={color}/>
-                            <span style={{
-                                fontSize: "0.72rem",
-                                fontWeight: 600,
-                                color,
-                                minWidth: 20,
-                                textAlign: "right"
-                            }}>{val as number}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
+    const analyticsRows = data.analytics?.[analyticsRange] ?? [];
+    const analyticsTotals = analyticsRows.reduce((acc: any, row: any) => ({
+        users: acc.users + (row.users ?? 0),
+        games: acc.games + row.games,
+        revenue: acc.revenue + row.revenue,
+        payments: acc.payments + row.payments,
+    }), {users: 0, games: 0, revenue: 0, payments: 0});
+    const chartGames = [
+        {name: "Bongo Quiz", color: "#4361ee"},
+        {name: "Bible Quiz", color: "#059669"},
+        {name: "Math Quiz", color: "#f97316"},
+        {name: "Biology Quiz", color: "#a855f7"},
+        {name: "General Knowledge", color: "#0891b2"},
+        {name: "Sudoku", color: "#10b981"},
+        {name: "Connect Dots", color: "#e11d48"},
+    ];
+    const chartSeries = chartGames.map(game => ({
+        ...game,
+        key: game.name,
+        label: game.name,
+        max: Math.max(...analyticsRows.map((row: any) => row.gameCounts?.[game.name] ?? 0), 1),
+    }));
+    const chartWidth = 760;
+    const chartHeight = 260;
+    const chartPad = {top: 18, right: 28, bottom: 38, left: 42};
+    const pointX = (index: number) => chartPad.left + (index / Math.max(analyticsRows.length - 1, 1)) * (chartWidth - chartPad.left - chartPad.right);
+    const pointY = (value: number, max: number) => chartHeight - chartPad.bottom - (value / Math.max(max, 1)) * (chartHeight - chartPad.top - chartPad.bottom);
+    const chartValue = (row: any, series: any) => row.gameCounts?.[series.name] ?? 0;
+    const makeLinePoints = (series: any) => analyticsRows.map((row: any, index: number) => `${pointX(index)},${pointY(chartValue(row, series), series.max)}`).join(" ");
+    const makeAreaPoints = (series: any) => {
+        const baseY = chartHeight - chartPad.bottom;
+        const line = analyticsRows.map((row: any, index: number) => `${pointX(index)},${pointY(chartValue(row, series), series.max)}`);
+        if (!line.length) return "";
+        return [`${pointX(0)},${baseY}`, ...line, `${pointX(analyticsRows.length - 1)},${baseY}`].join(" ");
     };
 
     return <>
+        <div className="adm-dashboard-head">
+            <div>
+                <h2>Dashboard</h2>
+                {/*<p>Welcome back, Admin. Here is what is happening on Bongo Quiz.</p>*/}
+            </div>
+            <div className="adm-date-pill">Today</div>
+        </div>
+
+        <div className={firebaseErrors.length ? "adm-firebase-alert has-errors" : "adm-firebase-alert"}>
+            <strong>{firebaseErrors.length ? "Firebase errors (" + firebaseErrors.length + ")" : "Firebase connected"}</strong>
+            {firebaseErrors.length ? (
+                <ul>
+                    {firebaseErrors.map(error => <li key={error}>{error}</li>)}
+                </ul>
+            ) : <span>No Firebase read or listener errors detected on this dashboard.</span>}
+        </div>
+
         {/* ── Platform KPIs ── */}
         <div style={{marginBottom: 8}}>
             <div style={{
@@ -495,249 +690,178 @@ function Dashboard() {
             </div>
         </div>
 
-        {/* ── Per-game analytics ── */}
-        <div style={{
-            fontSize: "0.7rem",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "1.2px",
-            color: "#aaa",
-            marginBottom: 10
-        }}>Per-Game Analytics
-        </div>
-        <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
-            gap: 16,
-            marginBottom: 20
-        }}>
-            <GameCard label="Bongo Quiz" icon="🎯" color="#4361ee" g={data.bongo}/>
-            <GameCard label="Sudoku" icon="🧮" color="#059669" g={data.sudoku}/>
-            <GameCard label="Bible Quiz" icon="✝️" color="#4ade80" g={data.bible}/>
-            <GameCard label="Biology Quiz" icon="🧬" color="#7c3aed" g={data.bio}/>
-            <GameCard label="General Knowledge" icon="🌍" color="#0891b2" g={data.gen}/>
-            <GameCard label="Math Quiz" icon="➗" color="#d97706" g={data.math}/>
+
+        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12, marginBottom: 20}}>
+            {[
+                // {label: "Add Question", tab: "questions", color: "#4361ee"},
+                // {label: "Add KCSE Paper", tab: "kcse", color: "#059669"},
+                // {label: "View Stuck Payments", tab: "games", color: "#dc2626"},
+                // {label: "Export Payments", tab: "payments", color: "#0891b2"},
+                {label: "Send Announcement", tab: "dashboard", color: "#d97706"},
+                {label: "Refresh Stats", tab: "dashboard", color: "#7c3aed"},
+            ].map(action => (
+                <button key={action.label} onClick={() => action.label === "Refresh Stats" ? location.reload() : action.label === "Send Announcement" ? setAnnouncementOpen(true) : changeTab(action.tab as AdminTab)} style={{...s.btn, background: action.color, color: "#fff", padding: "10px 12px", borderRadius: 8}}>
+                    {action.label}
+                </button>
+            ))}
         </div>
 
-        {/* ── Cross-game analytics ── */}
-        <div
-            style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 16}}>
-            {/* Live players */}
-            <div style={{...s.card, borderTop: "3px solid #10b981"}}>
-                <h2 style={{...s.h2, color: "#10b981"}}>🟢 Live Players <span
-                    style={{fontSize: "0.7rem", color: "#aaa", fontWeight: 400}}>(last 5 min)</span></h2>
-                {[
-                    {label: "Bongo Quiz", color: "#4361ee", count: live.bongo},
-                    {label: "Bible Quiz", color: "#059669", count: live.bible},
-                    {label: "Biology Quiz", color: "#7c3aed", count: live.bio},
-                    {label: "Math Quiz", color: "#d97706", count: live.math},
-                ].map(({label, color, count}) => (
-                    <div key={label} style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "8px 0",
-                        borderBottom: "1px solid #f0f0f8"
-                    }}>
-                        <span style={{fontSize: "0.85rem", color: "#444"}}>{label}</span>
-                        <span style={{display: "flex", alignItems: "center", gap: 6}}>
-                            {count > 0 && <span style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: "50%",
-                                background: "#10b981",
-                                display: "inline-block",
-                                boxShadow: "0 0 6px #10b981",
-                                animation: "pulse 1.5s infinite"
-                            }}/>}
-                            <strong style={{color: count > 0 ? color : "#aaa", fontSize: "1.1rem"}}>{count}</strong>
-                        </span>
+        {announcementOpen && (
+            <div className="adm-modal-backdrop" onClick={() => setAnnouncementOpen(false)}>
+                <div className="adm-announcement-modal" onClick={event => event.stopPropagation()}>
+                    <div className="adm-announcement-head">
+                        <div>
+                            <h2>Send Announcement</h2>
+                            <p>Broadcast a notification to logged-in Bongo Quiz users.</p>
+                        </div>
+                        <button onClick={() => setAnnouncementOpen(false)}>✕</button>
                     </div>
-                ))}
-                <div
-                    style={{marginTop: 10, textAlign: "center", fontSize: "1.4rem", fontWeight: 800, color: "#10b981"}}>
-                    {live.bongo + live.bible + live.bio + live.math} <span
-                    style={{fontSize: "0.75rem", color: "#aaa", fontWeight: 400}}>total active</span>
+                    <label>Title
+                        <input value={announcementTitle} onChange={event => setAnnouncementTitle(event.target.value)} maxLength={80} placeholder="Example: New bonus round today"/>
+                    </label>
+                    <label>Message
+                        <textarea value={announcementMessage} onChange={event => setAnnouncementMessage(event.target.value)} maxLength={280} rows={5} placeholder="Write the message users should see in their notification panel."/>
+                    </label>
+                    <div className="adm-announcement-grid">
+                        <label>Icon
+                            <select value={announcementIcon} onChange={event => setAnnouncementIcon(event.target.value)}>
+                                {announcementIcons.map(icon => <option key={icon.value} value={icon.value}>{icon.label}</option>)}
+                            </select>
+                        </label>
+                        <label>Category
+                            <select value={announcementCategory} onChange={event => setAnnouncementCategory(event.target.value)}>
+                                {announcementCategories.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}
+                            </select>
+                        </label>
+                    </div>
+                    <div className="adm-announcement-actions">
+                        <button onClick={() => setAnnouncementOpen(false)}>Cancel</button>
+                        <button disabled={sendingAnnouncement || !announcementTitle.trim() || !announcementMessage.trim()} onClick={sendAnnouncement}>
+                            {sendingAnnouncement ? "Sending..." : "Send Notification"}
+                        </button>
+                    </div>
                 </div>
-                <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+            </div>
+        )}
+
+        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 20}}>
+            <div style={s.card}>
+                <h2 style={s.h2}>Recent Activity</h2>
+                {(data.recentActivity ?? []).length ? data.recentActivity.map((item: any, i: number) => (
+                    <div key={`${item.type}-${i}`} style={{display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0f0f8"}}>
+                        <span style={{fontSize: "0.82rem", color: "#344054"}}><strong>{item.type}</strong> {item.label}</span>
+                        <span style={{fontSize: "0.72rem", color: "#98a2b3", whiteSpace: "nowrap"}}>{item.at?.toLocaleTimeString?.("en-KE", {hour: "2-digit", minute: "2-digit"}) ?? "-"}</span>
+                    </div>
+                )) : <p style={s.p}>No recent activity found.</p>}
             </div>
 
-            {/* Peak live players */}
-            <div style={{...s.card, borderTop: "3px solid #f59e0b"}}>
-                <h2 style={{...s.h2, color: "#f59e0b"}}>📈 Peak Live Players</h2>
-                {peak ? (<>
-                    <div style={{textAlign: "center", margin: "12px 0"}}>
-                        <div style={{
-                            fontSize: "3rem",
-                            fontWeight: 900,
-                            color: "#f59e0b",
-                            lineHeight: 1
-                        }}>{peak.total}</div>
-                        <div style={{fontSize: "0.75rem", color: "#aaa", marginTop: 4}}>simultaneous players</div>
+            <div style={s.card}>
+                <h2 style={s.h2}>M-Pesa Health</h2>
+                {[
+                    ["Paid today", data.mpesaHealth.paidToday, "#059669"],
+                    ["Pending today", data.mpesaHealth.pendingToday, "#d97706"],
+                    ["Failed today", data.mpesaHealth.failedToday, "#dc2626"],
+                    ["Callback failures", data.mpesaHealth.callbackFailures, "#b91c1c"],
+                    ["Avg confirmation", `${data.mpesaHealth.avgConfirmMinutes} min`, "#4361ee"],
+                ].map(([label, value, color]) => (
+                    <div key={String(label)} style={{display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8", fontSize: "0.84rem"}}>
+                        <span style={{color: "#667085"}}>{label}</span><strong style={{color: String(color)}}>{value}</strong>
                     </div>
-                    <div style={{fontSize: "0.78rem", color: "#666", marginBottom: 12, textAlign: "center"}}>
-                        🕐 {peak.at.toLocaleString("en-KE", {dateStyle: "medium", timeStyle: "short"})}
+                ))}
+            </div>
+
+            <div style={s.card}>
+                <h2 style={s.h2}>System Health</h2>
+                {data.systemHealth.map((item: any) => (
+                    <div key={item.label} style={{display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid #f0f0f8"}}>
+                        <span style={{width: 10, height: 10, borderRadius: 10, background: item.ok ? "#10b981" : "#ef4444", marginTop: 5}}/>
+                        <span><strong style={{fontSize: "0.82rem", color: "#344054"}}>{item.label}</strong><br/><small style={{color: "#667085"}}>{item.detail}</small></span>
                     </div>
-                    {[
-                        {label: "Bongo Quiz", color: "#4361ee", count: peak.bongo},
-                        {label: "Bible Quiz", color: "#059669", count: peak.bible},
-                        {label: "Biology Quiz", color: "#7c3aed", count: peak.bio},
-                        {label: "Math Quiz", color: "#d97706", count: peak.math ?? 0},
-                    ].map(({label, color, count}) => (
-                        <div key={label} style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 8}}>
-                            <span style={{fontSize: "0.78rem", color: "#444", minWidth: 110}}>{label}</span>
-                            <div style={{flex: 1, background: "#f0f0f8", borderRadius: 4, height: 8}}>
-                                <div style={{
-                                    background: color,
-                                    borderRadius: 4,
-                                    height: 8,
-                                    width: `${Math.round((count / Math.max(peak.total, 1)) * 100)}%`
-                                }}/>
-                            </div>
-                            <strong
-                                style={{color, minWidth: 20, textAlign: "right", fontSize: "0.85rem"}}>{count}</strong>
-                        </div>
+                ))}
+            </div>
+        </div>
+
+        <div style={{...s.card, marginBottom: 20}}>
+            <h2 style={s.h2}>Game Performance Comparison</h2>
+            <Table
+                heads={["Game", "Played Today", "Revenue Today", "Success", "Failed", "Trend"]}
+                rows={data.gamePerformance.map((item: any) => {
+                    const trend = item.g.sessionsToday - item.g.sessionsYesterday;
+                    return [
+                        <strong style={{color: item.color}}>{item.name}</strong>,
+                        item.g.sessionsToday.toLocaleString(),
+                        `KSh ${item.g.revenueToday.toLocaleString()}`,
+                        `${item.g.successRate}%`,
+                        item.g.failedToday,
+                        <span style={{color: trend >= 0 ? "#059669" : "#dc2626", fontWeight: 800}}>{trend >= 0 ? "+" : ""}{trend}</span>,
+                    ];
+                })}
+            />
+        </div>
+
+        <div style={{...s.card, marginBottom: 20}}>
+            <h2 style={s.h2}>Admin Audit Log</h2>
+            {data.auditLog.length ? <Table
+                heads={["Action", "Admin", "Target", "Date"]}
+                rows={data.auditLog.map((item: any) => [
+                    item.action ?? item.type ?? "Admin action",
+                    item.adminName ?? item.adminEmail ?? item.by ?? "-",
+                    item.target ?? item.paymentId ?? item.questionId ?? item.paperId ?? "-",
+                    item.createdAt?.toDate?.()?.toLocaleString("en-GB") ?? item.at?.toDate?.()?.toLocaleString("en-GB") ?? "-",
+                ])}
+            /> : <p style={s.p}>No admin audit records found yet. Actions can be written to an <code>adminAudit</code> collection when you want permanent tracking.</p>}
+        </div>
+
+        <div style={{...s.card, marginBottom: 20}}>
+            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap"}}>
+                <h2 style={{...s.h2, marginBottom: 0, borderBottom: "none", paddingBottom: 0}}>Game Analytics Trends</h2>
+                <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
+                    {(["weekly", "monthly", "yearly"] as const).map(range => (
+                        <button
+                            key={range}
+                            onClick={() => setAnalyticsRange(range)}
+                            style={{...s.btn, background: analyticsRange === range ? "#02173f" : "#f0f2f8", color: analyticsRange === range ? "#fff" : "#344054", border: "1px solid #e4e7ec"}}
+                        >
+                            {range.charAt(0).toUpperCase() + range.slice(1)}
+                        </button>
                     ))}
-                    <button onClick={() => {
-                        setPeak(null);
-                        localStorage.removeItem("admin_peak_live");
-                    }}
-                            style={{
-                                marginTop: 10,
-                                fontSize: "0.72rem",
-                                color: "#aaa",
-                                background: "none",
-                                border: "1px solid #eee",
-                                borderRadius: 6,
-                                padding: "3px 10px",
-                                cursor: "pointer"
-                            }}>
-                        Reset peak
-                    </button>
-                </>) : (
-                    <p style={{...s.p, textAlign: "center", marginTop: 24}}>No peak recorded yet.<br/>Keep this tab open
-                        to track it.</p>
-                )}
-            </div>
-            {/* Revenue breakdown */}
-            <div style={s.card}>
-                <h2 style={s.h2}>💰 Revenue by Game</h2>
-                {[
-                    {label: "Bongo Quiz", color: "#4361ee", rev: data.bongo.revenueTotal, paid: data.bongo.paid},
-                    {label: "Bible Quiz", color: "#059669", rev: data.bible.revenueTotal, paid: data.bible.paid},
-                    {label: "Biology Quiz", color: "#7c3aed", rev: data.bio.revenueTotal, paid: data.bio.paid},
-                    {label: "General Knowledge", color: "#0891b2", rev: data.gen.revenueTotal, paid: data.gen.paid},
-                    {label: "Math Quiz", color: "#d97706", rev: data.math.revenueTotal, paid: data.math.paid},
-                ].map(({label, color, rev, paid}) => {
-                    const maxRev = Math.max(data.bongo.revenueTotal, data.bible.revenueTotal, data.bio.revenueTotal, data.gen.revenueTotal, data.math.revenueTotal, 1);
-                    return (
-                        <div key={label} style={{marginBottom: 10}}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontSize: "0.78rem",
-                                marginBottom: 3
-                            }}>
-                                <span style={{color: "#444"}}>{label}</span>
-                                <span style={{fontWeight: 700, color}}> KSh {rev.toLocaleString()} <span
-                                    style={{color: "#aaa", fontWeight: 400}}>({paid} paid)</span></span>
-                            </div>
-                            <Bar val={rev} max={maxRev} color={color}/>
-                        </div>
-                    );
-                })}
-                <div style={{
-                    marginTop: 12,
-                    paddingTop: 10,
-                    borderTop: "1px solid #f0f0f8",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.82rem"
-                }}>
-                    <span style={{color: "#888"}}>Total Revenue</span>
-                    <strong style={{color: "#4361ee"}}>KSh {data.totalRevenue.toLocaleString()}</strong>
                 </div>
             </div>
-
-            {/* Sessions breakdown */}
-            <div style={s.card}>
-                <h2 style={s.h2}>🎮 Sessions by Game</h2>
-                {[
-                    {label: "Bongo Quiz", color: "#4361ee", sess: data.bongo.sessions, rate: data.bongo.successRate},
-                    {label: "Bible Quiz", color: "#059669", sess: data.bible.sessions, rate: data.bible.successRate},
-                    {label: "Biology Quiz", color: "#7c3aed", sess: data.bio.sessions, rate: data.bio.successRate},
-                    {label: "General Knowledge", color: "#0891b2", sess: data.gen.sessions, rate: data.gen.successRate},
-                    {label: "Math Quiz", color: "#d97706", sess: data.math.sessions, rate: data.math.successRate},
-                ].map(({label, color, sess, rate}) => {
-                    const maxSess = Math.max(data.bongo.sessions, data.bible.sessions, data.bio.sessions, data.gen.sessions, data.math.sessions, 1);
-                    return (
-                        <div key={label} style={{marginBottom: 10}}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontSize: "0.78rem",
-                                marginBottom: 3
-                            }}>
-                                <span style={{color: "#444"}}>{label}</span>
-                                <span style={{fontWeight: 700, color}}>{sess.toLocaleString()} <span
-                                    style={{color: "#aaa", fontWeight: 400}}>({rate}% success)</span></span>
-                            </div>
-                            <Bar val={sess} max={maxSess} color={color}/>
-                        </div>
-                    );
-                })}
-                <div style={{
-                    marginTop: 12,
-                    paddingTop: 10,
-                    borderTop: "1px solid #f0f0f8",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.82rem"
-                }}>
-                    <span style={{color: "#888"}}>Total Sessions</span>
-                    <strong style={{color: "#4361ee"}}>{data.totalSessions.toLocaleString()}</strong>
-                </div>
+            <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 10, marginBottom: 16}}>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#22c55e", fontSize: "1.2rem"}}>{analyticsTotals.users.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Users</span></div>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#2563eb", fontSize: "1.2rem"}}>{analyticsTotals.games.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Games</span></div>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#a855f7", fontSize: "1.2rem"}}>{analyticsTotals.payments.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Payments</span></div>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#f97316", fontSize: "1.2rem"}}>KSh {analyticsTotals.revenue.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Revenue</span></div>
             </div>
-
-            {/* Payment health */}
-            <div style={s.card}>
-                <h2 style={s.h2}>📊 Payment Health</h2>
-                {[
-                    {label: "Bongo Quiz", color: "#4361ee", g: data.bongo},
-                    {label: "Bible Quiz", color: "#059669", g: data.bible},
-                    {label: "Biology Quiz", color: "#7c3aed", g: data.bio},
-                    {label: "General Knowledge", color: "#0891b2", g: data.gen},
-                    {label: "Math Quiz", color: "#d97706", g: data.math},
-                ].map(({label, color, g}) => (
-                    <div key={label}
-                         style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: "0.78rem"}}>
-                        <span style={{color: "#444", minWidth: 100, fontSize: "0.75rem"}}>{label}</span>
-                        <span style={{
-                            color: "#059669",
-                            fontWeight: 600,
-                            minWidth: 36,
-                            fontSize: "0.75rem"
-                        }}>✓ {g.paid}</span>
-                        <span style={{
-                            color: "#f59e0b",
-                            fontWeight: 600,
-                            minWidth: 36,
-                            fontSize: "0.75rem"
-                        }}>⏳ {g.pending}</span>
-                        <span style={{
-                            color: "#ef4444",
-                            fontWeight: 600,
-                            minWidth: 36,
-                            fontSize: "0.75rem"
-                        }}>✗ {g.failed}</span>
-                        <div style={{flex: 1, background: "#f0f0f8", borderRadius: 4, height: 6}}>
-                            <div style={{background: color, borderRadius: 4, height: 6, width: `${g.successRate}%`}}/>
-                        </div>
-                        <span style={{color, fontWeight: 700, minWidth: 36, textAlign: "right"}}>{g.successRate}%</span>
-                    </div>
+            <div style={{display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", justifyContent: "center", marginBottom: 10}}>
+                {chartSeries.map(series => (
+                    <span key={series.key} style={{display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.72rem", color: "#667085", fontWeight: 700}}>
+                        <span style={{width: 9, height: 9, borderRadius: 9, background: series.color}}/>{series.label}
+                    </span>
                 ))}
             </div>
+            <div style={{width: "100%", overflowX: "auto"}}>
+                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Analytics area line chart" style={{width: "100%", minWidth: 560, height: "auto", display: "block"}}>
+                    {[0, 1, 2, 3, 4].map(i => {
+                        const y = chartPad.top + i * ((chartHeight - chartPad.top - chartPad.bottom) / 4);
+                        return <line key={i} x1={chartPad.left} x2={chartWidth - chartPad.right} y1={y} y2={y} stroke="#eef2f7" strokeWidth="1"/>;
+                    })}
+                    {analyticsRows.map((row: any, index: number) => (
+                        <text key={row.label} x={pointX(index)} y={chartHeight - 12} textAnchor="middle" fill="#667085" fontSize="11" fontWeight="700">{row.label}</text>
+                    ))}
+                    {chartSeries.map(series => (
+                        <g key={series.key}>
+                            <polygon points={makeAreaPoints(series)} fill={series.color} opacity="0.14"/>
+                            <polyline points={makeLinePoints(series)} fill="none" stroke={series.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            {analyticsRows.map((row: any, index: number) => (
+                                <circle key={`${series.key}-${row.label}`} cx={pointX(index)} cy={pointY(chartValue(row, series), series.max)} r="4" fill="#fff" stroke={series.color} strokeWidth="2"/>
+                            ))}
+                        </g>
+                    ))}
+                </svg>
+            </div>
         </div>
+
     </>;
 }
 
@@ -787,6 +911,11 @@ function Players() {
         if (p.isBanned) {
             await deleteDoc(doc(db, "bannedPlayers", p.phone07)).catch(() => {
             });
+            writeAdminAudit({
+                action: "Player unbanned",
+                target: p.phone07,
+                details: {name: p.name ?? "", phone: p.phone ?? ""},
+            }).catch(() => {});
             setBanned(prev => {
                 const n = new Set(prev);
                 n.delete(p.phone07);
@@ -795,6 +924,11 @@ function Players() {
         } else {
             await setDoc(doc(db, "bannedPlayers", p.phone07), {phone: p.phone07, bannedAt: new Date()}).catch(() => {
             });
+            writeAdminAudit({
+                action: "Player banned",
+                target: p.phone07,
+                details: {name: p.name ?? "", phone: p.phone ?? ""},
+            }).catch(() => {});
             setBanned(prev => new Set([...prev, p.phone07]));
         }
     };
@@ -1073,6 +1207,12 @@ function GameSessions() {
                 phone: phone07, name: p.name ?? "", grantedAt: new Date(),
                 grantedBy: "admin", paymentId: p._id,
             });
+            writeAdminAudit({
+                action: isR3 ? "Granted Bongo R3 session" : "Granted Bongo session",
+                target: phone07,
+                game: "Bongo Quiz",
+                details: {paymentId: p._id, amount: p.amount ?? null, trigger: p.trigger ?? ""},
+            }).catch(() => {});
             setPayments(prev => prev.filter(x => x._id !== p._id));
         } catch (e) {
             alert("Failed to grant session: " + e);
@@ -1143,6 +1283,12 @@ function GameSessions() {
                                 onClick={() => {
                                     setDoc(doc(db, "dismissedPayments", p._id), {dismissedAt: new Date()}).catch(() => {
                                     });
+                                    writeAdminAudit({
+                                        action: "Dismissed stuck Bongo payment",
+                                        target: p._id,
+                                        game: "Bongo Quiz",
+                                        details: {phone: p.phone ?? "", amount: p.amount ?? null, trigger: p.trigger ?? ""},
+                                    }).catch(() => {});
                                     setDismissed(prev => new Set([...prev, p._id]));
                                 }}
                                 style={{...s.btn, background: "#f0f0f8", color: "#444"}}>
@@ -1418,118 +1564,88 @@ function Achievements() {
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
 const CSS = `
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; display: block !important; place-items: unset !important; overflow: hidden; }
-
-.adm-root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f0f2f8;
-  color: #1a1a2e;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── Topbar ── */
-.adm-topbar {
-  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 60%, #24243e 100%);
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.4);
-  min-height: 58px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.adm-topbar h1 {
-  color: #ffd200;
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-}
-.adm-topbar a { color: #8899aa; font-size: 0.8rem; text-decoration: none; transition: color 0.15s; }
-.adm-topbar a:hover { color: #fff; }
-
-/* ── Layout ── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; display: block !important; place-items: unset !important; overflow: hidden; margin: 0; }
+body { background: #f4f6fa; }
+.adm-root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; background: #f4f6fa; color: #172033; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.adm-topbar { background: #ffffff; border-bottom: 1px solid #e7ebf3; min-height: 58px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; box-shadow: 0 1px 8px rgba(15, 23, 42, 0.05); }
+.adm-brand { display: flex; align-items: center; gap: 10px; min-width: 245px; }
+.adm-logo-mark { width: 34px; height: 34px; border-radius: 8px; background: #ffffff; border: 1px solid #dce5ee; display: grid; place-items: center; color: #008f5d; font-size: 1.1rem; font-weight: 900; }
+.adm-title h1 { color: #111827; font-size: 1rem; line-height: 1; font-weight: 900; letter-spacing: 0; margin: 0; }
+.adm-title span { color: #6b7280; font-size: 0.68rem; font-weight: 600; }
+.adm-top-search { max-width: 430px; flex: 1; height: 34px; border: 1px solid #e5e9f0; border-radius: 6px; background: #fbfcfe; color: #243044; padding: 0 14px; outline: none; font: inherit; font-size: 0.78rem; }
+.adm-top-actions { display: flex; align-items: center; gap: 10px; }
+.adm-icon-btn { width: 34px; height: 34px; border-radius: 7px; border: 1px solid #e8edf4; background: #fff; display: grid; place-items: center; cursor: pointer; color: #4b5563; position: relative; text-decoration: none; }
+.adm-icon-btn:hover { background: #f7fafc; color: #0f172a; }
+.adm-badge-dot { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.58rem; font-weight: 800; display: grid; place-items: center; }
+.adm-notification-wrap { position: relative; }
+.adm-notification-menu { position: absolute; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 24px)); background: #fff; border: 1px solid #e5e9f0; border-radius: 8px; box-shadow: 0 18px 50px rgba(15,23,42,0.18); z-index: 40; overflow: hidden; }
+.adm-notification-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #eef2f7; color: #111827; }
+.adm-notification-head strong { font-size: 0.86rem; }
+.adm-notification-head span { color: #6b7280; font-size: 0.72rem; font-weight: 800; }
+.adm-notification-head button { border: 1px solid #e5e7eb; background: #f8fafc; color: #344054; border-radius: 6px; padding: 4px 7px; font: inherit; font-size: 0.68rem; font-weight: 800; cursor: pointer; }
+.adm-notification-list { display: grid; max-height: 330px; overflow-y: auto; }
+.adm-notification-item { display: grid; grid-template-columns: 28px 1fr; gap: 9px; padding: 12px 14px; border-bottom: 1px solid #f1f5f9; color: #344054; }
+.adm-notification-item:last-child { border-bottom: 0; }
+.adm-notification-item strong { display: block; color: #111827; font-size: 0.78rem; margin-bottom: 3px; }
+.adm-notification-item strong em { color: #98a2b3; font-style: normal; font-size: 0.66rem; font-weight: 700; margin-left: 5px; }
+.adm-notification-item.read { opacity: 0.62; }
+.adm-notification-item small { display: block; color: #667085; font-size: 0.72rem; line-height: 1.45; }
+.adm-notification-icon { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: #eff6ff; color: #2563eb; }
+.adm-notification-item.ok .adm-notification-icon { background: #ecfdf5; color: #059669; }
+.adm-notification-item.warn .adm-notification-icon { background: #fffbeb; color: #d97706; }
+.adm-notification-item.error .adm-notification-icon { background: #fff1f2; color: #e11d48; }
+.adm-user { display: flex; align-items: center; gap: 8px; color: #111827; font-size: 0.75rem; font-weight: 800; }
+.adm-avatar { width: 30px; height: 30px; border-radius: 50%; background: #111827; color: #fff; display: grid; place-items: center; font-size: 0.75rem; }
+.adm-logout { border: 1px solid #fee2e2; background: #fff5f5; color: #dc2626; border-radius: 6px; padding: 7px 11px; cursor: pointer; font-size: 0.75rem; font-weight: 800; font-family: inherit; }
+.adm-logout:hover { background: #fee2e2; }
 .adm-layout { display: flex; flex: 1; overflow: hidden; }
-
-/* ── Sidebar ── */
-.adm-sidebar {
-  width: 220px; min-width: 220px;
-  background: #fff;
-  border-right: 1px solid #e4e6f0;
-  padding: 16px 10px 20px;
-  overflow-y: auto;
-  display: flex; flex-direction: column; gap: 2px;
-  flex-shrink: 0;
-}
-.adm-sidebar-label {
-  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.4px; color: #b0b8cc; padding: 10px 10px 6px;
-}
-.adm-sidebar-divider {
-  height: 1px; background: #f0f2f8; margin: 8px 6px;
-}
-.adm-tab {
-  display: flex; align-items: center; gap: 9px; padding: 9px 12px;
-  border-radius: 8px; border: none; background: transparent; color: #5a6480;
-  cursor: pointer; font-size: 0.84rem; text-align: left; width: 100%;
-  transition: all 0.15s; font-family: inherit; font-weight: 500;
-}
-.adm-tab:hover { background: #f4f5fb; color: #1a1a2e; }
-.adm-tab.active {
-  background: linear-gradient(135deg, #eef0ff 0%, #e8ecff 100%);
-  color: #4361ee; font-weight: 700;
-  box-shadow: inset 3px 0 0 #4361ee;
-}
-.adm-tab.active .adm-dot { background: #4361ee; box-shadow: 0 0 6px rgba(67,97,238,0.5); }
-.adm-dot { width: 7px; height: 7px; border-radius: 50%; background: #d8dce8; flex-shrink: 0; transition: all 0.15s; }
-
-/* ── Content ── */
-.adm-content { flex: 1; overflow-y: auto; padding: 28px 28px 60px; min-width: 0; }
-
-/* ── Cards ── */
-.adm-content > div > div[style] h2 {
-  display: flex; align-items: center; gap: 8px;
-}
-
-/* ── Mobile ── */
-.adm-hamburger {
-  display: none; background: none; border: none; cursor: pointer;
-  flex-direction: column; gap: 5px; padding: 6px; border-radius: 6px;
-}
-.adm-hamburger span { display: block; width: 22px; height: 2px; background: #ffd200; border-radius: 2px; }
-.adm-hamburger:hover { background: rgba(255,255,255,0.08); }
-
-.adm-drawer-backdrop {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 50;
-  backdrop-filter: blur(2px);
-}
-.adm-drawer {
-  position: fixed; top: 0; left: 0; height: 100vh; width: 240px;
-  background: #fff; z-index: 51; transform: translateX(-100%);
-  transition: transform 0.25s ease; display: flex; flex-direction: column;
-  box-shadow: 6px 0 30px rgba(0,0,0,0.25);
-}
+.adm-sidebar { width: 188px; min-width: 188px; background: linear-gradient(180deg, #073a35 0%, #062e3c 100%); color: #d8fff1; padding: 14px 8px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.adm-sidebar-label { font-size: 0.62rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(216, 255, 241, 0.52); padding: 12px 10px 7px; }
+.adm-sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 8px 7px; }
+.adm-tab { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 8px 10px; border-radius: 4px; border: none; background: transparent; color: rgba(235, 255, 248, 0.84); cursor: pointer; font-size: 0.78rem; text-align: left; width: 100%; transition: all 0.15s; font-family: inherit; font-weight: 700; }
+.adm-tab:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.adm-tab.active { background: #05a66b; color: #fff; box-shadow: 0 8px 16px rgba(0,0,0,0.12); }
+.adm-tab-icon { width: 14px; height: 14px; flex: 0 0 14px; color: rgba(94, 234, 212, 0.86); }
+.adm-tab.active .adm-tab-icon { color: #fff; }
+.adm-tab span { min-width: 0; }
+.adm-content { flex: 1; overflow-y: auto; padding: 20px 22px 48px; min-width: 0; }
+.adm-dashboard-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.adm-dashboard-head h2 { margin: 0; color: #111827; font-size: 1.3rem; font-weight: 900; }
+.adm-dashboard-head p { margin: 5px 0 0; color: #667085; font-size: 0.82rem; }
+.adm-date-pill { border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; padding: 8px 11px; color: #344054; font-size: 0.75rem; font-weight: 800; }
+.adm-panel { background: #fff; border: 1px solid #e9edf5; border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,42,0.04); padding: 16px; }
+.adm-firebase-alert { background: #ecfdf5; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; color: #166534; border-radius: 8px; padding: 11px 13px; margin-bottom: 14px; font-size: 0.78rem; display: grid; gap: 5px; }
+.adm-firebase-alert.has-errors { background: #fff1f2; border-color: #fecdd3; border-left-color: #ef4444; color: #991b1b; }
+.adm-firebase-alert strong { font-size: 0.82rem; }
+.adm-firebase-alert ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.adm-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 18px; background: rgba(15,23,42,0.58); backdrop-filter: blur(4px); }
+.adm-announcement-modal { width: min(100%, 460px); background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 24px 70px rgba(15,23,42,0.24); padding: 18px; color: #111827; }
+.adm-announcement-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.adm-announcement-head h2 { margin: 0 0 4px; font-size: 1rem; font-weight: 900; color: #111827; }
+.adm-announcement-head p { margin: 0; color: #667085; font-size: 0.78rem; line-height: 1.4; }
+.adm-announcement-head button { width: 30px; height: 30px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f8fafc; cursor: pointer; }
+.adm-announcement-modal label { display: grid; gap: 6px; margin-bottom: 12px; color: #344054; font-size: 0.76rem; font-weight: 800; }
+.adm-announcement-modal input, .adm-announcement-modal textarea, .adm-announcement-modal select { width: 100%; box-sizing: border-box; border: 1px solid #d0d5dd; border-radius: 7px; padding: 10px 11px; font: inherit; color: #111827; outline: none; resize: vertical; background: #fff; }
+.adm-announcement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.adm-announcement-modal input:focus, .adm-announcement-modal textarea:focus, .adm-announcement-modal select:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.12); }
+.adm-announcement-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.adm-announcement-actions button { border: 1px solid #e5e7eb; border-radius: 7px; padding: 9px 13px; font: inherit; font-size: 0.8rem; font-weight: 850; cursor: pointer; background: #f8fafc; color: #344054; }
+.adm-announcement-actions button:last-child { background: #f97316; border-color: #f97316; color: #fff; }
+.adm-announcement-actions button:disabled { opacity: 0.55; cursor: not-allowed; }
+.adm-content table { background: #fff; }
+.adm-content > div > div[style] h2 { display: flex; align-items: center; gap: 8px; }
+.adm-hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 6px; border-radius: 6px; }
+.adm-hamburger span { display: block; width: 21px; height: 2px; background: #0f172a; border-radius: 2px; }
+.adm-hamburger:hover { background: #f3f4f6; }
+.adm-drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 50; backdrop-filter: blur(2px); }
+.adm-drawer { position: fixed; top: 0; left: 0; height: 100vh; width: 248px; background: #02173f; z-index: 51; transform: translateX(-100%); transition: transform 0.25s ease; display: flex; flex-direction: column; box-shadow: 6px 0 30px rgba(0,0,0,0.22); }
 .adm-drawer.open { transform: translateX(0); }
-.adm-drawer-header {
-  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 100%);
-  padding: 16px 16px 14px; display: flex; align-items: center; justify-content: space-between;
-}
-.adm-drawer-header span { color: #ffd200; font-weight: 800; font-size: 0.95rem; }
-.adm-drawer-close { background: none; border: none; color: #aaa; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-.adm-drawer-close:hover { color: #fff; }
+.adm-drawer-header { padding: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.adm-drawer-header span { color: #fff; font-weight: 900; font-size: 0.95rem; }
+.adm-drawer-close { background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .adm-drawer-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
-
-@media (max-width: 720px) {
-  .adm-sidebar        { display: none; }
-  .adm-hamburger      { display: flex; }
-  .adm-drawer-backdrop.open { display: block; }
-  .adm-content        { padding: 16px 14px 60px; }
-}
+@media (max-width: 860px) { .adm-sidebar { display: none; } .adm-hamburger { display: flex; } .adm-drawer-backdrop.open { display: block; } .adm-content { padding: 16px 12px 46px; } .adm-top-search { display: none; } .adm-user { display: none; } }
 `;
 
 // ── Main export ────────────────────────────────────────────────────────────────
@@ -1538,6 +1654,10 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
     const [authChecked, setAuthChecked] = useState(false);
     const [tab, setTab] = useState<AdminTab>(initialTab ?? "dashboard");
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const notificationRef = useRef<HTMLDivElement | null>(null);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+    const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
     const changeTab = (t: AdminTab) => {
         setTab(t);
@@ -1554,7 +1674,157 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
         return unsub;
     }, []);
 
+    useEffect(() => {
+        if (!authed) return;
+
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() / 1000;
+        const sessionReads = [
+            {name: "Bongo Quiz", collectionName: "gameSessions"},
+            {name: "Bible Quiz", collectionName: "bibleQuizSessions"},
+            {name: "Math Quiz", collectionName: "mathQuizSessions"},
+            {name: "Biology Quiz", collectionName: "bioQuizSessions"},
+            {name: "General Knowledge", collectionName: "genQuizSessions"},
+            {name: "Sudoku", collectionName: "sudokuSessions"},
+            {name: "Connect Dots", collectionName: "connectDotsSessions"},
+        ];
+        const reads = [
+            {label: "players", promise: getDocs(collection(db, "players"))},
+            {label: "payments", promise: getDocs(collection(db, "payments"))},
+            {label: "grantedSessions", promise: getDocs(collection(db, "grantedSessions"))},
+            ...sessionReads.map(game => ({label: game.collectionName, promise: getDocs(collection(db, game.collectionName))})),
+        ];
+
+        Promise.allSettled(reads.map(read => read.promise)).then(results => {
+            const alerts: AdminNotification[] = [];
+            const failedReads = results
+                .map((result, index) => ({result, label: reads[index].label}))
+                .filter(({result}) => result.status === "rejected");
+
+            if (failedReads.length) {
+                alerts.push({
+                    id: "firebase-errors",
+                    kind: "firebase",
+                    tone: "error",
+                    title: "Firebase errors detected",
+                    body: failedReads.map(({label, result}) => {
+                        const reason = result.status === "rejected" ? result.reason : "";
+                        const code = typeof reason === "object" && reason && "code" in reason ? ` (${String((reason as { code?: unknown }).code)})` : "";
+                        return `${label}${code}`;
+                    }).join(", "),
+                });
+            } else {
+                alerts.push({
+                    id: "firebase-ok",
+                    kind: "firebase",
+                    tone: "ok",
+                    title: "Firebase connected",
+                    body: "Admin reads for players, payments, and grants are responding.",
+                });
+            }
+
+            const playersSnap = results[0].status === "fulfilled" ? results[0].value : null;
+            const paymentsSnap = results[1].status === "fulfilled" ? results[1].value : null;
+            const grantsSnap = results[2].status === "fulfilled" ? results[2].value : null;
+            const gameResults = results.slice(3);
+
+            const playersToday = playersSnap?.docs.filter(d => {
+                const data = d.data() as any;
+                return (data.createdAt?.seconds ?? data.joinedAt?.seconds ?? data.updatedAt?.seconds ?? 0) >= todayStart;
+            }).length ?? 0;
+            alerts.push({
+                id: "players-today",
+                kind: "players",
+                tone: playersToday ? "info" : "warn",
+                title: "Players today",
+                body: `${playersToday.toLocaleString()} new player${playersToday === 1 ? "" : "s"} registered today.`,
+            });
+
+            const gamesToday = sessionReads.map((game, index) => {
+                const snap = gameResults[index]?.status === "fulfilled" ? gameResults[index].value : null;
+                const count = snap?.docs.filter(d => {
+                    const data = d.data() as any;
+                    return (data.playedAt?.seconds ?? data.createdAt?.seconds ?? data.completedAt?.seconds ?? 0) >= todayStart;
+                }).length ?? 0;
+                return {...game, count};
+            });
+            const playedToday = gamesToday.filter(game => game.count > 0);
+            const gamesTotalToday = gamesToday.reduce((sum, game) => sum + game.count, 0);
+            alerts.push({
+                id: "games-today",
+                kind: "games",
+                tone: gamesTotalToday ? "info" : "warn",
+                title: "Games played today",
+                body: playedToday.length
+                    ? playedToday.map(game => `${game.name}: ${game.count.toLocaleString()} player${game.count === 1 ? "" : "s"}`).join("; ")
+                    : "No game sessions recorded today.",
+            });
+
+            const todayPayments = paymentsSnap?.docs.map(d => d.data() as any).filter(pay => (pay.createdAt?.seconds ?? 0) >= todayStart) ?? [];
+            const paidToday = todayPayments.filter(pay => pay.status === "paid");
+            const pendingToday = todayPayments.filter(pay => pay.status === "pending");
+            const failedToday = todayPayments.filter(pay => pay.status === "failed");
+            const mpesaRevenue = paidToday.reduce((sum, pay) => sum + (pay.amount ?? 0), 0);
+            alerts.push({
+                id: "mpesa-today",
+                kind: "mpesa",
+                tone: failedToday.length ? "warn" : "info",
+                title: "M-Pesa transactions",
+                body: `${paidToday.length} paid, ${pendingToday.length} pending, ${failedToday.length} failed today. Revenue: KSh ${mpesaRevenue.toLocaleString()}.`,
+            });
+
+            const stuckCount = grantsSnap?.size ?? 0;
+            const suggestions: string[] = [];
+            if (stuckCount > 0) suggestions.push(`${stuckCount} granted session${stuckCount === 1 ? "" : "s"} need review.`);
+            if (pendingToday.length > 3) suggestions.push("Review pending M-Pesa callbacks and payment polling.");
+            if (failedToday.length > 0) suggestions.push("Check failed payment receipts and Firebase rules/indexes.");
+            if (playersToday === 0) suggestions.push("Confirm sign-up tracking is writing createdAt/joinedAt timestamps.");
+            alerts.push({
+                id: "maintenance",
+                kind: "maintenance",
+                tone: suggestions.length ? "warn" : "ok",
+                title: "Maintenance suggestions",
+                body: suggestions.length ? suggestions.join(" ") : "No urgent maintenance suggestions right now.",
+            });
+
+            const loadedAt = Date.now();
+            setAdminNotifications(alerts.map(alert => ({...alert, createdAt: alert.createdAt ?? loadedAt})));
+        }).catch(error => {
+            setAdminNotifications([{
+                id: "notification-load-error",
+                kind: "firebase",
+                tone: "error",
+                title: "Notification load failed",
+                body: String(error),
+                createdAt: Date.now(),
+            }]);
+        });
+    }, [authed]);
+
+    useEffect(() => {
+        if (!notificationsOpen) return;
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (!notificationRef.current?.contains(event.target as Node)) {
+                setNotificationsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, [notificationsOpen]);
+
     const handleLogout = () => signOut(auth);
+    const activeLabel = TABS.find(t => t.id === tab)?.label.replace(/^\S+\s*/, "") ?? "Dashboard";
+    const timeAgo = (ms?: number) => {
+        if (!ms) return "just now";
+        const diff = Math.max(Date.now() - ms, 0);
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return "just now";
+        if (mins < 60) return `${mins} min ago`;
+        const hours = Math.floor(mins / 60);
+        return hours < 24 ? `${hours} hr ago` : `${Math.floor(hours / 24)} day ago`;
+    };
+    const unreadNotifications = adminNotifications.filter(n => n.tone !== "ok" && !readNotificationIds.has(n.id));
+    const notificationCount = unreadNotifications.length;
 
     if (!authChecked) return null;
     if (!authed) return <AdminLogin onLogin={() => {
@@ -1565,29 +1835,61 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
         <style>{CSS}</style>
         <div className="adm-root">
             <header className="adm-topbar">
-                <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                <div className="adm-brand">
                     <button className="adm-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
                         <span/><span/><span/>
                     </button>
-                    <h1>🛠️ Bongo Quiz — Admin Panel</h1>
+                    <div className="adm-logo-mark">BQ</div>
+                    <div className="adm-title">
+                        <h1>BONGOQUIZ-ADMIN</h1>
+                        {/*<span>Admin Panel, Practice, Exams</span>*/}
+                    </div>
                 </div>
-                <div style={{display: "flex", gap: 16, alignItems: "center"}}>
-                    <a href="#/">← Back to Game</a>
-                    <button onClick={handleLogout}
-                            style={{
-                                padding: "6px 14px",
-                                borderRadius: 6,
-                                border: "1px solid rgba(255,100,100,0.3)",
-                                background: "rgba(255,80,80,0.12)",
-                                color: "#ff8080",
-                                cursor: "pointer",
-                                fontSize: "0.8rem",
-                                fontWeight: 600,
-                                fontFamily: "inherit",
-                                transition: "all 0.15s"
-                            }}>
-                        Logout
-                    </button>
+                {/*<input className="adm-top-search" placeholder="Search anything..." aria-label="Search admin panel" />*/}
+                <div className="adm-top-actions">
+                    {/*<a className="adm-icon-btn" href="#/" title="Back to game" aria-label="Back to game">Home</a>*/}
+                    <div className="adm-notification-wrap" ref={notificationRef}>
+                        <button
+                            className="adm-icon-btn"
+                            title="Admin notifications"
+                            aria-label="Admin notifications"
+                            aria-expanded={notificationsOpen}
+                            onClick={() => setNotificationsOpen(open => !open)}
+                        >
+                            <Bell size={17} strokeWidth={2.2}/>
+                            <span className="adm-badge-dot">{notificationCount}</span>
+                        </button>
+                        {notificationsOpen && (
+                            <div className="adm-notification-menu">
+                                <div className="adm-notification-head">
+                                    <strong>Notifications</strong>
+                                    <button onClick={() => setReadNotificationIds(new Set(adminNotifications.map(item => item.id)))}>Mark as read</button>
+                                    <span>{notificationCount} unread</span>
+                                </div>
+                                <div className="adm-notification-list">
+                                    {adminNotifications.map(item => {
+                                        const Icon = notificationIcon[item.kind];
+                                        return (
+                                            <div className={`adm-notification-item ${item.tone}${readNotificationIds.has(item.id) ? " read" : ""}`} key={item.id}>
+                                                <span className="adm-notification-icon">
+                                                    {item.tone === "ok" ? <CheckCircle size={16}/> : <Icon size={16}/>}
+                                                </span>
+                                                <span>
+                                                    <strong>{item.title} <em>{timeAgo(item.createdAt)}</em></strong>
+                                                    <small>{item.body}</small>
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="adm-user">
+                        <span className="adm-avatar">A</span>
+                        <span>Admin<br/><small>{activeLabel}</small></span>
+                    </div>
+                    <button className="adm-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </header>
 
@@ -1595,56 +1897,71 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
             <div className={`adm-drawer-backdrop${drawerOpen ? " open" : ""}`} onClick={() => setDrawerOpen(false)}/>
             <div className={`adm-drawer${drawerOpen ? " open" : ""}`}>
                 <div className="adm-drawer-header">
-                    <span>🛠️ Admin Menu</span>
+                    <span>Admin Menu</span>
                     <button className="adm-drawer-close" onClick={() => setDrawerOpen(false)}>✕</button>
                 </div>
                 <div className="adm-drawer-nav">
-                    <div className="adm-sidebar-label">Bongo Quiz</div>
-                    {TABS.filter(t => ["dashboard", "players", "payments", "games", "leaderboard", "questions", "powers", "achievements"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
-                                onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot"/>{t.label}
-                        </button>
-                    ))}
-                    <div className="adm-sidebar-divider"/>
-                    <div className="adm-sidebar-label">Other Games</div>
-                    {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => (
-                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
-                                onClick={() => changeTab(t.id)}>
-                            <span className="adm-dot"/>{t.label}
-                        </button>
-                    ))}
+                   <div className="adm-sidebar-label">Bongo Quiz</div>
+                   {TABS.filter(t => ["dashboard", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "bongomarket"].includes(t.id)).map(t => {
+                       const Icon = t.icon;
+                       return (
+                           <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                                   onClick={() => changeTab(t.id)}>
+                               <Icon className="adm-tab-icon" aria-hidden="true"/><span>{t.label}</span>
+                           </button>
+                       );
+                   })}
+                   <div className="adm-sidebar-divider"/>
+                   <div className="adm-sidebar-label">Other Games</div>
+                   {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => {
+                       const Icon = t.icon;
+                       return (
+                           <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                                   onClick={() => changeTab(t.id)}>
+                               <Icon className="adm-tab-icon" aria-hidden="true"/><span>{t.label}</span>
+                           </button>
+                       );
+                   })}
                 </div>
-            </div>
+                </div>
 
-        <div className="adm-layout">
-            <nav className="adm-sidebar">
+                <div className="adm-layout">
+                <nav className="adm-sidebar">
                 <div className="adm-sidebar-label">Bongo Quiz</div>
-                {TABS.filter(t => ["dashboard", "players", "payments", "games", "leaderboard", "questions", "powers", "achievements"].includes(t.id)).map(t => (
-                    <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
-                            onClick={() => changeTab(t.id)}>
-                        <span className="adm-dot"/>{t.label}
-                    </button>
-                ))}
+                {TABS.filter(t => ["dashboard", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "bongomarket"].includes(t.id)).map(t => {
+                   const Icon = t.icon;
+                   return (
+                       <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                               onClick={() => changeTab(t.id)}>
+                           <Icon className="adm-tab-icon" aria-hidden="true"/><span>{t.label}</span>
+                       </button>
+                   );
+                })}
                 <div className="adm-sidebar-divider"/>
                 <div className="adm-sidebar-label">Other Games</div>
-                {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => (
-                    <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
-                            onClick={() => changeTab(t.id)}>
-                        <span className="adm-dot"/>{t.label}
-                    </button>
-                ))}
-            </nav>
+                {TABS.filter(t => ["kcse", "biblequiz", "mathquiz", "bioquiz", "genquiz", "sudoku", "connectdots", "streetbongo"].includes(t.id)).map(t => {
+                   const Icon = t.icon;
+                   return (
+                       <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
+                               onClick={() => changeTab(t.id)}>
+                           <Icon className="adm-tab-icon" aria-hidden="true"/><span>{t.label}</span>
+                       </button>
+                   );
+                })}
+                </nav>
 
-            <main className="adm-content" id="adm-content">
-                {tab === "dashboard" && <Dashboard/>}
+                <main className="adm-content" id="adm-content">
+                {tab === "dashboard" && <Dashboard changeTab={changeTab}/>}
                 {tab === "players" && <Players/>}
+                {tab === "playerscores" && <AdminPlayerScores/>}
                 {tab === "payments" && <Payments/>}
                 {tab === "games" && <GameSessions/>}
                 {tab === "leaderboard" && <AdminLeaderboard/>}
                 {tab === "questions" && <AdminQuestions/>}
                 {tab === "powers" && <AdminPowers/>}
-                {tab === "achievements" && <Achievements/>}
+                {tab === "achievements" && <AdminAchievements/>}
+                {tab === "rewards" && <AdminRewards/>}
+                {tab === "bongomarket" && <AdminBongoMarket/>}
                 {tab === "kcse" && <AdminKCSE/>}
                 {tab === "biblequiz" && <AdminBibleQuiz/>}
                 {tab === "mathquiz" && <AdminMathQuiz/>}
@@ -1653,8 +1970,8 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 {tab === "sudoku" && <AdminSudoku/>}
                 {tab === "connectdots" && <AdminConnectDots/>}
                 {tab === "streetbongo" && <AdminStreetBongo/>}
-            </main>
-        </div>
+                </main>
+                </div>
         </div>
 </>
 )

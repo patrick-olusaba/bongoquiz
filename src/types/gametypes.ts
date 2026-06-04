@@ -17,6 +17,8 @@ export type GameScreen =
     | "round3_question"
     | "final_result"
     | "leaderboard"
+    | "wallet"
+    | "market"
     | "transition_r1"
     | "transition_r2"
     | "transition_r3";

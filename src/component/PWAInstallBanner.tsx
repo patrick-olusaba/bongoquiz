@@ -13,7 +13,7 @@ export function PWAInstallBanner() {
         if (ios) return;
 
         // Always show banner — install button only works on HTTPS with Chrome
-        setShow(true);
+        setShow(false);
 
         const existing = (window as any).__pwaInstallPrompt;
         if (existing) { setDeferredPrompt(existing); return; }

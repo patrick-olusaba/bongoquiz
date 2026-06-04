@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, doc, query, where, setDoc } from "firebase/firestore";
 import { db } from "../../firebase.ts";
+import { writeAdminAudit } from "./auditLog.ts";
 
 const s: Record<string, React.CSSProperties> = {
     card:   { background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #e8eaf0", marginBottom: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
@@ -167,6 +168,12 @@ function ConnectDotsSessions() {
             await setDoc(doc(db, "grantedConnectDotsSessions", phone07), {
                 phone: phone07, name: p.name ?? "", grantedAt: new Date(), grantedBy: "admin", paymentId: p._id,
             });
+            writeAdminAudit({
+                action: "Granted Connect Dots session",
+                target: phone07,
+                game: "Connect Dots",
+                details: { paymentId: p._id, amount: p.amount ?? null },
+            }).catch(() => {});
             setPayments(prev => prev.filter(x => x._id !== p._id));
         } catch (e) { alert("Failed to grant session: " + e); }
         setGranting(null);
@@ -211,6 +218,12 @@ function ConnectDotsSessions() {
                                             </button>
                                             <button onClick={() => {
                                                 setDoc(doc(db, "dismissedConnectDotsPayments", p._id), { dismissedAt: new Date() }).catch(() => {});
+                                                writeAdminAudit({
+                                                    action: "Dismissed stuck Connect Dots payment",
+                                                    target: p._id,
+                                                    game: "Connect Dots",
+                                                    details: { phone: p.phone ?? "", amount: p.amount ?? null },
+                                                }).catch(() => {});
                                                 setDismissed(prev => new Set([...prev, p._id]));
                                             }} style={{ ...s.btn, background: "#f0f0f8", color: "#444" }}>Already Granted</button>
                                         </div>

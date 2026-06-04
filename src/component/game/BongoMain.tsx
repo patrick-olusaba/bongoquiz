@@ -25,12 +25,15 @@ import { SessionSummary }          from "./SessionSummary.tsx";
 import { GameHistory }             from "./GameHistory.tsx";
 import { clearQuestionsCache }     from "../../hooks/useQuestions.ts";
 import { SupportChat }             from "../support/SupportChat.tsx";
+import { BongoWalletPage }          from "./BongoWalletPage.tsx";
+import { BongoMarketPage }          from "./BongoMarketPage.tsx";
+import { awardBongoCoinsForSession } from "../../utils/bongoWallet.ts";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const BongoMain: FC = () => {
     const [screen,      setScreen]      = useState<GameScreen>(() => {
         const tab = new URLSearchParams(window.location.search).get('tab');
-        if (tab === 'games' || tab === 'profile' || tab === 'leaderboard') return tab as GameScreen;
+        if (tab === 'games' || tab === 'profile' || tab === 'leaderboard' || tab === 'wallet' || tab === 'market') return tab as GameScreen;
         return "home";
     });
     const [playerName,  setPlayerName]  = useState(() => localStorage.getItem("bongo_player_name") ?? "Player");
@@ -188,6 +191,12 @@ export const BongoMain: FC = () => {
             else if (tab === 'profile') setScreen("profile");
         }} />;
 
+    if (screen === "wallet")
+        return <BongoWalletPage onBack={() => setScreen("home")} onMarket={() => setScreen("market")} />;
+
+    if (screen === "market")
+        return <BongoMarketPage onBack={() => setScreen("home")} onWallet={() => setScreen("wallet")} />;
+
     if (screen === "profile")
         return <ProfilePage onBack={() => setScreen("home")} onNavigate={(tab) => {
             if (tab === 'home') setScreen("home");
@@ -204,6 +213,8 @@ export const BongoMain: FC = () => {
                 triggerPlay={triggerPlay}
                 onTriggerPlayDone={() => setTriggerPlay(false)}
                 onViewAllGames={() => setScreen("games")}
+                onWallet={() => setScreen("wallet")}
+                onMarket={() => setScreen("market")}
                 onStart={(name: string) => {
                     setPlayerName(name);
                     setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
@@ -381,6 +392,11 @@ export const BongoMain: FC = () => {
                 setSessionRounds(allRounds);
                 setLastSessionRounds(allRounds); // persist through reset
                 saveSession(r1Score, r2Score, r3Score, power?.name ?? "");
+                awardBongoCoinsForSession({
+                    sessionId: `${Date.now()}-${playerPhone}-${r1Score}-${r2Score}-${r3Score}`,
+                    points: r1Score + r2Score + r3Score,
+                    power: power?.name ?? "",
+                });
                 setScreen("final_result");
             }}
         />;
@@ -415,6 +431,8 @@ export const BongoMain: FC = () => {
             hasPaidSession={hasPaidSession}
             onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
             onLeaderboard={() => setScreen("leaderboard")}
+            onWallet={() => setScreen("wallet")}
+            onMarket={() => setScreen("market")}
             onHistory={() => setShowHistory(true)}
         />
         <BottomNav active="home" onNavigate={(tab) => {

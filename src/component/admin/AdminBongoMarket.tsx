@@ -5,12 +5,13 @@ import { db, storage } from "../../firebase.ts";
 import { BONGO_MARKET_ITEMS, type BongoMarketItem, type BongoOrder } from "../../utils/bongoWallet.ts";
 import { writeAdminAudit } from "./auditLog.ts";
 
-type MarketProductForm = BongoMarketItem & {
+type MarketProductForm = Omit<BongoMarketItem, "price"> & {
+    price: number | "";
     active: boolean;
-    stock: number;
+    stock: number | "";
     imageUrl: string;
     imageUrls: string[];
-    sortOrder: number;
+    sortOrder: number | "";
     availableColors: string[];
 };
 
@@ -67,6 +68,7 @@ const s: Record<string, CSSProperties> = {
 };
 
 const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+const parseNumberInput = (value: string) => value === "" ? "" : Number(value);
 
 const cleanProduct = (form: MarketProductForm) => ({
     name: form.name.trim(),
@@ -252,11 +254,11 @@ export function AdminBongoMarket() {
                             <Field label="Product name"><input style={s.input} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required/></Field>
                             <Field label="Brand"><input style={s.input} value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })}/></Field>
                             <Field label="Category"><select style={s.input} value={form.category} onChange={e => setForm({ ...form, category: e.target.value as BongoMarketItem["category"] })}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></Field>
-                            <Field label="Price (Coins/KSh)"><input type="number" min="0" style={s.input} value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })}/></Field>
-                            <Field label="Stock"><input type="number" min="0" style={s.input} value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })}/></Field>
+                            <Field label="Price (Coins/KSh)"><input type="number" min="0" style={s.input} value={form.price} onChange={e => setForm({ ...form, price: parseNumberInput(e.target.value) })}/></Field>
+                            <Field label="Stock"><input type="number" min="0" style={s.input} value={form.stock} onChange={e => setForm({ ...form, stock: parseNumberInput(e.target.value) })}/></Field>
                             <Field label="Tag"><input style={s.input} value={form.tag} onChange={e => setForm({ ...form, tag: e.target.value })}/></Field>
                             <Field label="Primary display color"><input type="color" style={{ ...s.input, height: 38 }} value={form.color} onChange={e => setForm({ ...form, color: e.target.value, availableColors: form.availableColors.includes(e.target.value) ? form.availableColors : [e.target.value, ...form.availableColors] })}/></Field>
-                            <Field label="Sort order"><input type="number" style={s.input} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })}/></Field>
+                            <Field label="Sort order"><input type="number" style={s.input} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseNumberInput(e.target.value) })}/></Field>
                         </div>
                         <ImageUploader imageUrls={form.imageUrls} uploading={uploading} onUpload={uploadProductImages} onRemove={removeProductImage} onClear={() => setForm({ ...form, imageUrl: "", imageUrls: [] })}/>
                         <div style={{ marginTop: 12 }}>
