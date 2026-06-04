@@ -1,0 +1,2195 @@
+.wallet-page {
+    min-height: 100vh;
+    max-width: 520px;
+    margin: 0 auto;
+    color: #fff;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: radial-gradient(ellipse at 50% -14%, rgba(34, 211, 238, 0.18), transparent 40%), radial-gradient(ellipse at 80% 18%, rgba(217, 70, 239, 0.18), transparent 34%), linear-gradient(180deg, #07000f 0%, #10001d 52%, #040007 100%);
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.wallet-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 86px), radial-gradient(circle, rgba(255,255,255,0.16) 1px, transparent 1px);
+    background-size: auto, 92px 92px;
+    opacity: 0.18;
+}
+
+.wallet-topbar,
+.wallet-balance-card,
+.wallet-tabs,
+.wallet-record-list,
+.market-grid,
+.market-inventory,
+.market-message {
+    position: relative;
+    z-index: 1;
+}
+
+.wallet-topbar {
+    display: grid;
+    grid-template-columns: 48px 1fr 48px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.wallet-topbar strong {
+    text-align: center;
+    font-size: clamp(1.65rem, 7vw, 2.35rem);
+    line-height: 1;
+    letter-spacing: 0;
+    text-shadow: 0 0 18px rgba(217,70,239,0.34);
+}
+
+.wallet-topbar button {
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgba(255,255,255,0.06);
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.wallet-topbar button:hover {
+    transform: translateY(-2px);
+    border-color: rgba(34,211,238,0.42);
+    background: rgba(34,211,238,0.1);
+}
+
+.wallet-balance-card {
+    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(125, 211, 252, 0.2);
+    background: radial-gradient(circle at 78% 0%, rgba(34, 211, 238, 0.16), transparent 32%), radial-gradient(circle at 16% 0%, rgba(217,70,239,0.22), transparent 36%), linear-gradient(180deg, rgba(18, 6, 36, 0.94), rgba(8, 2, 20, 0.96));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 22px 60px rgba(0,0,0,0.32);
+    animation: walletFadeUp 0.35s ease both;
+}
+
+.wallet-balance-card > span {
+    display: block;
+    color: rgba(255,255,255,0.62);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+}
+
+.wallet-balance-card div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.wallet-balance-card svg {
+    color: #fef08a;
+    filter: drop-shadow(0 0 16px rgba(250,204,21,0.28));
+}
+
+.wallet-balance-card strong {
+    font-size: clamp(2.4rem, 12vw, 4rem);
+    line-height: 0.95;
+    background: linear-gradient(90deg, #fff, #fef08a, #67e8f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.wallet-balance-card p {
+    margin: 12px 0 0;
+    color: rgba(255,255,255,0.58);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    font-weight: 750;
+}
+
+.wallet-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.wallet-tabs button {
+    min-height: 44px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    color: rgba(255,255,255,0.52);
+    background: transparent;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 950;
+    cursor: pointer;
+}
+
+.wallet-tabs button.active {
+    color: #818cf8;
+    border-bottom-color: #818cf8;
+    text-shadow: 0 0 14px rgba(129,140,248,0.44);
+}
+
+.wallet-record-list,
+.market-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.wallet-record-row,
+.market-item,
+.market-inventory {
+    border-radius: 18px;
+    border: 1px solid rgba(125, 211, 252, 0.14);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.045), transparent 34%), rgba(15, 17, 31, 0.86);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.045);
+}
+
+.wallet-record-row {
+    min-height: 96px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    animation: walletFadeUp 0.32s ease both;
+}
+
+.wallet-record-copy {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+
+.wallet-record-copy strong {
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.wallet-record-copy span,
+.wallet-record-copy small {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.76rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wallet-record-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #f0abfc;
+    font-size: 1.1rem;
+    font-weight: 950;
+    white-space: nowrap;
+}
+
+.wallet-record-amount.negative {
+    color: rgba(255,255,255,0.5);
+}
+
+.wallet-empty {
+    min-height: 220px;
+    border: 1px dashed rgba(125,211,252,0.24);
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    color: rgba(255,255,255,0.58);
+    text-align: center;
+    padding: 22px;
+}
+
+.wallet-empty strong {
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.wallet-empty p {
+    margin: 0;
+    max-width: 260px;
+}
+
+.market-message {
+    margin: -6px 0 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(34,211,238,0.2);
+    background: rgba(34,211,238,0.08);
+    color: #bae6fd;
+    font-size: 0.8rem;
+    font-weight: 850;
+}
+
+.market-item {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+    animation: walletFadeUp 0.32s ease both;
+}
+
+.market-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: #67e8f9;
+    background: rgba(34,211,238,0.1);
+}
+
+.market-item-copy span {
+    color: #f0abfc;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.market-item-copy strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 1.06rem;
+    font-weight: 950;
+}
+
+.market-item-copy p {
+    margin: 6px 0 0;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.market-item-bottom {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.market-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fef08a;
+    font-weight: 950;
+}
+
+.market-item button {
+    min-width: 92px;
+    min-height: 36px;
+    border: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #fff;
+    background: linear-gradient(90deg, #22d3ee, #8b2cff, #ff28f4);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 950;
+    cursor: pointer;
+}
+
+.market-item button:disabled {
+    cursor: default;
+    color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.1);
+}
+
+.market-inventory {
+    margin-top: 16px;
+    padding: 16px;
+}
+
+.market-inventory h2 {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+}
+
+.market-inventory-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.market-inventory-row small,
+.market-inventory p {
+    color: rgba(255,255,255,0.52);
+}
+
+@keyframes walletFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wallet-balance-card,
+    .wallet-record-row,
+    .market-item {
+        animation: none;
+    }
+}
+
+.wallet-tabs-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.wallet-tabs-three button {
+    font-size: clamp(0.72rem, 3.5vw, 0.95rem);
+    line-height: 1.1;
+    padding: 0 4px;
+}
+
+.wallet-convert-panel {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 12px;
+}
+
+.wallet-convert-card {
+    border-radius: 18px;
+    border: 1px solid rgba(125, 211, 252, 0.16);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.055), transparent 36%), rgba(15, 17, 31, 0.86);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 16px;
+    animation: walletFadeUp 0.32s ease both;
+}
+
+.wallet-convert-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.wallet-convert-head > svg {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    border-radius: 14px;
+    color: #67e8f9;
+    background: rgba(34, 211, 238, 0.1);
+    box-sizing: border-box;
+}
+
+.wallet-convert-head strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.wallet-convert-head span,
+.wallet-convert-note {
+    color: rgba(255,255,255,0.55);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.wallet-airtime-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.wallet-airtime-grid button {
+    min-height: 74px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.055);
+    color: rgba(255,255,255,0.88);
+    font: inherit;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 5px;
+}
+
+.wallet-airtime-grid button:disabled,
+.wallet-withdraw-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.wallet-airtime-grid span {
+    font-weight: 950;
+}
+
+.wallet-airtime-grid small {
+    color: #fef08a;
+    font-weight: 900;
+}
+
+.wallet-convert-note {
+    margin: 12px 0 0;
+}
+
+.wallet-ksh-preview {
+    min-height: 82px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: radial-gradient(circle at 72% 0%, rgba(217,70,239,0.16), transparent 38%), rgba(255,255,255,0.045);
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.wallet-ksh-preview span {
+    color: rgba(255,255,255,0.56);
+    font-size: 0.78rem;
+    font-weight: 850;
+}
+
+.wallet-ksh-preview strong {
+    color: #fef08a;
+    font-size: 1.7rem;
+    font-weight: 950;
+    text-shadow: 0 0 16px rgba(250,204,21,0.2);
+}
+
+.wallet-withdraw-btn {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.58);
+    font: inherit;
+    font-weight: 950;
+}
+
+@media (max-width: 360px) {
+    .wallet-airtime-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Commerce market flow */
+.market-commerce-hero {
+    margin-bottom: 20px;
+}
+
+.market-commerce-hero > span {
+    letter-spacing: 1.6px;
+}
+
+.market-toolbar {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: -6px 0 12px;
+}
+
+.market-toolbar button,
+.market-category-row button {
+    min-height: 36px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.045);
+    color: rgba(255,255,255,0.62);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 950;
+    cursor: pointer;
+}
+
+.market-toolbar button.active,
+.market-category-row button.active {
+    border-color: rgba(217, 70, 239, 0.34);
+    background: rgba(217, 70, 239, 0.12);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(217,70,239,0.14);
+}
+
+.market-category-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 12px;
+}
+
+.market-category-row::-webkit-scrollbar {
+    display: none;
+}
+
+.market-category-row button {
+    flex: 0 0 auto;
+    padding: 0 14px;
+}
+
+.market-product-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 12px;
+}
+
+.market-product-card {
+    min-height: 144px;
+    border-radius: 16px;
+    border: 1px solid rgba(125, 211, 252, 0.16);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.055), transparent 36%), rgba(15, 17, 31, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: auto 1fr;
+    column-gap: 12px;
+    row-gap: 12px;
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    animation: walletFadeUp 0.32s ease both;
+}
+
+.market-product-card:hover,
+.market-product-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(217,70,239,0.35);
+    background: linear-gradient(135deg, rgba(217,70,239,0.085), transparent 38%), rgba(15, 17, 31, 0.95);
+    outline: none;
+}
+
+.market-product-art {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: #00e5ff;
+    box-shadow: 0 0 18px rgba(34,211,238,0.12);
+}
+
+.market-product-copy {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 4px;
+}
+
+.market-product-brand {
+    color: #f0abfc;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.market-product-copy strong {
+    color: #fff;
+    font-size: 1.05rem;
+    line-height: 1.1;
+    font-weight: 950;
+}
+
+.market-product-copy p {
+    margin: 0;
+    color: rgba(255,255,255,0.54);
+    font-size: 0.76rem;
+    line-height: 1.35;
+}
+
+.market-product-bottom {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.market-product-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fef08a;
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.market-product-bottom button,
+.market-detail-actions button:last-child,
+.market-checkout-bar button {
+    min-width: 92px;
+    min-height: 36px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(90deg, #22d3ee, #8b2cff 48%, #ff00d4);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 0 18px rgba(217,70,239,0.28);
+}
+
+.market-detail-card,
+.market-cart-card,
+.market-orders-card {
+    position: relative;
+    z-index: 1;
+    border-radius: 18px;
+    border: 1px solid rgba(125,211,252,0.16);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.055), transparent 36%), rgba(15, 17, 31, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 16px;
+    animation: walletFadeUp 0.32s ease both;
+}
+
+.market-detail-art {
+    min-height: 180px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 2.6rem;
+    font-weight: 950;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+}
+
+.market-detail-card > span {
+    color: #f0abfc;
+    font-size: 0.72rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.market-detail-card h2,
+.market-cart-card h2,
+.market-orders-card h2 {
+    margin: 6px 0 8px;
+    font-size: 1.45rem;
+    line-height: 1.05;
+}
+
+.market-detail-card p,
+.market-muted {
+    color: rgba(255,255,255,0.58);
+    line-height: 1.45;
+}
+
+.market-detail-meta,
+.market-detail-actions,
+.market-checkout-bar,
+.market-methods {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.market-detail-meta {
+    margin: 14px 0;
+}
+
+.market-detail-meta small {
+    color: rgba(255,255,255,0.54);
+    font-weight: 850;
+}
+
+.market-detail-meta strong,
+.market-checkout-bar strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fef08a;
+    font-size: 1.2rem;
+}
+
+.market-detail-actions button:first-child {
+    min-height: 36px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 0 14px;
+    background: rgba(255,255,255,0.055);
+    color: rgba(255,255,255,0.78);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.market-cart-card {
+    display: grid;
+    gap: 12px;
+}
+
+.market-cart-row,
+.market-order-row {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.045);
+    padding: 12px;
+}
+
+.market-cart-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.market-cart-row div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.market-cart-row strong,
+.market-order-row strong {
+    color: #fff;
+    font-weight: 950;
+}
+
+.market-cart-row span,
+.market-cart-row small,
+.market-order-row span,
+.market-order-row small {
+    color: rgba(255,255,255,0.54);
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.market-qty {
+    display: inline-grid;
+    grid-template-columns: 30px 28px 30px;
+    align-items: center;
+    gap: 4px;
+}
+
+.market-qty button {
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+.market-qty span {
+    text-align: center;
+    color: #fff;
+    font-weight: 950;
+}
+
+.market-methods {
+    justify-content: stretch;
+}
+
+.market-methods button {
+    flex: 1;
+    min-height: 38px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.045);
+    color: rgba(255,255,255,0.65);
+    font: inherit;
+    font-weight: 950;
+}
+
+.market-methods button.active {
+    color: #fff;
+    border-color: rgba(34,211,238,0.34);
+    background: rgba(34,211,238,0.1);
+}
+
+.market-checkout-bar {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 12px;
+}
+
+.market-checkout-bar span {
+    display: block;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.market-checkout-bar button:disabled {
+    opacity: 0.52;
+    cursor: not-allowed;
+    background: rgba(255,255,255,0.12);
+    box-shadow: none;
+}
+
+.market-order-row {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.market-order-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.market-order-main svg {
+    color: #67e8f9;
+}
+
+.market-order-row b {
+    color: #fef08a;
+}
+
+@media (max-width: 390px) {
+    .market-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .market-product-card {
+        padding: 14px;
+    }
+}
+
+/* Pill-style Bongo Market sections */
+.market-commerce-hero.compact {
+    padding: 18px;
+    margin-bottom: 14px;
+}
+
+.market-commerce-hero.compact strong {
+    font-size: clamp(2.3rem, 10vw, 3.5rem);
+}
+
+.market-pill-layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 12px;
+}
+
+.market-pill-section {
+    border: 1px solid rgba(217, 70, 239, 0.28);
+    border-radius: 10px;
+    background: radial-gradient(circle at 18% 0%, rgba(217, 70, 239, 0.18), transparent 42%), rgba(12, 0, 24, 0.78);
+    padding: 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 14px 36px rgba(0,0,0,0.22);
+    overflow: hidden;
+}
+
+.market-pill-section.cyan {
+    border-color: rgba(34, 211, 238, 0.26);
+    background: radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.16), transparent 42%), rgba(8, 10, 28, 0.82);
+}
+
+.market-pill-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.market-pill-section-head h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    color: #ff28f4;
+    font-size: 0.92rem;
+    font-weight: 950;
+}
+
+.market-pill-section.cyan .market-pill-section-head h2 {
+    color: #00e5ff;
+}
+
+.market-pill-section-head button {
+    border: 0;
+    background: transparent;
+    color: rgba(255,255,255,0.7);
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.market-pill-section-head span {
+    font-size: 1rem;
+}
+
+.market-pill-scroll {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(142px, 154px);
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+}
+
+.market-pill-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.market-pill-card {
+    min-height: 112px;
+    border: 1px solid rgba(217, 70, 239, 0.42);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(217, 70, 239, 0.18), rgba(15, 0, 28, 0.9));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    padding: 8px;
+    display: grid;
+    color: #fff;
+    overflow: hidden;
+}
+
+.market-pill-card.merch {
+    min-height: 196px;
+    grid-template-rows: 96px minmax(52px, 1fr) 30px;
+    gap: 8px;
+    align-content: start;
+}
+
+.market-pill-card.merch .market-pill-art {
+    min-height: 96px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    color: #fff;
+    text-align: center;
+}
+
+.market-pill-card.merch .market-pill-art span {
+    font-size: 0.68rem;
+    font-weight: 950;
+    letter-spacing: 0.5px;
+}
+
+.market-pill-info {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 3px;
+}
+
+.market-pill-card.merch .market-pill-info {
+    min-height: 52px;
+}
+
+.market-pill-info strong,
+.market-pill-info b {
+    color: #fff;
+    font-size: 0.76rem;
+    line-height: 1.06;
+    font-weight: 950;
+}
+
+.market-pill-card.merch .market-pill-info strong {
+    min-height: 2.2em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.market-pill-info span {
+    color: #ff28f4;
+    font-size: 0.68rem;
+    font-weight: 950;
+}
+
+.market-pill-section.cyan .market-pill-info span {
+    color: #60a5fa;
+}
+
+.market-pill-info small {
+    width: fit-content;
+    padding: 3px 7px;
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(236, 72, 153, 0.7);
+    font-size: 0.52rem;
+    font-weight: 950;
+}
+
+.market-pill-card button {
+    min-height: 26px;
+    border: 0;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #7c3aed, #ff00d4);
+    color: #fff;
+    font: inherit;
+    font-size: 0.62rem;
+    font-weight: 950;
+    cursor: pointer;
+}
+
+.market-pill-card.service {
+    min-height: 104px;
+    align-content: space-between;
+    gap: 8px;
+}
+
+.market-service-logo,
+.market-cash-icon {
+    width: 42px;
+    height: 34px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 950;
+    background: rgba(255,255,255,0.08);
+}
+
+.market-pill-card.airtime .market-service-logo {
+    color: #ff1744;
+}
+
+.market-pill-card.cash .market-cash-icon {
+    color: #86efac;
+}
+
+.market-pill-card.service button {
+    min-height: 28px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #2563eb, #7c3aed, #ff00d4);
+}
+
+.market-pill-card.cash {
+    min-height: 106px;
+    grid-template-columns: 42px 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+.market-pill-card.cash button {
+    grid-column: 1 / -1;
+}
+
+@media (min-width: 520px) {
+    .market-pill-scroll {
+        grid-auto-columns: 156px;
+    }
+}
+
+.market-pill-image {
+    width: 100%;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.market-detail-image {
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 40, 244, 0.26);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.market-color-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0 4px;
+}
+
+.market-color-row span {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.42);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.market-image-gallery {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 0 2px;
+    scrollbar-width: none;
+}
+
+.market-image-gallery::-webkit-scrollbar {
+    display: none;
+}
+
+.market-image-gallery img {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.market-pill-card:not(.merch) .market-pill-art {
+    min-height: 82px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    color: #fff;
+    text-align: center;
+}
+
+.market-shop-layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 12px;
+}
+
+.market-goal-hero .market-goal-copy {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.market-goal-hero .market-goal-copy p {
+    margin: 0;
+}
+
+.market-goal-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.12);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+}
+
+.market-goal-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #22d3ee, #8b5cf6, #ff00d4);
+    box-shadow: 0 0 16px rgba(255, 0, 212, 0.42);
+}
+
+.market-featured-section {
+    border: 1px solid rgba(255, 40, 244, 0.34);
+    border-radius: 14px;
+    padding: 10px;
+    background: radial-gradient(circle at 75% 4%, rgba(34, 211, 238, 0.16), transparent 34%), radial-gradient(circle at 16% 0%, rgba(255, 40, 244, 0.2), transparent 42%), rgba(10, 0, 20, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 46px rgba(0,0,0,0.25);
+}
+
+.market-shop-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.market-shop-heading div,
+.market-shop-heading-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: #f0abfc;
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.market-shop-heading svg,
+.market-shop-heading-mini svg {
+    color: #fef08a;
+    filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.38));
+}
+
+.market-shop-heading button {
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 10px;
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.market-featured-card {
+    display: grid;
+    grid-template-columns: minmax(136px, 44%) 1fr;
+    gap: 12px;
+    align-items: stretch;
+    min-height: 190px;
+}
+
+.market-featured-image {
+    min-height: 190px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(34, 211, 238, 0.24), rgba(255, 0, 212, 0.22));
+    border: 1px solid rgba(255,255,255,0.14);
+}
+
+.market-featured-image img,
+.market-featured-image > div {
+    width: 100%;
+    height: 100%;
+    min-height: 190px;
+    object-fit: cover;
+}
+
+.market-featured-image > div {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    color: #fff;
+    font-weight: 950;
+}
+
+.market-featured-copy {
+    min-width: 0;
+    display: grid;
+    align-content: center;
+    gap: 7px;
+}
+
+.market-featured-copy small {
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ff00d4, #7c3aed);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 950;
+    text-transform: uppercase;
+}
+
+.market-featured-copy h2 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(1.18rem, 5vw, 1.75rem);
+    line-height: 1.02;
+    font-weight: 950;
+}
+
+.market-featured-copy p {
+    margin: 0;
+    color: rgba(255,255,255,0.58);
+    font-size: 0.76rem;
+    font-weight: 850;
+}
+
+.market-featured-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.market-featured-meta strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #fef08a;
+    font-size: 0.92rem;
+    font-weight: 950;
+}
+
+.market-featured-meta span {
+    color: #67e8f9;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.market-featured-copy > button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #2563eb, #7c3aed, #ff00d4);
+    color: #fff;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 950;
+    cursor: pointer;
+}
+
+.market-shop-heading-mini {
+    color: rgba(255,255,255,0.58);
+    font-size: 0.66rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+@media (max-width: 420px) {
+    .market-featured-card {
+        grid-template-columns: 1fr;
+    }
+
+    .market-featured-image,
+    .market-featured-image img,
+    .market-featured-image > div {
+        min-height: 210px;
+    }
+}
+
+.market-game-topbar {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 52px 1fr 56px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.market-game-topbar > button {
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: transparent;
+    cursor: pointer;
+}
+
+.market-game-topbar strong {
+    text-align: center;
+    color: #fff;
+    font-size: clamp(2rem, 7vw, 3.2rem);
+    line-height: 1;
+    font-weight: 950;
+    font-style: italic;
+    text-shadow: 0 0 26px rgba(34, 211, 238, 0.2);
+}
+
+.market-game-topbar strong span {
+    background: linear-gradient(90deg, #a855f7, #ff28f4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.market-cart-bubble {
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.22) !important;
+    background: rgba(255,255,255,0.08) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.market-cart-bubble em {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: #ff28f4;
+    font-size: 0.62rem;
+    font-style: normal;
+    font-weight: 950;
+}
+
+.market-reward-hero {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.12fr) 122px;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(168, 85, 247, 0.54);
+    background: radial-gradient(circle at 88% 12%, rgba(255, 40, 244, 0.16), transparent 30%), radial-gradient(circle at 12% 24%, rgba(34, 211, 238, 0.12), transparent 34%), rgba(12, 7, 32, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 22px 52px rgba(0,0,0,0.28);
+}
+
+.market-reward-balance {
+    display: grid;
+    gap: 10px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding-right: 18px;
+}
+
+.market-reward-balance > span,
+.market-reward-progress > span {
+    color: rgba(255,255,255,0.68);
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+}
+
+.market-reward-balance div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.market-reward-balance svg {
+    color: #facc15;
+    filter: drop-shadow(0 0 14px rgba(250, 204, 21, 0.5));
+}
+
+.market-reward-balance strong {
+    color: #fff;
+    font-size: clamp(2.5rem, 10vw, 4.2rem);
+    line-height: 0.9;
+    font-weight: 950;
+    text-shadow: 0 0 20px rgba(255,255,255,0.12);
+}
+
+.market-reward-balance button {
+    width: fit-content;
+    min-height: 34px;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #fff;
+    background: rgba(255,255,255,0.07);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 950;
+}
+
+.market-reward-progress {
+    display: grid;
+    gap: 12px;
+}
+
+.market-reward-progress p {
+    margin: 0;
+    color: rgba(255,255,255,0.8);
+    font-size: clamp(1rem, 3.6vw, 1.28rem);
+    line-height: 1.35;
+    font-weight: 850;
+}
+
+.market-reward-progress b {
+    color: #ff28f4;
+}
+
+.market-reward-preview {
+    position: relative;
+    min-height: 120px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 40, 244, 0.68);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: radial-gradient(circle, rgba(255, 40, 244, 0.24), rgba(18, 0, 31, 0.88));
+}
+
+.market-reward-preview img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.market-reward-preview > button {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.24);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgba(7, 2, 14, 0.78);
+}
+
+.market-featured-section {
+    border-radius: 18px;
+    padding: 0;
+    border-color: rgba(255, 40, 244, 0.48);
+    overflow: visible;
+    background: transparent;
+    box-shadow: none;
+}
+
+.market-shop-heading {
+    margin: 0 0 10px;
+}
+
+.market-shop-heading div {
+    color: #fff;
+    font-size: 1.22rem;
+    text-shadow: 0 0 16px rgba(255,255,255,0.16);
+}
+
+.market-shop-heading button {
+    border: 1px solid rgba(255, 40, 244, 0.4);
+    background: rgba(255, 40, 244, 0.12);
+    color: #ff5cf4;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.market-featured-card {
+    grid-template-columns: minmax(190px, 42%) 1fr;
+    min-height: 260px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 40, 244, 0.54);
+    overflow: hidden;
+    background: radial-gradient(circle at 64% 26%, rgba(255,255,255,0.12), transparent 22%), linear-gradient(135deg, rgba(84, 0, 111, 0.92), rgba(255, 0, 132, 0.54)), #17001f;
+}
+
+.market-featured-image {
+    order: 2;
+    min-height: 260px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.market-featured-image img,
+.market-featured-image > div {
+    min-height: 260px;
+    object-fit: cover;
+}
+
+.market-featured-copy {
+    padding: 28px 0 28px 24px;
+    align-content: center;
+}
+
+.market-featured-copy h2 {
+    font-size: clamp(1.8rem, 6vw, 2.6rem);
+}
+
+.market-category-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.market-category-tiles button {
+    min-height: 78px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 40, 244, 0.46);
+    display: grid;
+    grid-template-columns: 46px 1fr 20px;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    color: #fff;
+    background: radial-gradient(circle at 12% 30%, rgba(255,40,244,0.16), transparent 38%), rgba(11, 4, 28, 0.9);
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.market-category-tiles button:nth-child(2) {
+    border-color: rgba(34, 211, 238, 0.54);
+}
+
+.market-category-tiles button:nth-child(3) {
+    border-color: rgba(34, 197, 94, 0.54);
+}
+
+.market-category-tiles svg {
+    color: #ff28f4;
+    filter: drop-shadow(0 0 12px rgba(255, 40, 244, 0.48));
+}
+
+.market-category-tiles button:nth-child(2) svg { color: #22d3ee; filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.48)); }
+.market-category-tiles button:nth-child(3) svg { color: #22c55e; filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.48)); }
+
+.market-category-tiles span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.market-category-tiles b {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.market-category-tiles small,
+.market-category-tiles em {
+    color: rgba(255,255,255,0.62);
+    font-size: 0.82rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.market-pill-section.green {
+    border-color: rgba(34, 197, 94, 0.34);
+    background: radial-gradient(circle at 18% 0%, rgba(34, 197, 94, 0.16), transparent 42%), rgba(3, 18, 15, 0.82);
+}
+
+.market-pill-section.green .market-pill-section-head h2 {
+    color: #4ade80;
+}
+
+.market-pill-section.green .market-pill-info span {
+    color: #facc15;
+}
+
+
+@media (max-width: 560px) {
+    .market-reward-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .market-reward-balance {
+        border-right: 0;
+        padding-right: 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 14px;
+    }
+
+    .market-reward-preview img {
+        height: 170px;
+    }
+
+    /*.market-featured-card,*/
+    /*.market-category-tiles {*/
+    /*    grid-template-columns: 1fr;*/
+    /*}*/
+
+    .market-featured-image {
+        order: 0;
+    }
+
+    .market-featured-copy {
+        padding: 18px;
+    }
+}
+
+.market-category-tiles button.active {
+    background: radial-gradient(circle at 18% 26%, rgba(255, 40, 244, 0.28), transparent 42%), rgba(28, 4, 54, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(255, 40, 244, 0.2), 0 12px 30px rgba(255, 40, 244, 0.14);
+}
+
+.market-category-tiles button:nth-child(2).active {
+    background: radial-gradient(circle at 18% 26%, rgba(34, 211, 238, 0.24), transparent 42%), rgba(5, 17, 40, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(34, 211, 238, 0.18), 0 12px 30px rgba(34, 211, 238, 0.12);
+}
+
+.market-category-tiles button:nth-child(3).active {
+    background: radial-gradient(circle at 18% 26%, rgba(34, 197, 94, 0.24), transparent 42%), rgba(3, 31, 18, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 1px rgba(34, 197, 94, 0.18), 0 12px 30px rgba(34, 197, 94, 0.12);
+}
+
+.market-pill-card.reward-compact {
+    width: 100%;
+    min-height: 94px;
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 6px;
+    text-align: center;
+    font: inherit;
+    cursor: pointer;
+}
+
+.market-pill-card.reward-compact b {
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.05;
+    font-weight: 950;
+}
+
+.market-pill-card.reward-compact > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: #fef08a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.market-pill-card.reward-compact > span svg {
+    color: #facc15;
+    fill: rgba(250, 204, 21, 0.18);
+    filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.4));
+}
+
+.market-pill-card.airtime.reward-compact {
+    border-color: rgba(34, 211, 238, 0.58);
+    background: radial-gradient(circle at 50% 78%, rgba(148, 163, 184, 0.26), transparent 18%), linear-gradient(180deg, rgba(8, 18, 42, 0.94), rgba(3, 6, 20, 0.96));
+}
+
+.market-safaricom-logo {
+    position: relative;
+    width: fit-content;
+    min-height: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 950;
+    letter-spacing: -0.3px;
+}
+
+.market-safaricom-logo i {
+    width: 18px;
+    height: 10px;
+    display: inline-block;
+    border-radius: 50%;
+    border-top: 4px solid #e11d48;
+    border-left: 4px solid transparent;
+    transform: rotate(-18deg);
+    margin-right: -4px;
+}
+
+.market-safaricom-logo::after {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 2px;
+    width: 13px;
+    height: 7px;
+    border-radius: 50%;
+    border-top: 3px solid #22c55e;
+    transform: rotate(-18deg);
+}
+
+.market-pill-card.cash.reward-compact {
+    min-height: 84px;
+    grid-template-columns: 44px 1fr;
+    grid-template-rows: 1fr auto;
+    justify-items: start;
+    align-items: center;
+    text-align: left;
+    border-color: rgba(34, 197, 94, 0.62);
+    background: radial-gradient(circle at 20% 50%, rgba(34, 197, 94, 0.22), transparent 38%), linear-gradient(180deg, rgba(3, 28, 18, 0.96), rgba(4, 10, 13, 0.98));
+}
+
+.market-pill-card.cash.reward-compact b {
+    align-self: end;
+}
+
+.market-pill-card.cash.reward-compact > span {
+    grid-column: 2;
+    align-self: start;
+    justify-content: flex-start;
+}
+
+.market-cash-stack {
+    grid-row: 1 / span 2;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.12);
+    filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.3));
+}
+
+.market-cash-stack svg {
+    stroke-width: 2.4;
+}
+
+.market-pill-section.cyan .market-pill-scroll,
+.market-pill-section.green .market-pill-scroll {
+    grid-auto-columns: 118px;
+}
+
+@media (min-width: 520px) {
+    .market-pill-section.cyan .market-pill-scroll,
+    .market-pill-section.green .market-pill-scroll {
+        grid-auto-columns: 118px;
+    }
+}
+
+@media (min-width: 900px) {
+    .wallet-page.market-page {
+        max-width: 1180px;
+        padding: calc(22px + env(safe-area-inset-top)) 34px calc(34px + env(safe-area-inset-bottom));
+    }
+
+    .market-game-topbar {
+        grid-template-columns: 64px 1fr 64px;
+        margin-bottom: 24px;
+    }
+
+    .market-game-topbar > button {
+        width: 60px;
+        height: 60px;
+    }
+
+    .market-game-topbar strong {
+        font-size: 3.3rem;
+    }
+
+    .market-reward-hero {
+        grid-template-columns: minmax(230px, 0.9fr) minmax(340px, 1.35fr) 210px;
+        gap: 28px;
+        min-height: 190px;
+        padding: 28px 34px;
+        border-radius: 24px;
+    }
+
+    .market-reward-balance {
+        gap: 16px;
+        padding-right: 30px;
+    }
+
+    .market-reward-balance strong {
+        font-size: 4.8rem;
+    }
+
+    .market-reward-progress p {
+        max-width: 420px;
+        font-size: 1.35rem;
+    }
+
+    .market-reward-preview {
+        min-height: 150px;
+        border-radius: 20px;
+    }
+
+    .market-reward-preview img {
+        height: 158px;
+    }
+
+    .market-shop-layout {
+        gap: 22px;
+    }
+
+    .market-featured-section {
+        border-radius: 22px;
+    }
+
+    .market-shop-heading {
+        margin-bottom: 14px;
+    }
+
+    .market-shop-heading div {
+        font-size: 1.55rem;
+    }
+
+    .market-featured-card {
+        grid-template-columns: minmax(320px, 0.82fr) minmax(470px, 1.18fr);
+        min-height: 340px;
+        border-radius: 22px;
+    }
+
+    .market-featured-image,
+    .market-featured-image img,
+    .market-featured-image > div {
+        min-height: 340px;
+    }
+
+    .market-featured-copy {
+        padding: 42px 10px 42px 42px;
+    }
+
+    .market-featured-copy h2 {
+        max-width: 360px;
+        font-size: 3rem;
+    }
+
+    .market-featured-copy p {
+        font-size: 1rem;
+    }
+
+    .market-featured-meta strong {
+        font-size: 1.18rem;
+    }
+
+    .market-featured-copy > button {
+        width: 210px;
+        min-height: 52px;
+        border-radius: 12px;
+        font-size: 1rem;
+    }
+
+    .market-category-tiles {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .market-category-tiles button {
+        min-height: 98px;
+        border-radius: 18px;
+        grid-template-columns: 62px 1fr 22px;
+        padding: 18px 20px;
+    }
+
+    .market-category-tiles svg {
+        width: 44px;
+        height: 44px;
+    }
+
+    .market-category-tiles b {
+        font-size: 1.28rem;
+    }
+
+    .market-category-tiles small,
+    .market-category-tiles em {
+        font-size: 0.98rem;
+    }
+
+    .market-pill-section {
+        border-radius: 18px;
+        padding: 16px;
+    }
+
+    .market-pill-section-head {
+        margin-bottom: 14px;
+    }
+
+    .market-pill-section-head h2 {
+        font-size: 1.35rem;
+    }
+
+    .market-pill-section-head button {
+        font-size: 0.86rem;
+    }
+
+    .market-pill-section .market-pill-scroll {
+        grid-auto-flow: unset;
+        grid-auto-columns: unset;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        overflow: visible;
+        gap: 18px;
+        padding-bottom: 0;
+    }
+
+    .market-pill-card.merch {
+        min-height: 286px;
+        grid-template-rows: 154px minmax(70px, 1fr) 42px;
+        border-radius: 14px;
+        padding: 12px;
+    }
+
+    .market-pill-image,
+    .market-pill-card.merch .market-pill-art {
+        height: 154px;
+        min-height: 154px;
+        border-radius: 12px;
+    }
+
+    .market-pill-info strong,
+    .market-pill-info b {
+        font-size: 1rem;
+    }
+
+    .market-pill-info span {
+        font-size: 0.86rem;
+    }
+
+    .market-pill-info small {
+        font-size: 0.68rem;
+    }
+
+    .market-pill-card button {
+        min-height: 42px;
+        border-radius: 10px;
+        font-size: 0.84rem;
+    }
+
+    .market-pill-card.reward-compact {
+        min-height: 124px;
+        border-radius: 14px;
+    }
+
+    .market-pill-card.reward-compact b {
+        font-size: 1.45rem;
+    }
+
+    .market-pill-card.reward-compact > span {
+        font-size: 1.08rem;
+    }
+
+    .market-safaricom-logo {
+        font-size: 1rem;
+    }
+
+    .market-pill-card.cash.reward-compact {
+        min-height: 112px;
+        grid-template-columns: 64px 1fr;
+    }
+
+    .market-cash-stack {
+        width: 54px;
+        height: 54px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .wallet-page.market-page {
+        max-width: 1280px;
+    }
+}
+
+.wallet-reward-convert {
+    gap: 14px;
+}
+
+.wallet-reward-row {
+    border-radius: 18px;
+    padding: 14px;
+}
+
+.wallet-reward-row.cyan {
+    border-color: rgba(34, 211, 238, 0.34);
+    background: radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.16), transparent 42%), rgba(8, 10, 28, 0.86);
+}
+
+.wallet-reward-row.green {
+    border-color: rgba(34, 197, 94, 0.34);
+    background: radial-gradient(circle at 18% 0%, rgba(34, 197, 94, 0.16), transparent 42%), rgba(3, 18, 15, 0.86);
+}
+
+.wallet-reward-row.cyan .wallet-convert-head > svg {
+    color: #22d3ee;
+    background: rgba(34, 211, 238, 0.12);
+}
+
+.wallet-reward-row.green .wallet-convert-head > svg {
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.wallet-reward-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 118px;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 4px 0 2px;
+    scrollbar-width: none;
+}
+
+.wallet-reward-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.wallet-reward-card {
+    min-height: 94px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 12px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 6px;
+    color: #fff;
+    font: inherit;
+    text-align: center;
+    opacity: 1;
+}
+
+.wallet-reward-card:disabled {
+    cursor: not-allowed;
+}
+
+.wallet-reward-card.airtime {
+    border-color: rgba(34, 211, 238, 0.58);
+    background: radial-gradient(circle at 50% 78%, rgba(148, 163, 184, 0.26), transparent 18%), linear-gradient(180deg, rgba(8, 18, 42, 0.94), rgba(3, 6, 20, 0.96));
+}
+
+.wallet-reward-card.cash {
+    min-height: 84px;
+    grid-template-columns: 44px 1fr;
+    grid-template-rows: 1fr auto;
+    justify-items: start;
+    align-items: center;
+    text-align: left;
+    border-color: rgba(34, 197, 94, 0.62);
+    background: radial-gradient(circle at 20% 50%, rgba(34, 197, 94, 0.22), transparent 38%), linear-gradient(180deg, rgba(3, 28, 18, 0.96), rgba(4, 10, 13, 0.98));
+}
+
+.wallet-reward-card b {
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.05;
+    font-weight: 950;
+}
+
+.wallet-reward-card > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: #fef08a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.wallet-reward-card > span svg {
+    color: #facc15;
+    fill: rgba(250, 204, 21, 0.18);
+    filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.4));
+}
+
+.wallet-reward-card.cash b {
+    align-self: end;
+}
+
+.wallet-reward-card.cash > span {
+    grid-column: 2;
+    align-self: start;
+    justify-content: flex-start;
+}
+
+.wallet-reward-row .wallet-withdraw-btn {
+    margin-top: 12px;
+}
+
+@media (min-width: 700px) {
+    .wallet-reward-grid {
+        grid-auto-flow: unset;
+        grid-auto-columns: unset;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
