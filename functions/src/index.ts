@@ -442,6 +442,24 @@ interface ClaimDailyBonusData {
     phone: string;
 }
 
+export const getDailyBonusStatus = functions.https.onCall(async (data: { phone?: string }) => {
+    const phone = typeof data?.phone === "string" ? data.phone : "";
+    if (!/^07\d{8}$/.test(phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+
+    const todayKey = nairobiDateKey();
+    const [claimSnap, stateSnap] = await Promise.all([
+        db.collection("dailyBonusClaims").doc(phone + "_" + todayKey).get(),
+        db.collection("dailyBonusState").doc(phone).get(),
+    ]);
+    const state = stateSnap.data() ?? {};
+    const claim = claimSnap.data() ?? {};
+    return {
+        claimed: claimSnap.exists,
+        todayKey,
+        streak: Number(claim.streak ?? state.streak ?? 1) || 1,
+    };
+});
+
 export const claimDailyBonus = functions.https.onCall(async (data: ClaimDailyBonusData) => {
     if (typeof data.name !== "string" || data.name.trim().length === 0) throw new functions.https.HttpsError("invalid-argument", "Invalid name");
     if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");

@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateSudokuPuzzle = exports.onPlayerCreated = exports.saveConnectDotsScore = exports.connectDotsDeposit = exports.saveSudokuScore = exports.sudokuDeposit = exports.calculateScore = exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = exports.claimDailyBonus = exports.stopGameTimer = exports.getGameTimer = exports.startGameTimer = exports.claimQuestReward = exports.onBongoMarketOrderChanged = exports.reconcileAllPlayerCoins = void 0;
+exports.generateSudokuPuzzle = exports.onPlayerCreated = exports.saveConnectDotsScore = exports.connectDotsDeposit = exports.saveSudokuScore = exports.sudokuDeposit = exports.calculateScore = exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = exports.claimDailyBonus = exports.getDailyBonusStatus = exports.stopGameTimer = exports.getGameTimer = exports.startGameTimer = exports.claimQuestReward = exports.onBongoMarketOrderChanged = exports.reconcileAllPlayerCoins = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const http = __importStar(require("http"));
@@ -388,6 +388,23 @@ exports.stopGameTimer = functions.https.onCall(async (data) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     return { timerId: timerSnap.id, ...state, stopped: true };
+});
+exports.getDailyBonusStatus = functions.https.onCall(async (data) => {
+    const phone = typeof data?.phone === "string" ? data.phone : "";
+    if (!/^07\d{8}$/.test(phone))
+        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    const todayKey = nairobiDateKey();
+    const [claimSnap, stateSnap] = await Promise.all([
+        db.collection("dailyBonusClaims").doc(phone + "_" + todayKey).get(),
+        db.collection("dailyBonusState").doc(phone).get(),
+    ]);
+    const state = stateSnap.data() ?? {};
+    const claim = claimSnap.data() ?? {};
+    return {
+        claimed: claimSnap.exists,
+        todayKey,
+        streak: Number(claim.streak ?? state.streak ?? 1) || 1,
+    };
 });
 exports.claimDailyBonus = functions.https.onCall(async (data) => {
     if (typeof data.name !== "string" || data.name.trim().length === 0)

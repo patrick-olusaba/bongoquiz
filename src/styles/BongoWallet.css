@@ -1628,6 +1628,27 @@
     text-align: left;
 }
 
+.market-category-tiles button.coming-soon,
+.market-category-tiles button.coming-soon:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    filter: grayscale(0.35);
+    border-color: rgba(255, 255, 255, 0.09);
+}
+
+.market-category-tiles button.coming-soon em {
+    padding: 4px 7px;
+    border-radius: 999px;
+    color: #f0abfc;
+    background: rgba(217, 70, 239, 0.12);
+    font-size: 0.56rem;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+
 .market-category-tiles button:nth-child(2) {
     border-color: rgba(34, 211, 238, 0.54);
 }
@@ -2069,6 +2090,25 @@
     .wallet-page.market-page {
         max-width: 1280px;
     }
+}
+
+
+.wallet-coming-soon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 7px;
+    padding: 3px 7px;
+    border: 1px solid rgba(240, 171, 252, 0.28);
+    border-radius: 999px;
+    color: #f0abfc;
+    background: rgba(217, 70, 239, 0.11);
+    font-size: 0.55rem;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    text-transform: uppercase;
+    vertical-align: middle;
 }
 
 .wallet-reward-convert {

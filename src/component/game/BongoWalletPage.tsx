@@ -123,8 +123,8 @@ export const BongoWalletPage: FC<Props> = ({ onBack, onMarket }) => {
                         <div className="wallet-convert-head">
                             <Smartphone size={24}/>
                             <div>
-                                <strong>Airtime</strong>
-                                <span>Safaricom options. 1 BongoCoin equals KSh 1.</span>
+                                <strong>Airtime <em className="wallet-coming-soon">Coming soon</em></strong>
+                                <span>Airtime conversion is not available yet.</span>
                             </div>
                         </div>
                         <div className="wallet-reward-grid">
@@ -142,8 +142,8 @@ export const BongoWalletPage: FC<Props> = ({ onBack, onMarket }) => {
                         <div className="wallet-convert-head">
                             <Banknote size={24}/>
                             <div>
-                                <strong>Cash Rewards (KSH)</strong>
-                                <span>Preview cash conversion before withdrawal.</span>
+                                <strong>M-Pesa Cash <em className="wallet-coming-soon">Coming soon</em></strong>
+                                <span>M-Pesa cash conversion is not available yet.</span>
                             </div>
                         </div>
                         <div className="wallet-reward-grid">
@@ -155,7 +155,7 @@ export const BongoWalletPage: FC<Props> = ({ onBack, onMarket }) => {
                                 </button>
                             ))}
                         </div>
-                        <button type="button" className="wallet-withdraw-btn" disabled>Withdraw unavailable</button>
+                        <button type="button" className="wallet-withdraw-btn" disabled>Coming soon</button>
                     </section>
                 </div>
             ) : (

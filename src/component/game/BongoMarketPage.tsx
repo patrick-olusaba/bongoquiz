@@ -224,7 +224,7 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
                     </div>
                     <div className="market-reward-progress">
                         <span>{coinsNeeded > 0 ? `You're ${coinsNeeded.toLocaleString()} coins away!` : "Ready to unlock"}</span>
-                        {goalProduct && <p>{coinsNeeded > 0 ? `Spend ${coinsNeeded.toLocaleString()} more coins to get ` : "You can get "}<b>{goalProduct.name}</b></p>}
+                        {/*{goalProduct && <p>{coinsNeeded > 0 ? `get ${coinsNeeded.toLocaleString()} more coins to get ` : "You can get "}<b>{goalProduct.name}</b></p>}*/}
                         <div className="market-goal-track"><span style={{ width: `${goalProgress}%` }}/></div>
                     </div>
                     {goalProduct && (
@@ -278,8 +278,8 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
 
                     <div className="market-category-tiles">
                         <button type="button" className={activeCategory === "merch" ? "active" : ""} onClick={() => setActiveCategory("merch")}><ShoppingBag size={32}/><span><b>Merch</b><small>Shop apparel</small></span><em>›</em></button>
-                        <button type="button" className={activeCategory === "airtime" ? "active" : ""} onClick={() => setActiveCategory("airtime")}><Smartphone size={32}/><span><b>Airtime</b><small>Buy airtime</small></span><em>›</em></button>
-                        <button type="button" className={activeCategory === "cash" ? "active" : ""} onClick={() => setActiveCategory("cash")}><Banknote size={32}/><span><b>Cash (KSH)</b><small>Cash rewards</small></span><em>›</em></button>
+                        <button type="button" className="coming-soon" disabled aria-label="Airtime coming soon"><Smartphone size={32}/><span><b>Airtime</b><small>Coming soon</small></span></button>
+                        <button type="button" className="coming-soon" disabled aria-label="M-Pesa cash rewards coming soon"><Banknote size={32}/><span><b>M-Pesa Cash</b><small>Coming soon</small></span></button>
                     </div>
 
                     {activeCategory === "merch" && !!moreProducts.length && (

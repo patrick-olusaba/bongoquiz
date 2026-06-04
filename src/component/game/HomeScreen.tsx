@@ -57,6 +57,12 @@ type PlayerAnnouncement = {
     localAt?: Date;
 };
 
+type DailyBonusStatus = {
+    claimed: boolean;
+    todayKey: string;
+    streak: number;
+};
+
 type DailyBonusResult = {
     claimed: boolean;
     bonus: number;
@@ -474,22 +480,14 @@ export const HomeScreen: FC<Props> = ({
 
         const checkBonusStatus = async () => {
             try {
-                const playerDoc = await getDoc(doc(db, "players", playerPhone));
-                if (playerDoc.exists()) {
-                    const data = playerDoc.data();
-                    const alreadyClaimed = data.lastDailyBonusDate === todayKey;
-                    setDailyBonusClaimedToday(alreadyClaimed);
-                    if (data.dailyBonusStreak) {
-                        setDailyBonusStreak(data.dailyBonusStreak);
-                    }
-                    if (!alreadyClaimed) {
-                        setShowRewardModal(true);
-                    }
-                } else {
-                    setShowRewardModal(true);
-                }
+                const getStatus = httpsCallable<{ phone: string }, DailyBonusStatus>(getFunctions(), "getDailyBonusStatus");
+                const status = (await getStatus({ phone: playerPhone })).data;
+                setDailyBonusClaimedToday(status.claimed);
+                setDailyBonusStreak(Math.min(Math.max(status.streak, 1), dailyBonusRewards.length));
+                setShowRewardModal(!status.claimed);
             } catch (err) {
                 console.error("Failed to check bonus status", err);
+                setShowRewardModal(false);
             }
         };
         void checkBonusStatus();
