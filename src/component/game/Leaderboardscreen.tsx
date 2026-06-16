@@ -1,7 +1,10 @@
 // LeaderboardScreen.tsx
-import { type FC, useEffect, useState } from "react";
-import { collection, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { type FC, useEffect, useMemo, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.ts";
+import { Bell, ChevronDown, Coins, Gift, Menu, Trophy, Wallet } from "lucide-react";
+import { BrowseGames } from "./BrowseGames.tsx";
+import { getBongoCoinBalance } from "../../utils/bongoWallet.ts";
 import '../../styles/Leaderboardscreen.css';
 
 interface LeaderboardEntry {
@@ -66,13 +69,6 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
                     byPhone.set(phone, { ...existing, name }); // update name even if score not higher
             });
 
-            // Sync merged results back to Firebase (upsert highest score per phone)
-            byPhone.forEach(({ name, phone, score }) => {
-                const phone07 = phone.replace(/^254/, "0");
-                setDoc(doc(db, "leaderboard", phone07), { name, phone: phone07, score, updatedAt: serverTimestamp() }, { merge: true })
-                    .catch(() => {});
-            });
-
             const sorted = Array.from(byPhone.values())
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 30)
@@ -104,119 +100,89 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
     }, [dbLeaders]); // re-run once data loads
 
     const podium = entries.slice(0, 3);
+    const rankRows = entries.slice(3, 10);
+    const balance = useMemo(() => getBongoCoinBalance(), []);
+    const podiumOrder = [podium[1], podium[0], podium[2]];
+    const podiumMeta = [
+        { place: "2nd", cls: "second", rank: 2 },
+        { place: "1st", cls: "first", rank: 1 },
+        { place: "3rd", cls: "third", rank: 3 },
+    ];
 
     return (
-        <div className={`lb-root ${visible ? "lb-root--visible" : ""}`}>
-            {/* Background particles */}
+        <div className={`lb-root lb-page ${visible ? "lb-root--visible" : ""}`}>
             <div className="lb-particles">
-                {Array.from({ length: 20 }).map((_, i) => (
+                {Array.from({ length: 18 }).map((_, i) => (
                     <div key={i} className="lb-particle" style={{
-                        left: `${Math.random() * 100}%`,
-                        animationDelay: `${Math.random() * 4}s`,
-                        animationDuration: `${3 + Math.random() * 4}s`,
-                        width: `${4 + Math.random() * 6}px`,
-                        height: `${4 + Math.random() * 6}px`,
+                        left: `36.25309837696273%`,
+                        animationDelay: `3.1296407923685408s`,
+                        animationDuration: `3.66115557928269s`,
+                        width: `6.738549569296059px`,
+                        height: `6.140285736750638px`,
                     }} />
                 ))}
             </div>
 
-            <div className="lb-panel">
-                {/* Header */}
-                <div className="lb-header">
-                    <div className="lb-trophy">🏆</div>
-                    <h2 className="lb-title">Leaderboard</h2>
-                    <p className="lb-subtitle">Top players this season</p>
-                    <div className="lb-live-badge">
-                        <span className="lb-live-dot" />
-                        LIVE
-                    </div>
+            <header className="lb-topbar">
+                <div className="lb-brand">BONGO<br/><span>QUIZ</span></div>
+                <div className="lb-balance"><Coins size={28}/><strong>{balance.toLocaleString()}</strong></div>
+                <div className="lb-top-actions">
+                    <button type="button"><Wallet size={28}/><span>Wallet</span></button>
+                    <button type="button"><Gift size={28}/><em>1</em><span>Rewards</span></button>
+                    <button type="button"><Bell size={28}/><span>Alerts</span></button>
+                    <button type="button"><Menu size={30}/><span>Menu</span></button>
                 </div>
+            </header>
 
-                {/* Podium top 3 */}
-                <div className="lb-podium">
-                    {/* 2nd place */}
-                    <div className="lb-podium-slot lb-podium-slot--2">
-                        <div className="lb-podium-avatar lb-podium-avatar--2">
-                            {podium[1]?.name.slice(0, 2).toUpperCase()}
+            <main className="lb-content">
+                <section className="lb-page-head">
+                    <div className="lb-head-copy">
+                        <div className="lb-head-icon"><Trophy size={42}/></div>
+                        <div>
+                            <h1>Leaderboard</h1>
+                            <p>Top players this season</p>
                         </div>
-                        <div className="lb-podium-name">{podium[1]?.name}</div>
-                        <div className="lb-podium-score">{podium[1]?.score.toLocaleString()}</div>
-                        <div className="lb-podium-block lb-podium-block--2">2nd</div>
                     </div>
-                    {/* 1st place */}
-                    <div className="lb-podium-slot lb-podium-slot--1">
-                        <div className="lb-podium-crown">👑</div>
-                        <div className="lb-podium-avatar lb-podium-avatar--1">
-                            {podium[0]?.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="lb-podium-name">{podium[0]?.name}</div>
-                        <div className="lb-podium-score">{podium[0]?.score.toLocaleString()}</div>
-                        <div className="lb-podium-block lb-podium-block--1">1st</div>
-                    </div>
-                    {/* 3rd place */}
-                    <div className="lb-podium-slot lb-podium-slot--3">
-                        <div className="lb-podium-avatar lb-podium-avatar--3">
-                            {podium[2]?.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="lb-podium-name">{podium[2]?.name}</div>
-                        <div className="lb-podium-score">{podium[2]?.score.toLocaleString()}</div>
-                        <div className="lb-podium-block lb-podium-block--3">3rd</div>
-                    </div>
-                </div>
+                    <button type="button" className="lb-season-btn">Season 1 <ChevronDown size={18}/></button>
+                </section>
 
-                {/* Full table */}
-                <div className="lb-table">
-                    {entries.map((entry, i) => {
-                        const maskedPhone = entry.phone
-                            ? entry.phone.replace(/^254/, "0").slice(0, 3) + "*******"
-                            : "";
-                        const showPhone = maskedPhone && !/^\d{3}\*+$/.test(entry.name);
-                        
+                <section className="lb-podium-cards" aria-label="Top players">
+                    {podiumOrder.map((entry, index) => {
+                        const meta = podiumMeta[index];
                         return (
-                            <div
-                                key={entry.rank}
-                                className={`lb-row
-                                    ${entry.isCurrentPlayer ? "lb-row--player" : ""}
-                                    ${i === highlightRow ? "lb-row--highlight" : ""}
-                                    ${entry.rank <= 3 ? "lb-row--top3" : ""}
-                                `}
-                                style={{ animationDelay: `${i * 60}ms` }}
-                            >
-                                <div className="lb-row-rank">
-                                    {entry.rank <= 3
-                                        ? ["🥇","🥈","🥉"][entry.rank - 1]
-                                        : <span className="lb-row-rank-num">{entry.rank}</span>
-                                    }
-                                </div>
-                                <div className="lb-row-avatar">
-                                    {entry.name.slice(0, 2).toUpperCase()}
-                                </div>
-                                <div className="lb-row-name">
-                                    {entry.name}
-                                    {entry.isCurrentPlayer && <span className="lb-you-tag">YOU</span>}
-                                    {showPhone && <div style={{ fontSize: "0.75rem", color: "#888", marginTop: 2 }}>{maskedPhone}</div>}
-                                </div>
-                                <div className="lb-row-score">
-                                    {entry.score.toLocaleString()}
-                                    <span className="lb-row-pts">pts</span>
-                                </div>
-                            </div>
+                            <article key={meta.place} className={`lb-podium-card ${meta.cls}`}>
+                                <div className="lb-place-badge">{meta.rank}</div>
+                                {meta.rank === 1 && <div className="lb-card-crown">👑</div>}
+                                <div className="lb-card-avatar">{entry?.name.slice(0, 2).toUpperCase() || "--"}</div>
+                                <strong>{entry?.name || "Player"}</strong>
+                                <span><Coins size={19}/>{(entry?.score ?? 0).toLocaleString()}</span>
+                                <b>{meta.place}</b>
+                            </article>
                         );
                     })}
-                </div>
+                </section>
 
-                {/* Actions */}
-                <div className="lb-actions">
-                    <button className="lb-btn lb-btn--play" onClick={onPlayAgain}>
-                        🔄 Play Again
-                    </button>
-                    <button className="lb-btn lb-btn--close" onClick={onClose}>
-                        🏠 Home
-                    </button>
-                </div>
+                <section className="lb-board-card">
+                    <div className="lb-tabs"><button type="button" className="active">🌐 Global</button><button type="button">👥 Friends</button></div>
+                    <div className="lb-board-table">
+                        <div className="lb-board-header"><span>Rank</span><span>Player</span><span>Points</span><span>Trend</span></div>
+                        {rankRows.map((entry, i) => {
+                            const trend = ["↑ 2", "↓ 1", "—", "↑ 3", "↓ 2", "—", "↑ 1"][i] || "—";
+                            const maskedPhone = entry.phone ? entry.phone.replace(/^254/, "0").slice(0, 3) + "*******" : "";
+                            return (
+                                <div key={entry.rank} className={`lb-board-row ${entry.isCurrentPlayer ? "is-player" : ""}`}>
+                                    <span className="lb-board-rank">{entry.rank}</span>
+                                    <span className="lb-board-player"><i>{entry.name.slice(0, 2).toUpperCase()}</i><b>{entry.name}</b>{maskedPhone && <small>{maskedPhone}</small>}</span>
+                                    <span className="lb-board-points">{entry.score.toLocaleString()}</span>
+                                    <span className={`lb-board-trend ${trend.includes("↓") ? "down" : trend.includes("↑") ? "up" : ""}`}>{trend}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
 
-                <p className="lb-disclaimer">* Leaderboard data is for display purposes · Live data coming soon</p>
-            </div>
+                <section className="lb-more-games"><BrowseGames exclude="Bongo Quiz" /></section>
+            </main>
         </div>
     );
 };

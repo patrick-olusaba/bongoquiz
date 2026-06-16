@@ -181,7 +181,18 @@
 .fr-badge-chip-emoji { font-size: 1rem; }
 .fr-badge-chip-name  { font-size: 0.78rem; font-weight: 800; color: #ffd200; }
 
-.fr-actions { display: flex; gap: 10px; }
+.fr-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.fr-invite-banner {
+    margin: 14px 0 10px; padding: 9px 14px; border-radius: 12px;
+    font-size: 0.82rem; font-weight: 700; text-align: center;
+    color: #eafff1; background: rgba(37,211,102,0.12);
+    border: 1px solid rgba(37,211,102,0.35);
+}
+.fr-btn--wa {
+    flex-basis: 100%;
+    background: linear-gradient(135deg, #25d366, #128c7e); color: #fff;
+    box-shadow: 0 4px 20px rgba(37,211,102,0.4);
+}
 .fr-btn {
     flex: 1; border: none; border-radius: 50px;
     cursor: pointer; font-family: inherit;

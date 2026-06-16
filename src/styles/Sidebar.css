@@ -1,0 +1,175 @@
+/* Shared sidebar — a collapsible left rail on desktop, a slide-in drawer on mobile. */
+
+/* ── Floating opener (reopens a collapsed rail) ───────────────────────────── */
+.app-sidebar-open {
+    position: fixed;
+    /* Align vertically with the top bar's content row (which is inset by the
+       safe-area plus the bar's top padding). */
+    top: calc(env(safe-area-inset-top) + 7px);
+    left: 10px;
+    z-index: 1100;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.07);
+    color: #ECE9FF;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+}
+
+/* Reserve room at the top-left of the home header so the opener never
+   overlaps the logo while the rail is a drawer (below 1024px). */
+@media (max-width: 1023px) {
+    .home-shell .bongo-top-bar { padding-left: 56px; }
+}
+
+/* ── Backdrop (mobile drawer only) ────────────────────────────────────────── */
+.app-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+/* ── Sidebar shell ────────────────────────────────────────────────────────── */
+.app-sidebar {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, rgba(36, 18, 64, 0.98), rgba(12, 4, 24, 0.98));
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.app-sidebar * { box-sizing: border-box; }
+
+/* Mobile: fixed slide-in drawer */
+.app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1095;
+    width: min(86vw, 300px);
+    height: 100dvh;
+    padding: 18px 14px;
+    transform: translateX(-100%);
+    transition: transform 0.26s ease;
+}
+.app-sidebar.open { transform: translateX(0); }
+
+/* Header row: brand + close toggle */
+.app-sidebar-top { display: flex; align-items: center; gap: 10px; padding: 4px 4px 0; }
+.app-sidebar-brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.app-sidebar-brand img { width: 40px; height: 40px; object-fit: contain; border-radius: 10px; }
+.app-sidebar-brand strong { display: block; font-size: 1.15rem; font-weight: 900; color: #fff; line-height: 1; }
+.app-sidebar-brand span { display: block; font-size: 0.72rem; font-weight: 700; color: #ffc23d; }
+
+.app-sidebar-toggle {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ECE9FF;
+    cursor: pointer;
+}
+.app-sidebar-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* Scrollable middle holds nav + actions; profile stays pinned at the bottom.
+   Scrollbar is hidden for a cleaner look (still scrollable). */
+.app-sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.app-sidebar-scroll::-webkit-scrollbar { display: none; }
+
+.app-sidebar-nav { display: flex; flex-direction: column; gap: 4px; margin-top: 22px; }
+.app-sidebar-nav button {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    border: 1px solid transparent; background: none; cursor: pointer;
+    color: #9890c4; font-family: inherit; font-size: 0.94rem; font-weight: 600;
+    text-align: left; transition: all 0.15s ease;
+}
+.app-sidebar-nav button:hover { background: rgba(255, 255, 255, 0.04); color: #ECE9FF; }
+.app-sidebar-nav button.active {
+    background: linear-gradient(135deg, rgba(124, 97, 255, 0.28), rgba(124, 97, 255, 0.08));
+    border-color: rgba(124, 97, 255, 0.45);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(124, 97, 255, 0.18);
+}
+
+/* Menu actions (How to Play, Share, Log Out, …) */
+.app-sidebar-actions {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.app-sidebar-action {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 12px;
+    border: 1px solid transparent; background: none; cursor: pointer;
+    color: #c9c3e8; font-family: inherit; text-align: left; transition: all 0.15s ease;
+}
+.app-sidebar-action:hover { background: rgba(255, 255, 255, 0.04); }
+.app-sidebar-action-icon { flex: none; display: grid; place-items: center; color: #9890c4; }
+.app-sidebar-action-text { display: flex; flex-direction: column; min-width: 0; }
+.app-sidebar-action-text strong { font-size: 0.9rem; font-weight: 700; color: #ECE9FF; }
+.app-sidebar-action-text small { font-size: 0.72rem; color: #9890c4; }
+.app-sidebar-action.danger .app-sidebar-action-text strong,
+.app-sidebar-action.danger .app-sidebar-action-icon { color: #ef4444; }
+
+.app-sidebar-profile {
+    margin-top: 12px; display: flex; align-items: center; gap: 10px;
+    padding: 12px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.app-sidebar-avatar {
+    width: 40px; height: 40px; flex: none; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 900; font-size: 0.86rem; color: #fff;
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+}
+.app-sidebar-profile-text strong { display: block; font-size: 0.9rem; color: #fff; }
+.app-sidebar-profile-text span { font-size: 0.74rem; color: #9890c4; }
+
+/* ── Desktop: inline sticky rail that can be collapsed ────────────────────── */
+@media (min-width: 1024px) {
+    .app-sidebar {
+        position: sticky;
+        top: 0;
+        flex: none;
+        width: 248px;
+        height: 100dvh;
+        padding: 22px 16px;
+        transform: none;
+        transition: none;
+        background: linear-gradient(180deg, rgba(124, 97, 255, 0.06), rgba(0, 0, 0, 0));
+    }
+    /* Collapsed on desktop — fully removed so content reflows to full width. */
+    .app-sidebar:not(.open) { display: none; }
+    /* No dimming backdrop for the inline desktop rail. */
+    .app-sidebar-backdrop { display: none; }
+    /* The close toggle lives in the rail; the floating opener reopens it. */
+
+    .bongo-desktop-shell {
+        min-height: 100dvh;
+        display: flex;
+        align-items: flex-start;
+        background: #07000f;
+    }
+
+    .bongo-desktop-content {
+        flex: 1;
+        min-width: 0;
+        min-height: 100dvh;
+    }
+
+    .bongo-desktop-content > .games-page,
+    .bongo-desktop-content > .profile-page,
+    .bongo-desktop-content > .wallet-page {
+        min-height: 100dvh;
+    }
+}

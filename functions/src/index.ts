@@ -5,6 +5,8 @@ import * as http from "http";
 admin.initializeApp();
 const db = admin.firestore();
 const DAILY_BONUS_POINTS = [10, 15, 20, 25, 30, 40, 50];
+// Shared tournament question bank — keyed by quizType, reused across tournaments.
+const TOURNAMENT_QUESTION_BANK = "tournamentQuestionBank";
 
 const COIN_LEADERBOARDS = {
     bongo: "leaderboard",
@@ -40,10 +42,14 @@ function sessionCoinPoints(collectionName: string, data: FirebaseFirestore.Docum
 const scoreToBongoCoins = (score: number) => Math.max(Math.floor(Math.max(score, 0) / 250), 0);
 
 async function reconcilePlayerCoins(phone: string, fallbackName = "Player") {
-    const [leaderboards, sessions] = await Promise.all([
+    const [leaderboards, sessions, existingBalance] = await Promise.all([
         Promise.all(Object.values(COIN_LEADERBOARDS).map(collectionName => db.collection(collectionName).doc(phone).get())),
         Promise.all(COIN_SESSION_COLLECTIONS.map(config => db.collection(config.collection).where("phone", "==", phone).get())),
+        db.collection("playerCoinBalances").doc(phone).get(),
     ]);
+    // Manually-granted coins (e.g. referral rewards) live outside session math
+    // and must survive reconciliation.
+    const bonusCoins = Math.max(0, Number(existingBalance.data()?.bonusCoins || 0));
     const scores: Record<string, number> = {};
     let name = fallbackName;
     Object.keys(COIN_LEADERBOARDS).forEach((key, index) => {
@@ -61,9 +67,84 @@ async function reconcilePlayerCoins(phone: string, fallbackName = "Player") {
     const earnedCoins = scoreToBongoCoins(lifetimeSessionPoints);
     const orders = await db.collection("bongoMarketOrders").where("phone", "==", phone).get();
     const spentCoins = orders.docs.reduce((sum, order) => order.data().status === "Cancelled" ? sum : sum + Math.max(0, Number(order.data().total || 0)), 0);
-    const balanceCoins = Math.max(earnedCoins - spentCoins, 0);
-    await db.collection("playerCoinBalances").doc(phone).set({ phone, name, scores, totalHighScorePoints, lifetimeSessionPoints, sessionCount, earnedCoins, spentCoins, balanceCoins, conversionRate: 250, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    return { phone, earnedCoins, spentCoins, balanceCoins, lifetimeSessionPoints, sessionCount };
+    const balanceCoins = Math.max(earnedCoins + bonusCoins - spentCoins, 0);
+    await db.collection("playerCoinBalances").doc(phone).set({ phone, name, scores, totalHighScorePoints, lifetimeSessionPoints, sessionCount, earnedCoins, bonusCoins, spentCoins, balanceCoins, conversionRate: 250, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return { phone, earnedCoins, bonusCoins, spentCoins, balanceCoins, lifetimeSessionPoints, sessionCount };
+}
+
+
+const REFERRAL_MIN_SCORE = 700;
+const REFERRAL_COIN_STEP = 700;
+const REFERRAL_MAX_REFERRER_COINS = 10;
+const REFERRAL_WELCOME_COINS = 1;
+
+function referralCoinsForScore(score: number): number {
+    if (!Number.isFinite(score) || score < REFERRAL_MIN_SCORE) return 0;
+    return Math.min(Math.floor(score / REFERRAL_COIN_STEP), REFERRAL_MAX_REFERRER_COINS);
+}
+
+async function redeemEligibleReferralForSession(params: { newUserPhone: string; score: number; game: string; sessionId: string; name?: string }) {
+    const { newUserPhone, score, game, sessionId, name = "Player" } = params;
+    if (!/^07\d{8}$/.test(newUserPhone)) return { redeemed: false, reason: "invalid-phone" };
+
+    const referrerCoins = referralCoinsForScore(score);
+    if (referrerCoins <= 0) return { redeemed: false, reason: "below-threshold" };
+
+    const playerRef = db.collection("players").doc(newUserPhone);
+    const redemptionRef = db.collection("referrals").doc(newUserPhone);
+    let referrerPhone = "";
+
+    const result = await db.runTransaction(async (tx) => {
+        const [playerSnap, existing] = await Promise.all([tx.get(playerRef), tx.get(redemptionRef)]);
+        if (existing.exists) return { redeemed: false, reason: "already-redeemed" };
+
+        const pendingReferrer = String(playerSnap.data()?.pendingReferrer || "");
+        if (!/^07\d{8}$/.test(pendingReferrer)) return { redeemed: false, reason: "no-referrer" };
+        if (pendingReferrer === newUserPhone) return { redeemed: false, reason: "self-referral" };
+        referrerPhone = pendingReferrer;
+
+        tx.set(redemptionRef, {
+            newUserPhone,
+            referrerPhone,
+            game,
+            sessionId,
+            score,
+            formula: "floor(score / 700), capped at 10 coins",
+            threshold: REFERRAL_MIN_SCORE,
+            referrerCoins,
+            welcomeCoins: REFERRAL_WELCOME_COINS,
+            rewardedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.set(db.collection("playerCoinBalances").doc(referrerPhone), {
+            phone: referrerPhone,
+            bonusCoins: admin.firestore.FieldValue.increment(referrerCoins),
+            referralEarnedCoins: admin.firestore.FieldValue.increment(referrerCoins),
+        }, { merge: true });
+        tx.set(db.collection("playerCoinBalances").doc(newUserPhone), {
+            phone: newUserPhone,
+            name,
+            bonusCoins: admin.firestore.FieldValue.increment(REFERRAL_WELCOME_COINS),
+            referralWelcomeCoins: admin.firestore.FieldValue.increment(REFERRAL_WELCOME_COINS),
+        }, { merge: true });
+        tx.set(db.collection("players").doc(referrerPhone), {
+            referralCount: admin.firestore.FieldValue.increment(1),
+            referralEarnedCoins: admin.firestore.FieldValue.increment(referrerCoins),
+        }, { merge: true });
+        tx.update(playerRef, {
+            pendingReferrer: admin.firestore.FieldValue.delete(),
+            referredBy: referrerPhone,
+            referralRedeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { redeemed: true, referrerPhone, referrerCoins, welcomeCoins: REFERRAL_WELCOME_COINS };
+    });
+
+    if (result.redeemed && referrerPhone) {
+        await Promise.all([
+            reconcilePlayerCoins(referrerPhone),
+            reconcilePlayerCoins(newUserPhone, name),
+        ]);
+    }
+    return result;
 }
 
 export const reconcileAllPlayerCoins = functions.https.onCall(async (data: { phone?: string }, context) => {
@@ -428,6 +509,453 @@ export const stopGameTimer = functions.https.onCall(async (data: GameTimerLookup
     return { timerId: timerSnap.id, ...state, stopped: true };
 });
 
+
+type TournamentGame = "bongo" | "bible" | "math" | "biology" | "general" | "sudoku" | "connectDots" | "generalKnowledge" | "sports" | "carLogos" | "brandLogos" | "trickQuestions" | "kenyaTrivia";
+
+type TournamentScoreInput = {
+    phone: string;
+    name: string;
+    game: TournamentGame;
+    score: number;
+    correct?: number;
+    totalQuestions?: number;
+    maxStreak?: number;
+};
+
+function tournamentWeekKey(date = new Date()): string {
+    const local = new Date(date.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
+    const day = local.getDay() || 7;
+    local.setDate(local.getDate() + 4 - day);
+    const yearStart = new Date(local.getFullYear(), 0, 1);
+    const week = Math.ceil((((local.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return local.getFullYear() + "-W" + String(week).padStart(2, "0");
+}
+
+function tournamentWeekStartMs(date = new Date()): number {
+    const local = new Date(date.toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
+    const day = local.getDay() || 7;
+    local.setHours(0, 0, 0, 0);
+    local.setDate(local.getDate() - day + 1);
+    return local.getTime();
+}
+
+function tournamentPointBreakdown(input: TournamentScoreInput) {
+    const quizPoints = Math.max(0, Math.round(input.score || 0));
+    const perfectBonus = input.totalQuestions && input.correct === input.totalQuestions
+        ? Math.round(quizPoints * 0.1) + 100
+        : 0;
+    const streakBonus = Math.min(Math.max(0, Math.round(input.maxStreak || 0)) * 25, 500);
+    const participationBonus = quizPoints > 0 ? 50 : 0;
+    return {
+        quizPoints,
+        perfectBonus,
+        streakBonus,
+        participationBonus,
+        points: quizPoints + perfectBonus + streakBonus + participationBonus,
+    };
+}
+
+async function addTopScorersTournamentPoints(input: TournamentScoreInput) {
+    if (!/^0\d{9}$/.test(input.phone)) return;
+    const settingsSnap = await db.collection("tournamentSettings").doc("topScorers").get();
+    const settings = settingsSnap.data() || {};
+    if (settings.active === false || settings.status === "completed") return;
+
+    const weekKey = String(settings.weekKey || tournamentWeekKey());
+    const breakdown = tournamentPointBreakdown(input);
+    if (breakdown.points <= 0) return;
+
+    const entryRef = db.collection("topScorersTournament").doc(input.phone);
+    const weekEntryRef = db.collection("topScorersTournamentWeeks").doc(weekKey).collection("entries").doc(input.phone);
+    const eventRef = db.collection("topScorersTournamentEvents").doc();
+    const payload = {
+        phone: input.phone,
+        name: input.name,
+        weekKey,
+        points: admin.firestore.FieldValue.increment(breakdown.points),
+        quizPoints: admin.firestore.FieldValue.increment(breakdown.quizPoints),
+        perfectBonus: admin.firestore.FieldValue.increment(breakdown.perfectBonus),
+        streakBonus: admin.firestore.FieldValue.increment(breakdown.streakBonus),
+        participationBonus: admin.firestore.FieldValue.increment(breakdown.participationBonus),
+        sessions: admin.firestore.FieldValue.increment(1),
+        games: { [input.game]: admin.firestore.FieldValue.increment(1) },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await Promise.all([
+        entryRef.set(payload, { merge: true }),
+        weekEntryRef.set(payload, { merge: true }),
+        eventRef.set({ ...input, ...breakdown, weekKey, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
+    ]);
+}
+
+async function rebuildCurrentTopScorersTournament() {
+    const settingsSnap = await db.collection("tournamentSettings").doc("topScorers").get();
+    const weekKey = String(settingsSnap.data()?.weekKey || tournamentWeekKey());
+    const weekStartMs = tournamentWeekStartMs();
+    const collections: Array<{ collection: string; game: TournamentGame; scoreField: string }> = [
+        { collection: "gameSessions", game: "bongo", scoreField: "total" },
+        { collection: "bibleQuizSessions", game: "bible", scoreField: "score" },
+        { collection: "mathQuizSessions", game: "math", scoreField: "score" },
+        { collection: "bioQuizSessions", game: "biology", scoreField: "score" },
+        { collection: "genQuizSessions", game: "general", scoreField: "score" },
+        { collection: "sudokuSessions", game: "sudoku", scoreField: "score" },
+        { collection: "connectDotsSessions", game: "connectDots", scoreField: "score" },
+    ];
+    const totals = new Map<string, any>();
+    for (const config of collections) {
+        const snap = await db.collection(config.collection).get();
+        snap.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            const phone = String(data.phone || "");
+            if (!/^0\d{9}$/.test(phone)) return;
+            const playedAtMs = data.playedAt?.toMillis?.() ?? data.createdAt?.toMillis?.() ?? 0;
+            if (playedAtMs && playedAtMs < weekStartMs) return;
+            const breakdown = tournamentPointBreakdown({
+                phone,
+                name: String(data.name || "Player"),
+                game: config.game,
+                score: Number(data[config.scoreField] || 0),
+                correct: Number(data.correct || 0),
+                totalQuestions: Number(data.total || 0),
+                maxStreak: Number(data.maxStreak || 0),
+            });
+            const current = totals.get(phone) || { phone, name: String(data.name || "Player"), weekKey, points: 0, quizPoints: 0, perfectBonus: 0, streakBonus: 0, participationBonus: 0, sessions: 0, games: {} };
+            current.name = data.name || current.name;
+            current.points += breakdown.points;
+            current.quizPoints += breakdown.quizPoints;
+            current.perfectBonus += breakdown.perfectBonus;
+            current.streakBonus += breakdown.streakBonus;
+            current.participationBonus += breakdown.participationBonus;
+            current.sessions += 1;
+            current.games[config.game] = (current.games[config.game] || 0) + 1;
+            totals.set(phone, current);
+        });
+    }
+    const batch = db.batch();
+    totals.forEach((entry, phone) => {
+        batch.set(db.collection("topScorersTournament").doc(phone), { ...entry, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        batch.set(db.collection("topScorersTournamentWeeks").doc(weekKey).collection("entries").doc(phone), { ...entry, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    });
+    await batch.commit();
+    return { weekKey, rebuilt: totals.size };
+}
+
+export const rebuildTopScorersTournament = functions.https.onCall(async (_data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    return rebuildCurrentTopScorersTournament();
+});
+
+export const saveTopScorersTournamentSettings = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    const title = typeof data?.title === "string" && data.title.trim() ? data.title.trim().slice(0, 80) : "Weekly Top Scorers Cup";
+    const subtitle = typeof data?.subtitle === "string" ? data.subtitle.trim().slice(0, 240) : "";
+    const status = ["active", "scheduled", "completed"].includes(String(data?.status)) ? String(data.status) : "active";
+    const entryFeeCoins = 0;
+    const rewards = Array.isArray(data?.rewards) ? data.rewards.slice(0, 6).map((reward: any) => ({
+        rank: String(reward?.rank || "Reward").slice(0, 40),
+        title: String(reward?.title || "Reward Pack").slice(0, 60),
+        items: Array.isArray(reward?.items) ? reward.items.map((item: any) => String(item).trim().slice(0, 80)).filter(Boolean).slice(0, 6) : [],
+    })) : [];
+    const payload: any = {
+        title,
+        subtitle,
+        status,
+        active: data?.active !== false,
+        entryFeeCoins,
+        rewards,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: context.auth.uid,
+    };
+    if (typeof data?.endsAt === "string" && data.endsAt) {
+        const end = new Date(data.endsAt);
+        if (!Number.isNaN(end.getTime())) payload.endsAt = admin.firestore.Timestamp.fromDate(end);
+    }
+    await db.collection("tournamentSettings").doc("topScorers").set(payload, { merge: true });
+    return { success: true };
+});
+
+
+type PublicTournamentGame = "generalKnowledge" | "sports" | "carLogos" | "brandLogos" | "trickQuestions" | "kenyaTrivia";
+
+function normalizePublicTournamentGame(value: unknown): PublicTournamentGame {
+    const normalized = String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
+    if (normalized === "general" || normalized === "generalknowledge" || normalized === "bongo") return "generalKnowledge";
+    if (normalized === "sport" || normalized === "sports") return "sports";
+    if (normalized === "car" || normalized === "cars" || normalized === "carlogos") return "carLogos";
+    if (normalized === "brand" || normalized === "brands" || normalized === "brandlogos") return "brandLogos";
+    if (normalized === "trick" || normalized === "trickquestions") return "trickQuestions";
+    if (normalized === "kenya" || normalized === "kenyatrivia") return "kenyaTrivia";
+    return "generalKnowledge";
+}
+
+function isPublicTournamentGame(value: unknown): value is PublicTournamentGame {
+    return value === "generalKnowledge" || value === "sports" || value === "carLogos" || value === "brandLogos" || value === "trickQuestions" || value === "kenyaTrivia";
+}
+
+function shuffleDocs<T>(items: T[]) {
+    const copy = [...items];
+    for (let index = copy.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+    }
+    return copy;
+}
+
+function sanitizeTournamentRewards(data: any) {
+    return Array.isArray(data?.rewards) ? data.rewards.slice(0, 8).map((reward: any) => ({
+        rank: String(reward?.rank || "Reward").trim().slice(0, 40),
+        title: String(reward?.title || "Reward Pack").trim().slice(0, 60),
+        items: Array.isArray(reward?.items) ? reward.items.map((item: any) => String(item).trim().slice(0, 90)).filter(Boolean).slice(0, 8) : [],
+    })) : [];
+}
+
+function timestampFromInput(value: any): admin.firestore.Timestamp | null {
+    if (value == null || value === "") return null;
+    if (typeof value !== "string") throw new functions.https.HttpsError("invalid-argument", "Invalid tournament date");
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) throw new functions.https.HttpsError("invalid-argument", "Invalid tournament date");
+    return admin.firestore.Timestamp.fromDate(date);
+}
+
+function tournamentIsOpen(data: FirebaseFirestore.DocumentData, now = Date.now()) {
+    if (data.active === false || data.status !== "active") return false;
+    const startsAt = data.startsAt?.toMillis?.() ?? 0;
+    const endsAt = data.endsAt?.toMillis?.() ?? 0;
+    if (startsAt && startsAt > now) return false;
+    if (endsAt && endsAt < now) return false;
+    return true;
+}
+
+async function addQuizTournamentPoints(input: TournamentScoreInput) {
+    if (!isPublicTournamentGame(input.game) || !/^0\d{9}$/.test(input.phone)) return;
+    const breakdown = tournamentPointBreakdown(input);
+    if (breakdown.points <= 0) return;
+    const snap = await db.collection("quizTournaments")
+        .where("quizType", "==", input.game)
+        .where("active", "==", true)
+        .where("status", "==", "active")
+        .get();
+    const now = Date.now();
+    const writes: Array<Promise<unknown>> = [];
+    snap.docs.forEach(tournamentSnap => {
+        const tournament = tournamentSnap.data();
+        if (!tournamentIsOpen(tournament, now)) return;
+        const entryRef = tournamentSnap.ref.collection("entries").doc(input.phone);
+        const eventRef = tournamentSnap.ref.collection("events").doc();
+        const entryPayload = {
+            phone: input.phone,
+            name: input.name,
+            points: admin.firestore.FieldValue.increment(breakdown.points),
+            quizPoints: admin.firestore.FieldValue.increment(breakdown.quizPoints),
+            perfectBonus: admin.firestore.FieldValue.increment(breakdown.perfectBonus),
+            streakBonus: admin.firestore.FieldValue.increment(breakdown.streakBonus),
+            participationBonus: admin.firestore.FieldValue.increment(breakdown.participationBonus),
+            sessions: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        writes.push(entryRef.set(entryPayload, { merge: true }));
+        writes.push(eventRef.set({ ...input, ...breakdown, createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        writes.push(tournamentSnap.ref.set({ lastEntryAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+    });
+    await Promise.all(writes);
+}
+
+export const saveQuizTournament = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    const quizType = normalizePublicTournamentGame(data?.quizType);
+    const title = typeof data?.title === "string" && data.title.trim() ? data.title.trim().slice(0, 90) : "Weekly Tournament Cup";
+    const subtitle = typeof data?.subtitle === "string" ? data.subtitle.trim().slice(0, 260) : "";
+    const status = ["active", "scheduled", "completed"].includes(String(data?.status)) ? String(data.status) : "scheduled";
+    const rewards = sanitizeTournamentRewards(data);
+    const payload: any = {
+        title,
+        subtitle,
+        quizType,
+        status,
+        active: data?.active !== false,
+        entryFeeCoins: 0,
+        durationSeconds: 80,
+        dailyStartTime: typeof data?.dailyStartTime === "string" && /^\d{2}:\d{2}$/.test(data.dailyStartTime) ? data.dailyStartTime : "08:00",
+        tournamentCycle: data?.tournamentCycle === "weekly" ? "weekly" : "daily",
+        rewards: rewards.length ? rewards : [{ rank: "Top Players", title: "Reward Pack", items: ["Bonus Coins"] }],
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: context.auth.uid,
+    };
+    const startsAt = timestampFromInput(data?.startsAt);
+    const endsAt = timestampFromInput(data?.endsAt);
+    if (startsAt) payload.startsAt = startsAt;
+    if (endsAt) payload.endsAt = endsAt;
+    const rawId = typeof data?.id === "string" ? data.id.trim() : "";
+    const ref = rawId ? db.collection("quizTournaments").doc(rawId) : db.collection("quizTournaments").doc();
+    const exists = await ref.get();
+    await ref.set({ ...payload, createdAt: exists.exists ? (exists.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()) : admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return { success: true, id: ref.id };
+});
+
+const fallbackTournamentQuestionCollections: Partial<Record<PublicTournamentGame, string[]>> = {
+    generalKnowledge: ["generalKnowledgeQuestions", "genQuizQuestions"],
+};
+
+function fallbackTournamentQuestion(collectionName: string, id: string, data: FirebaseFirestore.DocumentData, quizType: PublicTournamentGame) {
+    const question = String(data.question || data.q || "").trim();
+    const options = Array.isArray(data.options) ? data.options.map((option: unknown) => String(option).trim()).filter(Boolean) : [];
+    const answer = Number(data.answer ?? data.correctAnswer ?? data.correct ?? 0);
+    if (!question || options.length < 2 || !Number.isInteger(answer) || answer < 0 || answer >= options.length) return null;
+    return {
+        id: collectionName + ":" + id,
+        question,
+        options,
+        answer,
+        active: data.active !== false,
+        quizType,
+    };
+}
+
+async function loadFallbackTournamentQuestions(quizType: PublicTournamentGame) {
+    const collectionNames = fallbackTournamentQuestionCollections[quizType] || [];
+    for (const collectionName of collectionNames) {
+        const snap = await db.collection(collectionName).limit(100).get();
+        const rows = snap.docs
+            .map(questionSnap => fallbackTournamentQuestion(collectionName, questionSnap.id, questionSnap.data(), quizType))
+            .filter((question): question is NonNullable<ReturnType<typeof fallbackTournamentQuestion>> => Boolean(question && question.active !== false));
+        if (rows.length) return rows;
+    }
+    return [];
+}
+
+export const submitQuizTournamentAnswers = functions.https.onCall(async (data) => {
+    const tournamentId = typeof data?.tournamentId === "string" ? data.tournamentId : "";
+    const phone = typeof data?.phone === "string" ? data.phone : "";
+    const name = typeof data?.name === "string" && data.name.trim() ? data.name.trim().slice(0, 20) : "Player";
+    const answers = data?.answers && typeof data.answers === "object" ? data.answers as Record<string, unknown> : {};
+    if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "Tournament id required");
+    if (!/^07\d{8}$/.test(phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+
+    const tournamentRef = db.collection("quizTournaments").doc(tournamentId);
+    const tournamentSnap = await tournamentRef.get();
+    if (!tournamentSnap.exists) throw new functions.https.HttpsError("not-found", "Tournament not found");
+    const tournament = tournamentSnap.data() || {};
+    const tournamentQuizType = normalizePublicTournamentGame(tournament.quizType);
+    if (!tournamentIsOpen(tournament)) throw new functions.https.HttpsError("failed-precondition", "Tournament is not open");
+    if (!isPublicTournamentGame(tournamentQuizType)) throw new functions.https.HttpsError("invalid-argument", "Unsupported tournament game");
+
+    const entryRef = tournamentRef.collection("entries").doc(phone);
+    const existingEntry = await entryRef.get();
+    if (existingEntry.exists) throw new functions.https.HttpsError("already-exists", "You have already played this tournament");
+
+    const requestedIds = Array.isArray(data?.questionIds) ? data.questionIds.map((id: unknown) => String(id)).filter(Boolean).slice(0, 15) : [];
+    const isBankQuestion = (q: any) => q && q.active !== false && Array.isArray(q.options) && normalizePublicTournamentGame(q.quizType) === tournamentQuizType;
+
+    let questions: any[] = [];
+
+    // Preferred path: score the exact bank questions the player was shown,
+    // fetched directly by id (robust regardless of bank size).
+    const bankIds = (requestedIds as string[]).filter((id: string) => !id.includes(":"));
+    if (bankIds.length) {
+        const docs = await db.getAll(...bankIds.map((id: string) => db.collection(TOURNAMENT_QUESTION_BANK).doc(id)));
+        questions = docs
+            .filter(d => d.exists)
+            .map(d => ({ id: d.id, ...(d.data() as any) }))
+            .filter(isBankQuestion);
+    }
+
+    // Fallback path: legacy/prefixed ids or unresolved — pull from the bank (or
+    // a game's question bank) and honor requested ids where possible.
+    if (!questions.length) {
+        const bankSnap = await db.collection(TOURNAMENT_QUESTION_BANK).where("quizType", "==", tournamentQuizType).limit(300).get();
+        const bankQuestions = bankSnap.docs
+            .map(questionSnap => ({ id: questionSnap.id, ...questionSnap.data() }))
+            .filter((question: any) => question.active !== false && Array.isArray(question.options));
+        const allQuestions = bankQuestions.length ? bankQuestions : await loadFallbackTournamentQuestions(tournamentQuizType);
+        if (requestedIds.length) {
+            const byId = new Map(allQuestions.map((q: any) => [q.id, q]));
+            questions = requestedIds.map((id: string) => byId.get(id)).filter(Boolean) as any[];
+        }
+        if (!questions.length) questions = shuffleDocs(allQuestions).slice(0, 15);
+    }
+
+    if (questions.length < 1 || questions.length > 15) throw new functions.https.HttpsError("failed-precondition", "Tournament must have 1 to 15 questions");
+
+    let correct = 0;
+    const normalizedAnswers: Record<string, number | null> = {};
+    questions.forEach((question: any) => {
+        const answer = Number(answers[question.id]);
+        const normalized = Number.isInteger(answer) ? answer : null;
+        normalizedAnswers[question.id] = normalized;
+        if (normalized === Number(question.answer)) correct += 1;
+    });
+
+    const totalQuestions = questions.length;
+    const answered = Object.values(normalizedAnswers).filter(v => v !== null).length;
+    const wrong = answered - correct;
+    const score = (correct * 10) - (wrong * 2);
+    const breakdown = { quizPoints: score, perfectBonus: 0, streakBonus: 0, participationBonus: 0, points: score };
+    const eventRef = tournamentRef.collection("events").doc();
+    await Promise.all([
+        entryRef.set({
+            phone,
+            name,
+            points: admin.firestore.FieldValue.increment(breakdown.points),
+            quizPoints: admin.firestore.FieldValue.increment(breakdown.quizPoints),
+            perfectBonus: admin.firestore.FieldValue.increment(breakdown.perfectBonus),
+            streakBonus: admin.firestore.FieldValue.increment(breakdown.streakBonus),
+            participationBonus: admin.firestore.FieldValue.increment(breakdown.participationBonus),
+            sessions: admin.firestore.FieldValue.increment(1),
+            correct: admin.firestore.FieldValue.increment(correct),
+            wrong: admin.firestore.FieldValue.increment(wrong),
+            totalQuestions: admin.firestore.FieldValue.increment(totalQuestions),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }),
+        eventRef.set({ phone, name, game: tournamentQuizType, questionIds: questions.map((question: any) => question.id), answers: normalizedAnswers, correct, wrong, totalQuestions, score, ...breakdown, createdAt: admin.firestore.FieldValue.serverTimestamp() }),
+        tournamentRef.set({ lastEntryAt: admin.firestore.FieldValue.serverTimestamp(), durationSeconds: 80, quizType: tournamentQuizType }, { merge: true }),
+    ]);
+    await updateQuestProgress(phone, "daily_games").catch(() => undefined);
+    await updateQuestProgress(phone, "total_games").catch(() => undefined);
+    return { success: true, score: breakdown.points, correct, wrong, total: totalQuestions };
+});
+
+export const rebuildQuizTournament = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    const tournamentId = typeof data?.tournamentId === "string" ? data.tournamentId : "";
+    if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "Tournament id required");
+    const tournamentRef = db.collection("quizTournaments").doc(tournamentId);
+    const existing = await tournamentRef.collection("entries").limit(500).get();
+    let batch = db.batch();
+    let opCount = 0;
+    for (const entry of existing.docs) {
+        batch.delete(entry.ref);
+        opCount += 1;
+        if (opCount >= 450) { await batch.commit(); batch = db.batch(); opCount = 0; }
+    }
+    const events = await tournamentRef.collection("events").get();
+    const totals = new Map<string, any>();
+    events.docs.forEach(eventSnap => {
+        const row = eventSnap.data();
+        const phone = String(row.phone || "");
+        if (!/^07\d{8}$/.test(phone)) return;
+        const current = totals.get(phone) || { phone, name: String(row.name || "Player"), points: 0, quizPoints: 0, perfectBonus: 0, streakBonus: 0, participationBonus: 0, sessions: 0, correct: 0, totalQuestions: 0 };
+        current.name = row.name || current.name;
+        current.points += Number(row.points || 0);
+        current.quizPoints += Number(row.quizPoints || 0);
+        current.perfectBonus += Number(row.perfectBonus || 0);
+        current.streakBonus += Number(row.streakBonus || 0);
+        current.participationBonus += Number(row.participationBonus || 0);
+        current.correct += Number(row.correct || 0);
+        current.totalQuestions += Number(row.totalQuestions || 0);
+        current.sessions += 1;
+        totals.set(phone, current);
+    });
+    totals.forEach((entry, phone) => {
+        batch.set(tournamentRef.collection("entries").doc(phone), { ...entry, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        opCount += 1;
+        if (opCount >= 450) { /* entry counts are expected to be small; final commit handles this batch */ }
+    });
+    if (opCount > 0) await batch.commit();
+    await tournamentRef.set({ lastRebuiltAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return { success: true, rebuilt: totals.size };
+});
+
+
 interface SaveSessionData {
     name: string;
     phone: string;
@@ -435,6 +963,9 @@ interface SaveSessionData {
     r1Score: number;
     r2Score: number;
     r3Bonus: number;
+    correct?: number;
+    totalQuestions?: number;
+    maxStreak?: number;
 }
 
 interface ClaimDailyBonusData {
@@ -484,7 +1015,7 @@ export const claimDailyBonus = functions.https.onCall(async (data: ClaimDailyBon
             const claim = claimSnap.data() ?? {};
             const streak = Number(claim.streak ?? currentStreak ?? 1) || 1;
             const storedBonus = Number(claim.bonus ?? 0);
-            const expectedBonus = DAILY_BONUS_POINTS[(streak - 1) % DAILY_BONUS_POINTS.length];
+            const expectedBonus = DAILY_BONUS_POINTS[Math.min(streak - 1, DAILY_BONUS_POINTS.length - 1)];
             const bonusDelta = Math.max(expectedBonus - storedBonus, 0);
 
             if (bonusDelta > 0) {
@@ -529,7 +1060,7 @@ export const claimDailyBonus = functions.https.onCall(async (data: ClaimDailyBon
         }
 
         const streak = state.lastClaimDate === yesterdayKey ? Math.min(currentStreak + 1, 30) : 1;
-        const bonus = DAILY_BONUS_POINTS[(streak - 1) % DAILY_BONUS_POINTS.length];
+        const bonus = DAILY_BONUS_POINTS[Math.min(streak - 1, DAILY_BONUS_POINTS.length - 1)];
         const nextTotal = currentTotal + bonus;
 
         tx.create(claimRef, {
@@ -657,6 +1188,8 @@ export const saveGameSession = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: total, game: "bongo", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "bongo", score: total, correct: data.correct, totalQuestions: data.totalQuestions, maxStreak: data.maxStreak });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1015,7 +1548,7 @@ export const saveBibleQuizSession = functions.https.onCall(
             req.write(payload); req.end();
         });
 
-        await db.collection("bibleQuizSessions").add({
+        const sessionRef = await db.collection("bibleQuizSessions").add({
             name, phone: data.phone,
             score: data.score, correct: data.correct,
             wrong: data.wrong, passed: data.passed, total: data.total,
@@ -1030,6 +1563,8 @@ export const saveBibleQuizSession = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: data.score, game: "bible", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "bible", score: data.score, correct: data.correct, totalQuestions: data.total });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1108,7 +1643,7 @@ export const saveMathQuizSession = functions.https.onCall(
             req.write(payload); req.end();
         });
 
-        await db.collection("mathQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const sessionRef = await db.collection("mathQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
 
         const lbRef  = db.collection("mathQuizLeaderboard").doc(data.phone);
         const lbSnap = await lbRef.get();
@@ -1117,6 +1652,8 @@ export const saveMathQuizSession = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: data.score, game: "math", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "math", score: data.score, correct: data.correct, totalQuestions: data.total });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1189,7 +1726,7 @@ export const saveBioQuizSession = functions.https.onCall(
             const req = http.request(options, res => { res.resume(); res.on("end", resolve); });
             req.on("error", () => resolve()); req.write(payload); req.end();
         });
-        await db.collection("bioQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const sessionRef = await db.collection("bioQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
         const lbRef = db.collection("bioQuizLeaderboard").doc(data.phone);
         const lbSnap = await lbRef.get();
         if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < data.score) {
@@ -1197,6 +1734,8 @@ export const saveBioQuizSession = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: data.score, game: "biology", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "biology", score: data.score, correct: data.correct, totalQuestions: data.total });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1273,7 +1812,7 @@ export const saveGenQuizSession = functions.https.onCall(
             req.on("error", () => resolve()); req.write(payload); req.end();
         });
 
-        await db.collection("genQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const sessionRef = await db.collection("genQuizSessions").add({ name, phone: data.phone, score: data.score, correct: data.correct, wrong: data.wrong, passed: data.passed, total: data.total, playedAt: admin.firestore.FieldValue.serverTimestamp() });
 
         const lbRef = db.collection("genQuizLeaderboard").doc(data.phone);
         const lbSnap = await lbRef.get();
@@ -1282,6 +1821,8 @@ export const saveGenQuizSession = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: data.score, game: "general", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "general", score: data.score, correct: data.correct, totalQuestions: data.total });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1396,7 +1937,7 @@ export const saveSudokuScore = functions.https.onCall(
         });
 
         const pointsEarned = data.difficulty === "Hard" ? 400 : data.difficulty === "Medium" ? 200 : 100;
-        await db.collection("sudokuSessions").add({
+        const sessionRef = await db.collection("sudokuSessions").add({
             name, phone: data.phone, score: data.score, pointsEarned,
             difficulty: data.difficulty, stage: data.stage, hintsUsed: data.hintsUsed,
             playedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1409,6 +1950,8 @@ export const saveSudokuScore = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score: data.score, game: "sudoku", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "sudoku", score: data.score });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1490,7 +2033,7 @@ export const saveConnectDotsScore = functions.https.onCall(
 
         const hintsUsed = Math.max(0, Math.round(data.hintsUsed || 0));
         const pointsEarned = Math.max(100 - hintsUsed * 25, 0);
-        await db.collection("connectDotsSessions").add({
+        const sessionRef = await db.collection("connectDotsSessions").add({
             name, phone: data.phone, score, pointsEarned,
             level: Math.round(data.level), stage: Math.round(data.stage),
             hintsUsed,
@@ -1505,6 +2048,8 @@ export const saveConnectDotsScore = functions.https.onCall(
         }
 
         await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score, game: "connectDots", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "connectDots", score });
 
         // Update quest progress
         await updateQuestProgress(data.phone, "daily_games");
@@ -1520,6 +2065,30 @@ export const onPlayerCreated = functions.firestore
         const { phone } = context.params;
         await updateQuestProgress(phone, "new_user");
     });
+
+/**
+ * redeemReferral — callable fallback for clients that still hold a local referrer.
+ * The normal path is server-side via saved non-tournament sessions.
+ */
+export const redeemReferral = functions.https.onCall(
+    async (data: { newUserPhone?: string; referrerPhone?: string; score?: number; game?: string; sessionId?: string; name?: string }) => {
+        const newUserPhone = String(data?.newUserPhone || "");
+        const referrerPhone = String(data?.referrerPhone || "");
+        const score = Number(data?.score || 0);
+        if (!/^07\d{8}$/.test(newUserPhone)) throw new functions.https.HttpsError("invalid-argument", "Invalid new user phone");
+        if (!/^07\d{8}$/.test(referrerPhone)) throw new functions.https.HttpsError("invalid-argument", "Invalid referrer phone");
+        if (newUserPhone === referrerPhone) throw new functions.https.HttpsError("invalid-argument", "Cannot refer yourself");
+        await db.collection("players").doc(newUserPhone).set({ pendingReferrer: referrerPhone }, { merge: true });
+        return redeemEligibleReferralForSession({
+            newUserPhone,
+            score,
+            game: String(data?.game || "bongo"),
+            sessionId: String(data?.sessionId || "client-fallback"),
+            name: String(data?.name || "Player"),
+        });
+    }
+);
+
 function _shuffle<T>(arr: T[]): T[] {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));

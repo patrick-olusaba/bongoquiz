@@ -10,6 +10,10 @@ import { AgentLogin } from "./component/support/AgentLogin.tsx";
 import type { Agent } from "./component/support/AgentLogin.tsx";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase.ts";
+import { captureReferralFromUrl } from "./utils/referral.ts";
+
+// Remember who invited a new visitor (?ref=) before anything else renders.
+captureReferralFromUrl();
 
 const GameInfoDocs  = lazy(() => import("./component/docs/GameInfoDocs.tsx").then(m => ({ default: m.GameInfoDocs })));
 const AdminView     = lazy(() => import("./component/admin/AdminView.tsx").then(m => ({ default: m.AdminView })));

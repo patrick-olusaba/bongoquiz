@@ -1,12 +1,12 @@
-import { type FC, type ReactNode, useEffect, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 import {
-    Banknote, Coins, Minus, PackageCheck, Plus, Shirt, Wallet, ShoppingCart, Smartphone, Truck, ArrowLeft,
-    ShoppingBag
+    ArrowLeft, Banknote, Bell, ChevronDown, ChevronLeft, ChevronRight, Coins, Headphones, Heart, Home, Menu, Minus,
+    PackageCheck, Plus, Search, ShieldCheck, Shirt, ShoppingBag, ShoppingCart, Smartphone, Star, Truck, Wallet,
 } from "lucide-react";
 import { collection, doc, onSnapshot, query, setDoc, where, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { BONGO_MARKET_ITEMS, getBongoCoinBalance, getMarketOrders, placeBongoMarketOrder, syncReconciledBongoCoins, type BongoMarketItem, type BongoOrder } from "../../utils/bongoWallet";
-import "../../styles/BongoWallet.css";
+import "../../styles/BongoMarket.css";
 
 interface Props {
     onBack: () => void;
@@ -14,30 +14,7 @@ interface Props {
 }
 
 type MarketView = "browse" | "detail" | "cart" | "orders";
-type MarketCategory = "merch" | "airtime" | "cash";
 type CartLine = { product: BongoMarketItem; quantity: number };
-
-type ServiceProduct = {
-    id: string;
-    title: string;
-    provider: string;
-    coins: number;
-    type: "airtime" | "cash";
-};
-
-const airtimeProducts: ServiceProduct[] = [
-    { id: "safaricom-50", title: "50 KES", provider: "Safaricom", coins: 50, type: "airtime" },
-    { id: "safaricom-100", title: "100 KES", provider: "Safaricom", coins: 100, type: "airtime" },
-    { id: "safaricom-200", title: "200 KES", provider: "Safaricom", coins: 200, type: "airtime" },
-    { id: "safaricom-500", title: "500 KES", provider: "Safaricom", coins: 500, type: "airtime" },
-];
-
-const cashProducts: ServiceProduct[] = [
-    { id: "cash-50", title: "KSh 50", provider: "Cash", coins: 50, type: "cash" },
-    { id: "cash-100", title: "KSh 100", provider: "Cash", coins: 100, type: "cash" },
-    { id: "cash-200", title: "KSh 200", provider: "Cash", coins: 200, type: "cash" },
-    { id: "cash-500", title: "KSh 500", provider: "Cash", coins: 500, type: "cash" },
-];
 
 const categories = ["Shirts", "Caps", "Capes", "Accessories"] as const;
 
@@ -69,7 +46,9 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
     const [selected, setSelected] = useState<BongoMarketItem | null>(null);
     const [cart, setCart] = useState<CartLine[]>([]);
     const [method, setMethod] = useState<"delivery" | "pickup">("pickup");
-    const [activeCategory, setActiveCategory] = useState<MarketCategory>("merch");
+    const [detailSize, setDetailSize] = useState("M");
+    const [detailColor, setDetailColor] = useState("#ec008c");
+    const [detailQty, setDetailQty] = useState(1);
 
     const phone = localStorage.getItem("bongo_player_phone") || "";
     const playerName = localStorage.getItem("bongo_player_name") || "Player";
@@ -112,6 +91,12 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!message) return;
+        const timer = window.setTimeout(() => setMessage(""), 3500);
+        return () => window.clearTimeout(timer);
+    }, [message]);
+
     const saveOrderToFirestore = async (order: BongoOrder) => {
         await setDoc(doc(db, "bongoMarketOrders", order.id), {
             ...order,
@@ -122,8 +107,6 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
         }, { merge: true });
     };
 
-    // const featuredProduct = [...products].sort((a, b) => b.price - a.price)[0] || null;
-    const moreProducts = products.slice(0, 8);
     const goalProduct = products.find(product => product.price > balance) || products[0] || null;
     const coinsNeeded = goalProduct ? Math.max(goalProduct.price - balance, 0) : 0;
     const goalProgress = goalProduct && goalProduct.price > 0 ? Math.min(100, Math.round((balance / goalProduct.price) * 100)) : 100;
@@ -174,221 +157,240 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
         }
     };
 
-    const buyAirtime = async (product: ServiceProduct) => {
-        const result = placeBongoMarketOrder({
-            method: "delivery",
-            items: [{ productId: product.id, name: product.provider + " Airtime " + product.title, price: product.coins, quantity: 1 }],
-        });
-        if (result.ok !== true) {
-            setMessage("Not enough BongoCoins for " + product.provider + " " + product.title + ".");
-            return;
-        }
-        setBalance(result.balance);
-        setOrders(getMarketOrders());
-        setMessage("Airtime order placed. Track status under Orders.");
-        setView("orders");
-        try {
-            await saveOrderToFirestore(result.order);
-        } catch (error) {
-            console.error("Failed to save airtime order:", error);
-        }
+    const openProduct = (product: BongoMarketItem) => {
+        setSelected(product);
+        setView("detail");
     };
 
-    const MarketSection: FC<{ title: string; children: ReactNode; accent?: "cyan" | "pink" | "green"; action?: ReactNode }> = ({ title, children, accent = "pink", action }) => {
-        const SectionIcon = accent === "cyan" ? Smartphone : accent === "green" ? Banknote : Shirt;
-        return (
-            <section className={`market-pill-section ${accent}`}>
-                <div className="market-pill-section-head">
-                    <h2><SectionIcon size={18}/>{title}</h2>
-                    {action}
-                </div>
-                <div className="market-pill-scroll">{children}</div>
-            </section>
-        );
+    const featuredProduct = selected || products[0] || null;
+    const featuredImages = featuredProduct ? (featuredProduct.imageUrls?.length ? featuredProduct.imageUrls : featuredProduct.imageUrl ? [featuredProduct.imageUrl] : []) : [];
+    const featuredImage = featuredImages[0] || "";
+    const featuredColors = featuredProduct?.availableColors?.length ? featuredProduct.availableColors : ["#c000ff", "#111827", "#9ca3af", "#ec008c"];
+    const featuredStock = Math.max(Number(featuredProduct?.stock ?? 20), 0);
+    const detailTotal = featuredProduct ? featuredProduct.price * detailQty : 0;
+    const addFeaturedToCart = () => {
+        if (!featuredProduct) return;
+        for (let i = 0; i < detailQty; i += 1) addToCart(featuredProduct);
     };
 
     return (
-        <div className="wallet-page market-page">
-            <div className="market-game-topbar">
-                <button type="button" onClick={view === "browse" ? onBack : () => setView("browse")} aria-label="Back"><ArrowLeft size={28}/></button>
+        <div className="bm-page">
+            <header className="bm-topbar">
+                <button type="button" onClick={view === "browse" ? onBack : () => setView("browse")} aria-label="Back"><ArrowLeft size={22}/></button>
                 <strong>Bongo <span>Market</span></strong>
-                <button type="button" className="market-cart-bubble" onClick={() => setView("cart")} aria-label="Open cart"><Wallet size={24}/>{cartCount > 0 && <em>{cartCount}</em>}</button>
-            </div>
+                <button type="button" className="bm-cart-btn" onClick={() => setView("cart")} aria-label="Open cart">
+                    <ShoppingCart size={20}/>
+                    {cartCount > 0 && <em>{cartCount}</em>}
+                </button>
+            </header>
 
-            {view === "browse" && (
-                <section className="market-reward-hero">
-                    <div className="market-reward-balance">
-                        <span>Your BongoCoins</span>
-                        <div><Coins size={34}/><strong>{balance.toLocaleString()}</strong></div>
-                        <button type="button" onClick={onWallet}><ShoppingBag size={15}/> History <span>›</span></button>
-                    </div>
-                    <div className="market-reward-progress">
-                        <span>{coinsNeeded > 0 ? `You're ${coinsNeeded.toLocaleString()} coins away!` : "Ready to unlock"}</span>
-                        {/*{goalProduct && <p>{coinsNeeded > 0 ? `get ${coinsNeeded.toLocaleString()} more coins to get ` : "You can get "}<b>{goalProduct.name}</b></p>}*/}
-                        <div className="market-goal-track"><span style={{ width: `${goalProgress}%` }}/></div>
-                    </div>
-                    {goalProduct && (
-                        <div className="market-reward-preview">
-                            {(goalProduct.imageUrls?.[0] || goalProduct.imageUrl) ? <img src={goalProduct.imageUrls?.[0] || goalProduct.imageUrl} alt={goalProduct.name}/> : <Shirt size={54}/>}
-                            <button type="button" onClick={() => { setSelected(goalProduct); setView("detail"); }}><ShoppingBag size={17}/></button>
-                        </div>
-                    )}
-                </section>
-            )}
+            {message && <div className="bm-toast" role="status">{message}</div>}
 
             {view !== "browse" && (
-                <div className="market-toolbar">
-                    <button type="button" onClick={() => setView("browse")}>Products</button>
-                    <button type="button" className={view === "cart" ? "active" : ""} onClick={() => setView("cart")}><ShoppingCart size={15}/> Cart {cartCount ? `(${cartCount})` : ""}</button>
-                    <button type="button" className={view === "orders" ? "active" : ""} onClick={() => setView("orders")}><Truck size={15}/> Orders</button>
-                </div>
+                <nav className="bm-toolbar">
+                    <button type="button" onClick={() => setView("browse")}><ShoppingBag size={14}/> Shop</button>
+                    <button type="button" className={view === "cart" ? "active" : ""} onClick={() => setView("cart")}><ShoppingCart size={14}/> Cart{cartCount ? ` (${cartCount})` : ""}</button>
+                    <button type="button" className={view === "orders" ? "active" : ""} onClick={() => setView("orders")}><Truck size={14}/> Orders</button>
+                </nav>
             )}
 
-            {message && <div className="market-message">{message}</div>}
-
             {view === "browse" && (
-                <div className="market-shop-layout">
-                    {/*{featuredProduct && (*/}
-                    {/*    <section className="market-featured-section">*/}
-                    {/*        <div className="market-shop-heading">*/}
-                    {/*            <div><Flame size={16}/><span>Featured Today</span></div>*/}
-                    {/*            <button type="button" onClick={() => { setSelected(featuredProduct); setView("detail"); }}>View drop</button>*/}
-                    {/*        </div>*/}
-                    {/*        <article className="market-featured-card">*/}
-                    {/*            <div className="market-featured-image">*/}
-                    {/*                {(featuredProduct.imageUrls?.[0] || featuredProduct.imageUrl) ? (*/}
-                    {/*                    <img src={featuredProduct.imageUrls?.[0] || featuredProduct.imageUrl} alt={featuredProduct.name}/>*/}
-                    {/*                ) : (*/}
-                    {/*                    <div style={{ background: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.28), transparent 34%), linear-gradient(145deg, ${featuredProduct.color}, #13001f)` }}><Shirt size={48}/><span>{productLabel(featuredProduct)}</span></div>*/}
-                    {/*                )}*/}
-                    {/*            </div>*/}
-                    {/*            <div className="market-featured-copy">*/}
-                    {/*                <small>{featuredProduct.tag || "Limited Drop"}</small>*/}
-                    {/*                <h2>{featuredProduct.name}</h2>*/}
-                    {/*                <p>{featuredProduct.brand}</p>*/}
-                    {/*                <div className="market-featured-meta">*/}
-                    {/*                    <strong><Coins size={16}/>{featuredProduct.price.toLocaleString()}</strong>*/}
-                    {/*                    {typeof featuredProduct.stock === "number" && featuredProduct.stock > 0 && <span>Only {featuredProduct.stock} left</span>}*/}
-                    {/*                </div>*/}
-                    {/*                <button type="button" onClick={() => { setSelected(featuredProduct); setView("detail"); }}>View Details</button>*/}
-                    {/*            </div>*/}
-                    {/*        </article>*/}
-                    {/*    </section>*/}
-                    {/*)}*/}
+                <>
+                    {featuredProduct && (
+                        <div className="bm-desktop-market">
+                            <header className="bm-desktop-header">
+                                <button type="button" className="bm-icon-button" aria-label="Menu"><Menu size={19}/></button>
+                                <div className="bm-desktop-search"><Search size={17}/><span>Search for merch, games...</span></div>
+                                <div className="bm-desktop-actions">
+                                    <button type="button" className="bm-desktop-coins" onClick={onWallet}><Coins size={16}/><strong>{balance.toLocaleString()}</strong></button>
+                                    <button type="button" className="bm-icon-button" onClick={() => setView("cart")} aria-label="Cart"><ShoppingCart size={19}/>{cartCount > 0 && <em>{cartCount}</em>}</button>
+                                    <button type="button" className="bm-icon-button" aria-label="Alerts"><Bell size={19}/></button>
+                                    <button type="button" className="bm-desktop-profile"><span>{playerName.charAt(0).toUpperCase()}</span><b>{playerName}<small>Player</small></b><ChevronDown size={16}/></button>
+                                </div>
+                            </header>
 
-                    <div className="market-category-tiles">
-                        <button type="button" className={activeCategory === "merch" ? "active" : ""} onClick={() => setActiveCategory("merch")}><ShoppingBag size={32}/><span><b>Merch</b><small>Shop apparel</small></span><em>›</em></button>
-                        <button type="button" className="coming-soon" disabled aria-label="Airtime coming soon"><Smartphone size={32}/><span><b>Airtime</b><small>Coming soon</small></span></button>
-                        <button type="button" className="coming-soon" disabled aria-label="M-Pesa cash rewards coming soon"><Banknote size={32}/><span><b>M-Pesa Cash</b><small>Coming soon</small></span></button>
-                    </div>
+                            <div className="bm-breadcrumb"><Home size={13}/> <span>Market</span> <i/> <span>{featuredProduct.category}</span> <i/> <b>{featuredProduct.name}</b></div>
 
-                    {activeCategory === "merch" && !!moreProducts.length && (
-                        <MarketSection title="Merch" action={<button type="button" onClick={() => setMessage("More categories are coming soon.")}>View all <span>›</span></button>}>
-                            {moreProducts.map(product => (
-                                <article className="market-pill-card merch" key={product.id}>
-                                    {(product.imageUrls?.[0] || product.imageUrl) ? (
-                                        <img className="market-pill-image" src={product.imageUrls?.[0] || product.imageUrl} alt={product.name}/>
-                                    ) : (
-                                        <div className="market-pill-art" style={{ background: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.28), transparent 34%), linear-gradient(145deg, ${product.color}, #13001f)` }}>
-                                            <Shirt size={34}/>
-                                            <span>{productLabel(product)}</span>
-                                        </div>
-                                    )}
-                                    <div className="market-pill-info">
-                                        <strong>{product.name}</strong>
-                                        <span>{product.price.toLocaleString()} Coins</span>
-                                        {product.tag && <small>{product.tag}</small>}
+                            <main className="bm-product-layout">
+                                <section className="bm-product-gallery">
+                                    <div className="bm-product-stage">
+                                        <span className="bm-new-badge">New</span>
+                                        <button type="button" className="bm-heart" aria-label="Save product"><Heart size={20}/></button>
+                                        {featuredImage ? <img src={featuredImage} alt={featuredProduct.name}/> : <div className="bm-product-fallback"><Shirt size={88}/><strong>{productLabel(featuredProduct)}</strong></div>}
+                                        <button type="button" className="bm-gallery-arrow left" aria-label="Previous image"><ChevronLeft size={18}/></button>
+                                        <button type="button" className="bm-gallery-arrow right" aria-label="Next image"><ChevronRight size={18}/></button>
                                     </div>
-                                    <button type="button" onClick={() => { setSelected(product); setView("detail"); }}>View Details</button>
+                                    <div className="bm-thumb-row">
+                                        <button type="button" aria-label="Previous thumbnails"><ChevronLeft size={18}/></button>
+                                        {(featuredImages.length ? featuredImages : [""]).slice(0, 4).map((url, index) => (
+                                            <button type="button" className={index === 0 ? "active" : ""} key={url || index} aria-label={`Product image ${index + 1}`}>
+                                                {url ? <img src={url} alt={featuredProduct.name}/> : <Shirt size={34}/>} 
+                                            </button>
+                                        ))}
+                                        <button type="button" aria-label="Next thumbnails"><ChevronRight size={18}/></button>
+                                    </div>
+                                    <div className="bm-product-tabs">
+                                        <button type="button" className="active">Description</button>
+                                        <button type="button">Details</button>
+                                        <button type="button">Shipping & Returns</button>
+                                        <button type="button">Reviews (42)</button>
+                                    </div>
+                                    <div className="bm-product-description">
+                                        <strong>{featuredProduct.name}</strong>
+                                        <p>{featuredProduct.description}</p>
+                                        <ul><li>Premium merch item</li><li>High quality print</li><li>Machine washable</li></ul>
+                                    </div>
+                                </section>
+
+                                <section className="bm-product-info">
+                                    <h1>{featuredProduct.name}</h1>
+                                    <span className="bm-limited-pill">Limited Edition</span>
+                                    <div className="bm-product-price"><Coins size={24}/><strong>{featuredProduct.price.toLocaleString()}</strong></div>
+                                    <div className="bm-stock-line"><i/> In stock · {featuredStock || 20}+ units available</div>
+                                    <p>{featuredProduct.description}</p>
+
+                                    <div className="bm-option-group"><span>Size</span><div className="bm-size-row">{["S", "M", "L", "XL", "XXL"].map(size => <button type="button" key={size} className={detailSize === size ? "active" : ""} onClick={() => setDetailSize(size)}>{size}</button>)}</div></div>
+                                    <div className="bm-option-group"><span>Color</span><div className="bm-color-choice-row">{featuredColors.map(color => <button type="button" key={color} className={detailColor === color ? "active" : ""} style={{ background: color }} onClick={() => setDetailColor(color)} aria-label={`Select color ${color}`}/>)}</div></div>
+                                    <div className="bm-option-group"><span>Quantity</span><div className="bm-desktop-qty"><button type="button" onClick={() => setDetailQty(q => Math.max(1, q - 1))}><Minus size={16}/></button><strong>{detailQty}</strong><button type="button" onClick={() => setDetailQty(q => Math.min(9, q + 1))}><Plus size={16}/></button></div></div>
+
+                                    <button type="button" className="bm-add-main" onClick={addFeaturedToCart}><ShoppingCart size={18}/> Add to cart</button>
+                                    <button type="button" className="bm-buy-main" onClick={() => { addFeaturedToCart(); setView("cart"); }}>Buy now</button>
+
+                                    <div className="bm-trust-grid">
+                                        <span><Heart size={17}/><b>Premium Quality</b><small>100% cotton</small></span>
+                                        <span><ShieldCheck size={17}/><b>Secure Payment</b><small>Safe & encrypted</small></span>
+                                        <span><Truck size={17}/><b>Fast Delivery</b><small>Delivered to your door</small></span>
+                                        <span><PackageCheck size={17}/><b>7-Day Returns</b><small>Easy returns</small></span>
+                                    </div>
+                                </section>
+
+                                <aside className="bm-product-side">
+                                    <section className="bm-side-card bm-side-balance"><span>BongoCoins Balance</span><div><Coins size={24}/><strong>{balance.toLocaleString()}</strong><button type="button" onClick={onWallet}><Wallet size={14}/> Wallet</button></div></section>
+                                    {goalProduct && <section className="bm-side-card bm-side-goal"><div className="bm-side-goal-row"><span>{(goalProduct.imageUrls?.[0] || goalProduct.imageUrl) ? <img src={goalProduct.imageUrls?.[0] || goalProduct.imageUrl} alt={goalProduct.name}/> : <Shirt size={24}/>}</span><p><b>{coinsNeeded.toLocaleString()} coins away from</b>{goalProduct.name}</p></div><div className="bm-side-track"><i style={{ width: `${goalProgress}%` }}/></div></section>}
+                                    <section className="bm-side-card bm-side-benefits"><div><Star size={22}/><b>Earn Coins</b><p>Play games and complete challenges</p></div><div><Star size={22}/><b>Get Rewards</b><p>Spend coins on merch and more</p></div><div><ShoppingBag size={22}/><b>Exclusive Drops</b><p>Access limited edition merch first</p></div></section>
+                                    <section className="bm-side-card bm-support-card"><div><Headphones size={22}/><b>Need help?</b><p>Our support team is here to help you.</p></div><button type="button">Contact Support</button></section>
+                                </aside>
+                            </main>
+                        </div>
+                    )}
+
+                    <div className="bm-mobile-shop">
+                    <section className="bm-hero">
+                        <div className="bm-balance">
+                            <div className="bm-balance-copy">
+                                <span>BongoCoin Balance</span>
+                                <div><Coins size={28}/><strong>{balance.toLocaleString()}</strong></div>
+                            </div>
+                            <button type="button" onClick={onWallet}><Wallet size={15}/> Wallet</button>
+                        </div>
+                        {goalProduct && (
+                            <button type="button" className="bm-goal" onClick={() => openProduct(goalProduct)}>
+                                <span className="bm-goal-thumb">
+                                    {(goalProduct.imageUrls?.[0] || goalProduct.imageUrl) ? <img src={goalProduct.imageUrls?.[0] || goalProduct.imageUrl} alt={goalProduct.name}/> : <Shirt size={24}/>}
+                                </span>
+                                <span className="bm-goal-copy">
+                                    <small>{coinsNeeded > 0 ? `${coinsNeeded.toLocaleString()} coins away from` : "You can now redeem"}</small>
+                                    <b>{goalProduct.name}</b>
+                                    <span className="bm-goal-track"><i style={{ width: `${goalProgress}%` }}/></span>
+                                </span>
+                                <ChevronRight size={18}/>
+                            </button>
+                        )}
+                    </section>
+
+                    <nav className="bm-tabs" aria-label="Market categories">
+                        <button type="button" className="active"><ShoppingBag size={16}/> Merch</button>
+                        <button type="button" disabled aria-label="Airtime coming soon"><Smartphone size={16}/> Airtime <em>Soon</em></button>
+                        <button type="button" disabled aria-label="M-Pesa cash coming soon"><Banknote size={16}/> Cash <em>Soon</em></button>
+                    </nav>
+
+                    <div className="bm-grid">
+                        {products.map(product => {
+                            const image = product.imageUrls?.[0] || product.imageUrl;
+                            return (
+                                <article className="bm-card" key={product.id}>
+                                    <button type="button" className="bm-card-media" onClick={() => openProduct(product)} aria-label={`View ${product.name}`}>
+                                        {image ? <img src={image} alt={product.name}/> : (
+                                            <i style={{ background: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.25), transparent 36%), linear-gradient(150deg, ${product.color}, #14001f)` }}>
+                                                <Shirt size={32}/>
+                                                <span>{productLabel(product)}</span>
+                                            </i>
+                                        )}
+                                        {product.tag && <small>{product.tag}</small>}
+                                    </button>
+                                    <div className="bm-card-info">
+                                        <strong>{product.name}</strong>
+                                        <span className={product.price <= balance ? "ok" : ""}><Coins size={13}/>{product.price.toLocaleString()}</span>
+                                    </div>
+                                    <button type="button" className="bm-card-add" onClick={() => addToCart(product)}><Plus size={14}/> Add to cart</button>
                                 </article>
-                            ))}
-                        </MarketSection>
-                    )}
-
-                    {activeCategory === "airtime" && (
-                    <MarketSection title="Airtime" accent="cyan" action={<button type="button" onClick={() => setMessage("Airtime rewards are live below.")}>View all <span>›</span></button>}>
-                        {airtimeProducts.map(product => (
-                            <button type="button" className="market-pill-card service airtime reward-compact" key={product.id} onClick={() => buyAirtime(product)}>
-                                <div className="market-safaricom-logo"><i/>Safaricom</div>
-                                <b>{product.title}</b>
-                                <span><Coins size={14}/>{product.coins.toLocaleString()}</span>
-                            </button>
-                        ))}
-                    </MarketSection>
-                    )}
-
-                    {activeCategory === "cash" && (
-                    <MarketSection title="Cash Rewards (KSH)" accent="green" action={<button type="button" onClick={() => setMessage("Cash redemption is coming soon.")}>View all <span>›</span></button>}>
-                        {cashProducts.map(product => (
-                            <button type="button" className="market-pill-card service cash reward-compact" key={product.id} onClick={() => setMessage("Cash redemption is coming soon.")}>
-                                <div className="market-cash-stack"><Banknote size={30}/></div>
-                                <b>{product.title}</b>
-                                <span><Coins size={14}/>{product.coins.toLocaleString()}</span>
-                            </button>
-                        ))}
-                    </MarketSection>
-                    )}
-                </div>
+                            );
+                        })}
+                    </div>
+                    </div>
+                </>
             )}
 
             {view === "detail" && selected && (
-                <section className="market-detail-card">
-                    {(selected.imageUrls?.[0] || selected.imageUrl) ? <img className="market-detail-image" src={selected.imageUrls?.[0] || selected.imageUrl} alt={selected.name}/> : (
-                        <div className="market-detail-art" style={{ background: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.28), transparent 34%), linear-gradient(145deg, ${selected.color}, #8b2cff 58%, #14001f)` }}>
+                <section className="bm-panel bm-detail">
+                    {(selected.imageUrls?.[0] || selected.imageUrl) ? (
+                        <img className="bm-detail-image" src={selected.imageUrls?.[0] || selected.imageUrl} alt={selected.name}/>
+                    ) : (
+                        <div className="bm-detail-art" style={{ background: `radial-gradient(circle at 28% 20%, rgba(255,255,255,0.28), transparent 34%), linear-gradient(145deg, ${selected.color}, #8b2cff 58%, #14001f)` }}>
                             {productLabel(selected)}
                         </div>
                     )}
                     {!!selected.imageUrls?.length && selected.imageUrls.length > 1 && (
-                        <div className="market-image-gallery">
+                        <div className="bm-gallery">
                             {selected.imageUrls.map(url => <img key={url} src={url} alt={selected.name}/>)}
                         </div>
                     )}
-                    <span>{selected.brand}</span>
+                    <span className="bm-detail-brand">{selected.brand}</span>
                     <h2>{selected.name}</h2>
                     <p>{selected.description}</p>
-                    <div className="market-detail-meta">
+                    <div className="bm-detail-meta">
                         <small>{selected.category}{typeof selected.stock === "number" && selected.stock > 0 ? ` · ${selected.stock} in stock` : ""}</small>
-                        <strong><Coins size={18}/>{selected.price.toLocaleString()}</strong>
+                        <strong><Coins size={17}/>{selected.price.toLocaleString()}</strong>
                     </div>
                     {!!selected.availableColors?.length && (
-                        <div className="market-color-row">
+                        <div className="bm-color-row">
                             {selected.availableColors.map(color => <span key={color} style={{ background: color }} title={color}/>)}
                         </div>
                     )}
-                    <div className="market-detail-actions">
-                        <button type="button" onClick={() => setView("browse")}>Browse more</button>
+                    <div className="bm-detail-actions">
+                        <button type="button" onClick={() => setView("browse")}>Keep browsing</button>
                         <button type="button" onClick={() => { addToCart(selected); setView("cart"); }}>Add to cart</button>
                     </div>
                 </section>
             )}
 
             {view === "cart" && (
-                <section className="market-cart-card">
-                    <h2>Cart</h2>
+                <section className="bm-panel bm-cart">
+                    <h2>Your Cart</h2>
                     {cart.length ? cart.map(line => (
-                        <div className="market-cart-row" key={line.product.id}>
-                            <div>
+                        <div className="bm-cart-row" key={line.product.id}>
+                            <div className="bm-cart-copy">
                                 <strong>{line.product.name}</strong>
                                 <span>{line.product.brand}</span>
                                 <small>{line.product.price.toLocaleString()} coins each</small>
                             </div>
-                            <div className="market-qty">
-                                <button type="button" onClick={() => updateQuantity(line.product.id, -1)}><Minus size={14}/></button>
+                            <div className="bm-qty">
+                                <button type="button" onClick={() => updateQuantity(line.product.id, -1)} aria-label="Decrease quantity"><Minus size={14}/></button>
                                 <span>{line.quantity}</span>
-                                <button type="button" onClick={() => updateQuantity(line.product.id, 1)}><Plus size={14}/></button>
+                                <button type="button" onClick={() => updateQuantity(line.product.id, 1)} aria-label="Increase quantity"><Plus size={14}/></button>
                             </div>
                         </div>
-                    )) : <p className="market-muted">Your cart is empty. Browse products to add merch.</p>}
+                    )) : <p className="bm-muted">Your cart is empty. Browse products to add merch.</p>}
 
-                    <div className="market-methods">
+                    <div className="bm-methods">
                         <button type="button" className={method === "pickup" ? "active" : ""} onClick={() => setMethod("pickup")}>Pickup</button>
                         <button type="button" className={method === "delivery" ? "active" : ""} onClick={() => setMethod("delivery")}>Delivery</button>
                     </div>
 
-                    <div className="market-checkout-bar">
+                    <div className="bm-checkout-bar">
                         <div>
                             <span>Total</span>
-                            <strong><Coins size={18}/>{cartTotal.toLocaleString()}</strong>
+                            <strong><Coins size={17}/>{cartTotal.toLocaleString()}</strong>
                         </div>
                         <button type="button" disabled={!cart.length} onClick={checkout}>Checkout</button>
                     </div>
@@ -396,21 +398,21 @@ export const BongoMarketPage: FC<Props> = ({ onBack, onWallet }) => {
             )}
 
             {view === "orders" && (
-                <section className="market-inventory market-orders-card">
+                <section className="bm-panel bm-orders">
                     <h2>Order Status</h2>
                     {orders.length ? orders.map(order => (
-                        <div className="market-order-row" key={order.id}>
-                            <div className="market-order-main">
-                                <PackageCheck size={22}/>
+                        <div className="bm-order-row" key={order.id}>
+                            <div className="bm-order-main">
+                                <PackageCheck size={20}/>
                                 <div>
                                     <strong>{order.status}</strong>
                                     <span>{order.method === "pickup" ? "Pickup" : "Delivery"} · {new Date(order.createdAt).toLocaleDateString()}</span>
                                 </div>
+                                <b>{order.total.toLocaleString()} coins</b>
                             </div>
                             <small>{order.items.map(item => `${item.quantity}x ${item.name}`).join(", ")}</small>
-                            <b>{order.total.toLocaleString()} coins</b>
                         </div>
-                    )) : <p>No orders yet. Checkout with BongoCoins to create one.</p>}
+                    )) : <p className="bm-muted">No orders yet. Checkout with BongoCoins to create one.</p>}
                 </section>
             )}
         </div>

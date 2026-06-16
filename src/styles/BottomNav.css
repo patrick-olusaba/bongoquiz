@@ -1,77 +1,150 @@
 .bottom-nav {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-around;
-    background: rgba(10, 5, 30, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255,255,255,0.1);
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.5);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  height: calc(70px + env(safe-area-inset-bottom, 0px));
+  padding: 7px 5px calc(7px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 3px;
+  box-sizing: border-box;
+  background: rgba(12, 5, 25, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -14px 38px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 @media (min-width: 1024px) {
-    .bottom-nav { display: none; }
+  .bottom-nav { display: none; }
 }
 
 .bottom-nav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px 0;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    font-family: inherit;
-    transition: color 0.2s;
-}
-
-.bottom-nav-item.active {
-    color: #a855f7;
+  position: relative;
+  min-width: 0;
+  min-height: 54px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: rgba(211, 197, 235, 0.54);
+  background: transparent;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .bottom-nav-item svg {
-    flex-shrink: 0;
-    shape-rendering: geometricPrecision;
-    transform: translateZ(0);
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 0 transparent);
 }
 
-/* Spin center button — elevated circle */
+.bottom-nav-item span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav-item.active {
+  color: #fff;
+  border-color: rgba(214, 0, 255, 0.5);
+  background: radial-gradient(circle at 50% 0%, rgba(255, 0, 244, 0.32), rgba(124, 0, 255, 0.16) 52%, rgba(255, 255, 255, 0.035));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 20px rgba(191, 0, 255, 0.34);
+}
+
+.bottom-nav-item.active svg {
+  color: #ff48ff;
+  filter: drop-shadow(0 0 10px rgba(255, 72, 255, 0.8));
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 360px) {
+  .bottom-nav {
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-inline: 3px;
+    gap: 2px;
+  }
+  .bottom-nav-item {
+    min-height: 50px;
+    font-size: 0.52rem;
+  }
+  .bottom-nav-item svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
 .bottom-nav-spin {
-    position: relative;
-    color: #fff;
-    margin-top: -22px;
+  overflow: visible;
+  z-index: 2;
+  color: #fff;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
-.spin-icon-wrapper {
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: #1a0030;
-    border: 3px solid #cc00ff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 0 3px rgba(200,0,255,0.25), 0 0 20px rgba(200,0,255,0.6), 0 0 40px rgba(200,0,255,0.3);
-    animation: spinRingPulse 2s ease-in-out infinite;
-    color: #fff;
+.bottom-nav-spin .spin-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  margin-top: -30px;
+  margin-bottom: -2px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: radial-gradient(circle at 50% 42%, rgba(255,255,255,0.18), rgba(50, 8, 70, 0.96) 54%, rgba(18, 3, 30, 0.98));
+  border: 4px solid #f02cff;
+  box-shadow:
+    0 0 0 4px rgba(240, 44, 255, 0.16),
+    0 0 22px rgba(255, 44, 255, 0.95),
+    0 0 44px rgba(168, 0, 255, 0.58),
+    inset 0 1px 0 rgba(255,255,255,0.28);
 }
 
-@keyframes spinRingPulse {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(200,0,255,0.25), 0 0 20px rgba(200,0,255,0.6), 0 0 40px rgba(200,0,255,0.3); }
-    50%       { box-shadow: 0 0 0 5px rgba(200,0,255,0.4), 0 0 30px rgba(200,0,255,0.9), 0 0 60px rgba(200,0,255,0.5); }
+.bottom-nav-spin .spin-icon-wrapper svg {
+  width: 27px;
+  height: 27px;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.7));
+}
+
+.bottom-nav-spin span {
+  color: rgba(255,255,255,0.92);
+  margin-top: 1px;
 }
 
 .bottom-nav-spin.active .spin-icon-wrapper {
-    background: linear-gradient(135deg, #2d0050, #4c0080);
-    border-color: #ff00ff;
+  border-color: #ff4dff;
+  box-shadow:
+    0 0 0 5px rgba(240, 44, 255, 0.2),
+    0 0 26px rgba(255, 44, 255, 1),
+    0 0 58px rgba(168, 0, 255, 0.72),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.bottom-nav-spin.active svg {
+  color: #fff;
+}
+
+@media (max-width: 360px) {
+  .bottom-nav-spin .spin-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    margin-top: -28px;
+  }
 }

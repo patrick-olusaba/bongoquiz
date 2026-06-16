@@ -3,6 +3,7 @@
 export type GameScreen =
     | "home"
     | "games"
+    | "community"
     | "profile"
     | "box_select"
     | "power_reveal"
@@ -19,9 +20,12 @@ export type GameScreen =
     | "leaderboard"
     | "wallet"
     | "market"
+    | "tournament_play"
     | "transition_r1"
     | "transition_r2"
     | "transition_r3";
+
+export type MainNavTab = "home" | "games" | "spin" | "leaderboard" | "community" | "profile";
 
 export interface Question {
     q: string;

@@ -1,0 +1,198 @@
+.adm-tournament {
+    margin: -20px -22px -48px;
+    min-height: calc(100vh - 58px);
+    padding: 18px 22px 42px;
+    color: #111827;
+    background: #f4f6fb;
+}
+.adm-tournament-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+.adm-tournament-head h1 { margin: 0; color: #111827; font-size: 1.32rem; letter-spacing: 0; }
+.adm-tournament-head span { display: block; margin-top: 4px; color: #667085; font-size: 0.82rem; }
+.adm-tournament-search { width: min(100%, 420px); height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #d8deea; border-radius: 8px; background: #fff; color: #667085; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.adm-tournament-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #111827; font: inherit; font-size: 0.82rem; }
+.adm-tournament-alert { margin-bottom: 14px; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; background: #f0fdf4; color: #166534; font-size: .82rem; font-weight: 800; }
+.adm-tournament-alert.error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.adm-tournament-tabs { display: flex; align-items: center; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding: 6px; border: 1px solid #dfe5ef; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+.adm-tournament-tabs button { min-height: 40px; border: 1px solid transparent; border-radius: 7px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: transparent; color: #475467; font: inherit; font-size: .82rem; font-weight: 850; white-space: nowrap; cursor: pointer; }
+.adm-tournament-tabs button.active { border-color: #7c3aed; background: #f3e8ff; color: #5b21b6; }
+.adm-tournament-tab-panel { display: grid; gap: 16px; }
+.adm-tournament-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.adm-tournament-kpis div { min-height: 104px; border: 1px solid #e4e7ec; border-radius: 8px; padding: 18px; display: grid; grid-template-columns: 48px 1fr; column-gap: 14px; align-content: center; background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+.adm-tournament-kpis svg { grid-row: span 3; width: 42px; height: 42px; color: #7c3aed; }
+.adm-tournament-kpis div:nth-child(2) svg { color: #16a34a; }
+.adm-tournament-kpis div:nth-child(3) svg { color: #2563eb; }
+.adm-tournament-kpis div:nth-child(4) svg { color: #d97706; }
+.adm-tournament-kpis div:nth-child(5) svg { color: #db2777; }
+.adm-tournament-kpis span { color: #667085; font-size: .78rem; }
+.adm-tournament-kpis strong { color: #111827; font-size: 1.55rem; line-height: 1.05; }
+.adm-tournament-kpis em { color: #16a34a; font-style: normal; font-size: .76rem; }
+.adm-tournament-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
+.adm-tournament-card { border: 1px solid #e4e7ec; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.06); overflow: hidden; }
+.adm-tournament-card h2 { margin: 0; color: #111827; font-size: 1rem; letter-spacing: 0; }
+.adm-tournament-card-head { min-height: 54px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #edf0f5; }
+.adm-tournament-card-head > div { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adm-tournament-card-head span { color: #667085; font-size: .78rem; font-weight: 800; }
+.adm-tournament-card-head button, .settings-card button, .question-form-admin button { border: 1px solid #7c3aed; border-radius: 7px; background: #7c3aed; color: #fff; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 850; }
+.adm-tournament-card-head button.secondary, .settings-card button.secondary { background: #fff; color: #344054; border-color: #d0d5dd; }
+.adm-tournament-card-head button:disabled, .settings-card button:disabled, .question-form-admin button:disabled { opacity: .52; cursor: not-allowed; }
+.adm-tournament-table { display: grid; }
+.adm-tournament-table .thead, .adm-tournament-table .trow { display: grid; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #edf0f5; }
+.adm-tournament-table.compact .thead, .adm-tournament-table.compact .trow { grid-template-columns: 1.7fr .7fr .8fr .8fr 1fr .7fr; }
+.adm-tournament-table.leaderboard .thead, .adm-tournament-table.leaderboard .trow { grid-template-columns: 70px 1.8fr 1fr .8fr .8fr 1fr; }
+.adm-tournament-table .thead { min-height: 42px; color: #667085; font-size: .72rem; text-transform: uppercase; background: #f8fafc; }
+.adm-tournament-table .trow { min-height: 66px; color: #344054; font-size: .82rem; }
+.adm-tournament-table .trow:last-child { border-bottom: 0; }
+.adm-tournament-table small { display: block; color: #667085; margin-top: 3px; }
+.tour-title { display: grid; grid-template-columns: 36px 1fr; column-gap: 10px; align-items: center; }
+.tour-title svg { grid-row: span 2; width: 34px; height: 34px; padding: 8px; border-radius: 50%; background: #f3e8ff; color: #7c3aed; }
+.status { display: inline-flex; width: fit-content; padding: 4px 8px; border-radius: 5px; font-style: normal; font-weight: 900; font-size: .68rem; }
+.status.live { color: #166534; background: #dcfce7; }
+.status.ongoing { color: #1d4ed8; background: #dbeafe; }
+.countdown-mini { color: #111827; font-weight: 900; letter-spacing: .08em; }
+.manage-btn, .profile-btn { border: 1px solid #d0d5dd; border-radius: 7px; background: #fff; color: #344054; min-height: 34px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: .76rem; cursor: pointer; }
+.rank { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #eef2ff; color: #3730a3; font-weight: 950; }
+.rank-1 { background: #fbbf24; color: #2b1600; }
+.rank-2 { background: #d4d4d8; color: #111827; }
+.rank-3 { background: #c2410c; color: #fff; }
+.player-cell { display: grid; grid-template-columns: 34px auto auto; align-items: center; gap: 8px; justify-content: start; }
+.player-cell b { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #ede9fe; color: #5b21b6; font-size: .68rem; }
+.player-cell small { margin: 0; padding: 4px 7px; border-radius: 5px; background: #f3f4f6; color: #475467; }
+.accuracy { color: #15803d; font-weight: 900; }
+.trow.current { background: #f5f3ff; }
+.overview-card, .rewards-card, .shirts-card { padding: 16px; }
+.overview-card h2, .rewards-card h2 { margin-bottom: 14px; }
+.timer-box { border-radius: 8px; padding: 18px; text-align: center; background: #f5f3ff; border: 1px solid #ddd6fe; margin-bottom: 12px; }
+.timer-box span, .timer-box small { color: #667085; font-size: .74rem; }
+.timer-box strong { display: block; color: #5b21b6; font-size: 1.65rem; margin: 8px 0; letter-spacing: .08em; }
+.overview-card dl { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; margin: 0; font-size: .82rem; }
+.overview-card dt { color: #667085; display: flex; align-items: center; gap: 7px; }
+.overview-card dd { margin: 0; color: #111827; }
+.live-text { color: #15803d !important; }
+.reward-row { display: grid; grid-template-columns: 32px 78px 1fr; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf0f5; font-size: .82rem; }
+.reward-row:last-child { border-bottom: 0; }
+.reward-row svg { color: #d97706; }
+.reward-row span { color: #667085; font-size: .74rem; }
+.settings-card { padding-bottom: 16px; }
+.settings-grid { padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.settings-grid label, .reward-edit-grid label, .question-form-admin label { color: #475467; font-size: .74rem; font-weight: 850; display: grid; gap: 6px; }
+.settings-grid .wide { grid-column: 1 / -1; }
+.settings-grid input, .settings-grid select, .settings-grid textarea, .reward-edit-grid input, .reward-edit-grid textarea, .question-form-admin input, .question-form-admin select, .question-form-admin textarea { width: 100%; box-sizing: border-box; border: 1px solid #d0d5dd; border-radius: 7px; background: #fff; color: #111827; padding: 10px; font: inherit; outline: none; }
+.settings-grid input:focus, .settings-grid select:focus, .settings-grid textarea:focus, .reward-edit-grid input:focus, .reward-edit-grid textarea:focus, .question-form-admin input:focus, .question-form-admin select:focus, .question-form-admin textarea:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
+.settings-grid textarea { min-height: 76px; resize: vertical; }
+.settings-grid input:disabled { opacity: .72; cursor: not-allowed; background: #f8fafc; }
+.reward-edit-grid { padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.reward-edit-grid > div { border: 1px solid #e4e7ec; border-radius: 8px; padding: 12px; display: grid; gap: 10px; background: #fbfcfe; }
+.reward-edit-grid textarea { min-height: 84px; resize: vertical; }
+.remove-reward { justify-self: end; border: 1px solid #fecaca !important; border-radius: 6px; background: #fef2f2 !important; color: #991b1b !important; padding: 6px 9px; font: inherit; font-size: .72rem; font-weight: 850; cursor: pointer; }
+
+.csv-upload-card { margin: 14px 16px 0; border: 1px solid #e4e7ec; border-radius: 8px; padding: 16px; display: grid; gap: 12px; background: #fff; }
+.csv-upload-card h3 { margin: 0 0 8px; color: #111827; display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; }
+.csv-upload-card h3 svg { color: #7c3aed; }
+.csv-upload-card p { margin: 0; color: #475467; font-size: .86rem; line-height: 1.65; }
+.csv-upload-card code { color: #475467; background: #f8fafc; border: 1px solid #edf0f5; border-radius: 5px; padding: 1px 5px; font-size: .78rem; }
+.csv-drop-zone { min-height: 62px; border: 1.5px dashed #c8d3e2; border-radius: 8px; padding: 12px; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4px 12px; align-items: center; background: #f8fbff; cursor: pointer; }
+.csv-drop-zone input { grid-row: span 2; max-width: 220px; color: #111827; font: inherit; font-size: .82rem; }
+.csv-drop-zone span { color: #344054; font-size: .84rem; font-weight: 900; }
+.csv-drop-zone small { color: #667085; font-size: .78rem; font-weight: 750; }
+.csv-drop-zone:has(input:disabled) { opacity: .62; cursor: not-allowed; }
+.csv-upload-card a { color: #5b21ff; font-size: .84rem; font-weight: 900; text-decoration: none; width: fit-content; }
+.csv-upload-card a:hover { text-decoration: underline; }
+.tournament-question-admin-grid { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 16px; padding: 16px; }
+.question-form-admin { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; align-content: start; }
+.question-form-admin label.wide { grid-column: 1 / -1; }
+.question-form-admin textarea { min-height: 76px; resize: vertical; }
+.question-form-admin button { grid-column: 1 / -1; min-height: 42px; }
+.question-list-admin { display: grid; gap: 10px; align-content: start; }
+.question-admin-row { min-height: 72px; border: 1px solid #e4e7ec; border-radius: 8px; padding: 12px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px 12px; background: #fbfcfe; }
+.question-admin-row strong { color: #111827; font-size: .86rem; line-height: 1.35; }
+.question-admin-row small { color: #667085; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.question-admin-row button { grid-row: span 2; align-self: center; border: 1px solid #d0d5dd; border-radius: 7px; padding: 8px 10px; background: #fff; color: #344054; font: inherit; font-size: .76rem; font-weight: 850; cursor: pointer; }
+.admin-empty-row { min-height: 88px; display: grid; place-items: center; color: #667085; font-size: .84rem; border-top: 1px solid #edf0f5; text-align: center; padding: 14px; }
+@media (max-width: 1180px) { .adm-tournament-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); } .adm-tournament-overview-grid { grid-template-columns: 1fr; } .settings-grid, .reward-edit-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 980px) { .tournament-question-admin-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .adm-tournament { margin: -16px -12px -46px; padding: 14px 12px 34px; } .adm-tournament-head { display: grid; } .adm-tournament-search { width: 100%; } .adm-tournament-kpis, .settings-grid, .reward-edit-grid { grid-template-columns: 1fr; } .adm-tournament-table { overflow-x: auto; } .adm-tournament-table .thead, .adm-tournament-table .trow { min-width: 780px; } }
+@media (max-width: 560px) { .question-form-admin { grid-template-columns: 1fr; } .question-admin-row { grid-template-columns: 1fr; } .question-admin-row button { grid-row: auto; justify-self: start; } }
+.question-game-selector { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 16px 16px 0; }
+.question-game-selector button { min-height: 52px; border: 1px solid #d0d5dd; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #344054; font: inherit; font-size: .8rem; font-weight: 900; cursor: pointer; }
+.question-game-selector button span { font-size: 1.05rem; }
+.question-game-selector button.active { border-color: #b000ff; background: #faf5ff; color: #581c87; box-shadow: 0 0 0 2px rgba(176,0,255,.16); }
+.question-context-bar { margin: 12px 16px 0; min-height: 48px; border: 1px solid #e9d5ff; border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; background: #faf5ff; }
+.question-context-bar strong { color: #581c87; font-size: .9rem; }
+.question-context-bar span { color: #667085; font-size: .78rem; font-weight: 800; }
+.question-context-bar button { border: 1px solid #7c3aed; border-radius: 7px; background: #7c3aed; color: #fff; padding: 8px 12px; display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: .78rem; font-weight: 850; cursor: pointer; }
+@media (max-width: 1180px) { .question-game-selector { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 720px) { .question-game-selector { grid-template-columns: 1fr; } .question-context-bar { grid-template-columns: 1fr; } .question-context-bar button { justify-content: center; } .csv-drop-zone { grid-template-columns: 1fr; } .csv-drop-zone input { max-width: 100%; } }
+.tournament-row-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.delete-btn { min-height: 34px; border: 1px solid #fecaca; border-radius: 7px; background: #fef2f2; color: #b91c1c; padding: 0 12px; font: inherit; font-size: .76rem; font-weight: 850; cursor: pointer; }
+.leaderboard-scope-tabs { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.leaderboard-scope-tabs button { min-height: 34px; border: 1px solid #d0d5dd; border-radius: 7px; background: #fff; color: #344054; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: .78rem; font-weight: 850; cursor: pointer; }
+.leaderboard-scope-tabs button.active { border-color: #7c3aed; background: #f3e8ff; color: #5b21b6; }
+.question-image-drop { min-height: 154px; border: 1.5px dashed #b9c7da; border-radius: 8px; background: #f8fbff; display: grid; place-items: center; text-align: center; cursor: pointer; position: relative; overflow: hidden; }
+.question-image-drop.dragging { border-color: #7c3aed; background: #faf5ff; }
+.question-image-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.question-image-drop strong { display: block; color: #344054; font-size: .9rem; }
+.question-image-drop span { display: block; margin-top: 4px; color: #667085; font-size: .78rem; }
+.question-image-drop img { max-width: 100%; max-height: 150px; object-fit: contain; padding: 8px; }
+.question-bank-admin { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.question-bank-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid #e7eaf0; }
+.question-bank-head h3 { margin: 0 0 5px; color: #111827; font-size: 1rem; }
+.question-bank-head p { margin: 0; color: #667085; font-size: .84rem; }
+.question-bank-head > div:last-child { display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.delete-all-btn, .delete-dupes-btn { min-height: 34px; border: 0; border-radius: 8px; padding: 0 12px; color: #fff; font: inherit; font-size: .76rem; font-weight: 900; cursor: pointer; }
+.delete-all-btn { background: #f80b35; }
+.delete-dupes-btn { background: #eef0f5; color: #98a2b3; }
+.delete-all-btn:disabled, .delete-dupes-btn:disabled { opacity: .58; cursor: not-allowed; }
+.question-bank-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.question-bank-filters button { min-height: 34px; border: 1px solid #dfe3eb; border-radius: 8px; padding: 0 14px; background: #f8fafc; color: #344054; font: inherit; font-size: .78rem; font-weight: 900; cursor: pointer; }
+.question-bank-filters button.active { border-color: #a000d8; background: #a000d8; color: #fff; }
+.question-admin-row img { width: 70px; height: 48px; object-fit: contain; border: 1px solid #e4e7ec; border-radius: 6px; background: #fff; }
+@media (max-width: 760px) { .question-bank-head { display: grid; } .question-bank-head > div:last-child { justify-content: start; } }
+.adm-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15,23,42,.48); }
+.adm-confirm-modal { width: min(100%, 440px); border: 1px solid #e4e7ec; border-radius: 10px; background: #fff; box-shadow: 0 24px 80px rgba(15,23,42,.28); padding: 22px; }
+.adm-confirm-modal h2 { margin: 0 0 10px; color: #111827; font-size: 1.12rem; }
+.adm-confirm-modal p { margin: 0; color: #475467; font-size: .9rem; line-height: 1.55; }
+.adm-confirm-actions { margin-top: 18px; display: flex; justify-content: flex-end; gap: 10px; }
+.adm-confirm-actions button { min-height: 40px; border-radius: 8px; padding: 0 14px; font: inherit; font-size: .82rem; font-weight: 900; cursor: pointer; }
+.adm-confirm-actions button.secondary { border: 1px solid #d0d5dd; background: #fff; color: #344054; }
+.adm-confirm-actions button.danger { border: 1px solid #e11d48; background: #e11d48; color: #fff; }
+.adm-confirm-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.delete-btn { min-width: 72px; justify-content: center; display: inline-flex; align-items: center; }
+
+.recent-plays-card {
+    margin-top: 0;
+}
+.adm-tournament-table.recent-plays-table .thead,
+.adm-tournament-table.recent-plays-table .trow {
+    grid-template-columns: minmax(220px, 1.4fr) .7fr .7fr 1fr 1.1fr;
+}
+@media (max-width: 760px) {
+    .adm-tournament-table.recent-plays-table .thead,
+    .adm-tournament-table.recent-plays-table .trow {
+        min-width: 860px;
+    }
+}
+
+/* Question table */
+.question-table-wrap { overflow-x: auto; border: 1px solid #e4e7ec; border-radius: 8px; }
+.question-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.question-table thead tr { background: #f8fafc; }
+.question-table th { padding: 10px 12px; text-align: left; color: #7c3aed; font-size: .72rem; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #e4e7ec; white-space: nowrap; }
+.question-table td { padding: 10px 12px; border-bottom: 1px solid #f0f2f7; vertical-align: top; color: #344054; }
+.question-table tbody tr:last-child td { border-bottom: 0; }
+.question-table tbody tr:hover { background: #fafbff; }
+.qt-num { color: #667085; font-size: .8rem; width: 36px; }
+.qt-question { max-width: 340px; color: #111827; line-height: 1.4; }
+.qt-img { display: block; margin-top: 6px; width: 64px; height: 42px; object-fit: contain; border: 1px solid #e4e7ec; border-radius: 5px; }
+.qt-options { display: flex; flex-direction: column; gap: 2px; min-width: 130px; color: #475467; font-size: .78rem; line-height: 1.45; }
+.qt-correct-opt { color: #059669; font-weight: 800; }
+.qt-correct { color: #059669; font-weight: 900; font-size: .9rem; }
+.qt-category { color: #667085; white-space: nowrap; }
+.qt-status { display: inline-block; padding: 3px 8px; border-radius: 5px; background: #dcfce7; color: #166534; font-size: .72rem; font-weight: 900; }
+.qt-actions { display: inline-flex; gap: 6px; }
+.qt-edit-btn, .qt-del-btn { min-height: 28px; border-radius: 6px; padding: 0 10px; font: inherit; font-size: .74rem; font-weight: 900; cursor: pointer; }
+.qt-edit-btn { border: 1px solid #e9d5ff; background: #fdf4ff; color: #7c3aed; }
+.qt-del-btn { border: 1px solid #fecaca; background: #fff1f2; color: #b91c1c; }
+.question-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 0 4px; font-size: .82rem; color: #475467; }
+.question-pagination button { min-height: 34px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: #344054; padding: 0 14px; font: inherit; font-size: .8rem; font-weight: 900; cursor: pointer; }
+.question-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.question-form-admin button.secondary { background: #fff; color: #344054; border-color: #d0d5dd; }

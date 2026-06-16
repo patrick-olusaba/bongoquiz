@@ -4,6 +4,7 @@ import type { PrizeItem } from "../../types/bongotypes.ts";
 import type { WheelSegment } from "../../types/gametypes.ts";
 import { checkAchievements, unlockAchievements, type Achievement } from "../../utils/achievements.ts";
 import { recordPlayToday } from "../../utils/streakDays.ts";
+import { getReferralLink, buildWhatsAppShareUrl } from "../../utils/referral.ts";
 import '../../styles/style.css';
 import '../../styles/FinalResultScreen.css';
 
@@ -79,6 +80,13 @@ export const FinalResultScreen: FC<Props> = ({
         if (segment.label === "★★★")       return "🎡 No Bonus";
         return `🎡 ${segment.label}`;
     })();
+
+    const handleWhatsAppInvite = () => {
+        const phone = localStorage.getItem("bongo_player_phone");
+        const link  = getReferralLink(phone);
+        const text  = `I scored ${total.toLocaleString()} points on BongoQuiz as ${playerName}. Join me on BongoQuiz, play any non-tournament game, and start earning BongoCoins when you score. Use my invite link: ${link}`;
+        window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    };
 
     const handleShare = () => {
         const text = `🎯 I scored ${total.toLocaleString()} pts on Bongo Quiz as "${playerName}"!\n${rating}\nCan you beat me? 🏆`;
@@ -163,8 +171,11 @@ export const FinalResultScreen: FC<Props> = ({
                     </div>
                 )}
 
+                <div className="fr-invite-banner">🎁 Invite a friend — you both earn BongoCoins when they play!</div>
+
                 <div className="fr-actions">
                     <button className="fr-btn fr-btn--play"  onClick={onPlayAgain}>🔄 Play Again</button>
+                    <button className="fr-btn fr-btn--wa" onClick={handleWhatsAppInvite}>🟢 Invite on WhatsApp</button>
                     <button className="fr-btn fr-btn--share" onClick={handleShare}>
                         {copied ? "✅ Copied!" : "📤 Share"}
                     </button>

@@ -1,5 +1,5 @@
 // AdminView.tsx — Admin panel UI
-import {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useMemo, useRef} from "react";
 import {AlertTriangle, Bell, CheckCircle, CreditCard, Gamepad2, Users, Wrench} from "lucide-react";
 import type { IconType } from "react-icons";
 import { FaBolt, FaCalculator, FaCreditCard, FaDna, FaFileAlt, FaGamepad, FaGift, FaGlobeAfrica, FaLink, FaMedal, FaMicrophone, FaQuestion, FaShoppingBag, FaTachometerAlt, FaTh, FaTrophy, FaUsers } from "react-icons/fa";
@@ -34,6 +34,7 @@ import {AdminBongoMarket} from "./AdminBongoMarket.tsx";
 import {AdminPlayerScores} from "./AdminPlayerScores.tsx";
 import {AdminRewards} from "./AdminRewards.tsx";
 import {AdminAchievements} from "./AdminAchievements.tsx";
+import {AdminTournament} from "./AdminTournament.tsx";
 import {writeAdminAudit} from "./auditLog.ts";
 
 type AdminTab =
@@ -47,6 +48,8 @@ type AdminTab =
     | "powers"
     | "achievements"
     | "rewards"
+    | "tournament"
+    | "referrals"
     | "bongomarket"
     | "kcse"
     | "biblequiz"
@@ -59,6 +62,7 @@ type AdminTab =
 
 const TABS: { id: AdminTab; label: string; icon: IconType }[] = [
     {id: "dashboard", label: "Dashboard", icon: FaTachometerAlt},
+    {id: "referrals", label: "Refer & Earn", icon: FaLink},
     {id: "players", label: "Players", icon: FaUsers},
     {id: "playerscores", label: "Player Scores & Coins", icon: FaTrophy},
     {id: "payments", label: "Payments", icon: FaCreditCard},
@@ -68,6 +72,7 @@ const TABS: { id: AdminTab; label: string; icon: IconType }[] = [
     {id: "powers", label: "Powers", icon: FaBolt},
     {id: "achievements", label: "Achievements", icon: FaMedal},
     {id: "rewards", label: "Rewards Management", icon: FaGift},
+    {id: "tournament", label: "Quiz Tournaments", icon: FaTrophy},
     {id: "bongomarket", label: "Bongo Market", icon: FaShoppingBag},
     {id: "kcse", label: "KCSE Papers", icon: FaFileAlt},
     {id: "biblequiz", label: "Bible Quiz", icon: FaQuestion},
@@ -1562,6 +1567,138 @@ function Achievements() {
     </>;
 }
 
+// ── Referrals ────────────────────────────────────────────────────────────────
+function Referrals() {
+    const [referrals, setReferrals] = useState<any[]>([]);
+    const [players, setPlayers] = useState<any[]>([]);
+
+    useEffect(() => {
+        const unsubReferrals = onSnapshot(
+            collection(db, "referrals"),
+            snap => setReferrals(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+            () => setReferrals([])
+        );
+        const unsubPlayers = onSnapshot(
+            collection(db, "players"),
+            snap => setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+            () => setPlayers([])
+        );
+        return () => {
+            unsubReferrals();
+            unsubPlayers();
+        };
+    }, []);
+
+    const byTimeDesc = (a: any, b: any) => {
+        const toMs = (value: any) => {
+            const ts = value?.rewardedAt;
+            if (ts?.toDate) return ts.toDate().getTime();
+            if (typeof ts?.seconds === "number") return ts.seconds * 1000;
+            return 0;
+        };
+        return toMs(b) - toMs(a);
+    };
+
+    const recentRewards = [...referrals].sort(byTimeDesc);
+    const totalReferralCoins = recentRewards.reduce((sum, row) => sum + Number(row.referrerCoins || 0), 0);
+    const totalWelcomeCoins = recentRewards.reduce((sum, row) => sum + Number(row.welcomeCoins || 0), 0);
+    const pendingPlayers = players.filter(player => String(player.pendingReferrer || '').trim());
+    const topInviters = [...players]
+        .filter(player => Number(player.referralCount || 0) > 0 || Number(player.referralEarnedCoins || 0) > 0)
+        .sort((a, b) => Number(b.referralEarnedCoins || 0) - Number(a.referralEarnedCoins || 0))
+        .slice(0, 12);
+
+    const summary = [
+        { label: 'Redemptions', value: recentRewards.length.toLocaleString() },
+        { label: 'Referrer coins', value: totalReferralCoins.toLocaleString() },
+        { label: 'Welcome coins', value: totalWelcomeCoins.toLocaleString() },
+        { label: 'Pending invites', value: pendingPlayers.length.toLocaleString() },
+    ];
+
+    const formatRewardedAt = (value: any) => {
+        const date = value?.toDate?.() ?? (typeof value?.seconds === 'number' ? new Date(value.seconds * 1000) : null);
+        return date ? date.toLocaleString('en-GB') : '—';
+    };
+
+    return <>
+        <Card title="Refer & Earn">
+            <div style={{display: 'grid', gap: 14}}>
+                <div style={{display: 'grid', gap: 8}}>
+                    <div style={{fontSize: '0.82rem', color: '#475467', lineHeight: 1.5}}>
+                        Invite tracking is now score-based. The system stores the referrer on the player record,
+                        redeems only on the first qualifying non-tournament session, and awards coins from the score earned.
+                    </div>
+                    <div style={{display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))'}}>
+                        <div style={{padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#667085', fontWeight: 800}}>Threshold</div>
+                            <div style={{fontSize: '1rem', fontWeight: 900, color: '#0f172a'}}>700 points</div>
+                        </div>
+                        <div style={{padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#667085', fontWeight: 800}}>Formula</div>
+                            <div style={{fontSize: '1rem', fontWeight: 900, color: '#0f172a'}}>floor(score / 700)</div>
+                        </div>
+                        <div style={{padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#667085', fontWeight: 800}}>Cap</div>
+                            <div style={{fontSize: '1rem', fontWeight: 900, color: '#0f172a'}}>10 coins</div>
+                        </div>
+                        <div style={{padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#667085', fontWeight: 800}}>Welcome coin</div>
+                            <div style={{fontSize: '1rem', fontWeight: 900, color: '#0f172a'}}>1 coin</div>
+                        </div>
+                    </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12}}>
+                    {summary.map(item => (
+                        <div key={item.label} style={{padding: 14, borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.72rem', color: '#667085', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em'}}>{item.label}</div>
+                            <div style={{fontSize: '1.4rem', fontWeight: 900, color: '#7c3aed'}}>{item.value}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </Card>
+
+        <Card title="Top Inviters">
+            <Table
+                heads={["Player", "Phone", "Invites", "Coins earned", "Pending referrer"]}
+                rows={topInviters.length ? topInviters.map((player, index) => [
+                    <span key={`name-${index}`}>{player.name ?? player.phone ?? '—'}</span>,
+                    <span key={`phone-${index}`}>{player.phone ?? '—'}</span>,
+                    <span key={`count-${index}`}>{Number(player.referralCount || 0).toLocaleString()}</span>,
+                    <span key={`earned-${index}`}>{Number(player.referralEarnedCoins || 0).toLocaleString()}</span>,
+                    <span key={`pending-${index}`}>{player.pendingReferrer ? String(player.pendingReferrer) : '—'}</span>,
+                ]) : [[<span key="empty">No inviters yet</span>, '—', '—', '—', '—']]}
+            />
+        </Card>
+
+        <Card title="Recent Referral Rewards">
+            <Table
+                heads={["New player", "Referrer", "Game", "Score", "Coins", "Rewarded"]}
+                rows={recentRewards.length ? recentRewards.slice(0, 20).map((row, index) => [
+                    <span key={`new-${index}`}>{row.newUserPhone ?? '—'}</span>,
+                    <span key={`ref-${index}`}>{row.referrerPhone ?? '—'}</span>,
+                    <span key={`game-${index}`}>{row.game ?? '—'}</span>,
+                    <span key={`score-${index}`}>{Number(row.score || 0).toLocaleString()}</span>,
+                    <span key={`coins-${index}`}>{Number(row.referrerCoins || 0).toLocaleString()} + {Number(row.welcomeCoins || 0).toLocaleString()}</span>,
+                    <span key={`time-${index}`}>{formatRewardedAt(row.rewardedAt)}</span>,
+                ]) : [[<span key="empty">No redemptions yet</span>, '—', '—', '—', '—', '—']]}
+            />
+        </Card>
+
+        <Card title="Pending Invitations">
+            <Table
+                heads={["Player", "Pending referrer", "Name", "Referral count"]}
+                rows={pendingPlayers.length ? pendingPlayers.slice(0, 20).map((player, index) => [
+                    <span key={`p1-${index}`}>{player.phone ?? '—'}</span>,
+                    <span key={`p2-${index}`}>{String(player.pendingReferrer || '—')}</span>,
+                    <span key={`p3-${index}`}>{player.name ?? '—'}</span>,
+                    <span key={`p4-${index}`}>{Number(player.referralCount || 0).toLocaleString()}</span>,
+                ]) : [[<span key="empty">No pending referrals</span>, '—', '—', '—']]}
+            />
+        </Card>
+    </>;
+}
+
 // ── CSS ────────────────────────────────────────────────────────────────────────
 const CSS = `
 *, *::before, *::after { box-sizing: border-box; }
@@ -1902,7 +2039,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 </div>
                 <div className="adm-drawer-nav">
                    <div className="adm-sidebar-label">Bongo Quiz</div>
-                   {TABS.filter(t => ["dashboard", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "bongomarket"].includes(t.id)).map(t => {
+                   {TABS.filter(t => ["dashboard", "referrals", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "tournament", "bongomarket"].includes(t.id)).map(t => {
                        const Icon = t.icon;
                        return (
                            <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
@@ -1928,7 +2065,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 <div className="adm-layout">
                 <nav className="adm-sidebar">
                 <div className="adm-sidebar-label">Bongo Quiz</div>
-                {TABS.filter(t => ["dashboard", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "bongomarket"].includes(t.id)).map(t => {
+                {TABS.filter(t => ["dashboard", "referrals", "players", "playerscores", "payments", "games", "leaderboard", "questions", "powers", "achievements", "rewards", "tournament", "bongomarket"].includes(t.id)).map(t => {
                    const Icon = t.icon;
                    return (
                        <button key={t.id} className={`adm-tab${tab === t.id ? " active" : ""}`}
@@ -1952,6 +2089,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
 
                 <main className="adm-content" id="adm-content">
                 {tab === "dashboard" && <Dashboard changeTab={changeTab}/>}
+                {tab === "referrals" && <Referrals/>}
                 {tab === "players" && <Players/>}
                 {tab === "playerscores" && <AdminPlayerScores/>}
                 {tab === "payments" && <Payments/>}
@@ -1961,6 +2099,7 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                 {tab === "powers" && <AdminPowers/>}
                 {tab === "achievements" && <AdminAchievements/>}
                 {tab === "rewards" && <AdminRewards/>}
+                {tab === "tournament" && <AdminTournament/>}
                 {tab === "bongomarket" && <AdminBongoMarket/>}
                 {tab === "kcse" && <AdminKCSE/>}
                 {tab === "biblequiz" && <AdminBibleQuiz/>}

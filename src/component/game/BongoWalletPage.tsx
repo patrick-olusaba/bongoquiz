@@ -1,6 +1,6 @@
 import { type FC, useEffect, useState } from "react";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { ArrowLeft, Banknote, Coins, Gift, Smartphone, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Banknote, Bell, ChevronDown, Coins, Gamepad2, Gift, Info, MessageSquare, Search, ShieldCheck, Smartphone } from "lucide-react";
 import { db } from "../../firebase";
 import { getBongoCoinBalance, getBonusRecords, getCoinRecords, syncReconciledBongoCoins, upsertBonusRecord, type BongoWalletRecord } from "../../utils/bongoWallet";
 import "../../styles/BongoWallet.css";
@@ -97,78 +97,125 @@ export const BongoWalletPage: FC<Props> = ({ onBack, onMarket }) => {
 
     const rows = tab === "coins" ? coinRecords : bonusRecords;
 
+    const playerName = localStorage.getItem("bongo_player_name") || "Jane";
+
     return (
         <div className="wallet-page">
+            <header className="wallet-desktop-topbar">
+                <div className="wallet-search-box">
+                    <Search size={18}/>
+                    <span>Search tournaments, games...</span>
+                    <kbd>Ctrl /</kbd>
+                </div>
+                <div className="wallet-desktop-actions">
+                    <button type="button" className="wallet-balance-pill" aria-label={`BongoCoin balance: ${balance.toLocaleString()}`}>
+                        <Coins size={18}/><strong>{balance.toLocaleString()}</strong>
+                    </button>
+                    <button type="button" aria-label="Alerts"><Bell size={22}/></button>
+                    <button type="button" aria-label="Messages"><MessageSquare size={22}/></button>
+                    <button type="button" className="wallet-profile-chip" aria-label="Player profile">
+                        <span>{playerName.charAt(0).toUpperCase()}</span>
+                        <b>{playerName}<small>Player</small></b>
+                        <ChevronDown size={18}/>
+                    </button>
+                </div>
+            </header>
+
             <div className="wallet-topbar">
                 <button type="button" onClick={onBack} aria-label="Back"><ArrowLeft size={22}/></button>
                 <strong>My Wallet</strong>
-                <button type="button" onClick={onMarket} aria-label="Open Bongo Market"><ShoppingBag size={20}/></button>
             </div>
 
-            <section className="wallet-balance-card">
-                <span>BongoCoin Balance</span>
-                <div><Coins size={34}/><strong>{balance.toLocaleString()}</strong></div>
-                <p>Every 250 game points earns 1 BongoCoin. 500 points earns 2 BongoCoins.</p>
-            </section>
+            <main className="wallet-desktop-layout">
+                <section className="wallet-main-column">
+                    <div className="wallet-page-heading">
+                        <h1>My Wallet</h1>
+                        <p>Manage your balance and transactions</p>
+                    </div>
 
-            <div className="wallet-tabs wallet-tabs-three" role="tablist" aria-label="Wallet records">
-                <button type="button" className={tab === "convert" ? "active" : ""} onClick={() => setTab("convert")}>Convert Coin</button>
-                <button type="button" className={tab === "coins" ? "active" : ""} onClick={() => setTab("coins")}>Coin Record</button>
-                <button type="button" className={tab === "bonus" ? "active" : ""} onClick={() => setTab("bonus")}>Bonus Record</button>
-            </div>
-
-            {tab === "convert" ? (
-                <div className="wallet-convert-panel wallet-reward-convert">
-                    <section className="wallet-convert-card wallet-reward-row cyan">
-                        <div className="wallet-convert-head">
-                            <Smartphone size={24}/>
-                            <div>
-                                <strong>Airtime <em className="wallet-coming-soon">Coming soon</em></strong>
-                                <span>Airtime conversion is not available yet.</span>
-                            </div>
+                    <section className="wallet-balance-card">
+                        <div className="wallet-balance-copy">
+                            <span>BongoCoin Balance</span>
+                            <div><Coins size={34}/><strong>{balance.toLocaleString()}</strong></div>
+                            <p>Every 250 game points earns 1 BongoCoin.<br/>500 points earns 2 BongoCoins.</p>
                         </div>
-                        <div className="wallet-reward-grid">
-                            {airtimeOptions.map(option => (
-                                <button type="button" disabled key={option.value} className="wallet-reward-card airtime">
-                                    <div className="market-safaricom-logo"><i/>Safaricom</div>
-                                    <b>{option.value} KES</b>
-                                    <span><Coins size={14}/>{option.coins.toLocaleString()}</span>
-                                </button>
-                            ))}
+                        <div className="wallet-balance-art" aria-hidden="true">
+                            <div className="wallet-coin coin-a">B</div>
+                            <div className="wallet-coin coin-b">B</div>
+                            <div className="wallet-purse" />
                         </div>
                     </section>
 
-                    <section className="wallet-convert-card wallet-reward-row green">
-                        <div className="wallet-convert-head">
-                            <Banknote size={24}/>
-                            <div>
-                                <strong>M-Pesa Cash <em className="wallet-coming-soon">Coming soon</em></strong>
-                                <span>M-Pesa cash conversion is not available yet.</span>
-                            </div>
+                    <div className="wallet-tabs wallet-tabs-three" role="tablist" aria-label="Wallet records">
+                        <button type="button" className={tab === "convert" ? "active" : ""} onClick={() => setTab("convert")}>Convert Coin</button>
+                        <button type="button" className={tab === "coins" ? "active" : ""} onClick={() => setTab("coins")}>Coin Record</button>
+                        <button type="button" className={tab === "bonus" ? "active" : ""} onClick={() => setTab("bonus")}>Bonus Record</button>
+                    </div>
+
+                    {tab === "convert" ? (
+                        <div className="wallet-convert-panel wallet-reward-convert">
+                            <section className="wallet-convert-card wallet-reward-row cyan">
+                                <div className="wallet-convert-head">
+                                    <Smartphone size={24}/>
+                                    <div>
+                                        <strong>Airtime <em className="wallet-coming-soon">Coming soon</em></strong>
+                                        <span>Airtime conversion is not available yet.</span>
+                                    </div>
+                                </div>
+                                <div className="wallet-reward-grid">
+                                    {airtimeOptions.map(option => (
+                                        <button type="button" disabled key={option.value} className="wallet-reward-card airtime">
+                                            <div className="market-safaricom-logo"><i/>Safaricom</div>
+                                            <b>{option.value} KES</b>
+                                            <span><Coins size={14}/>{option.coins.toLocaleString()}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className="wallet-convert-card wallet-reward-row green">
+                                <div className="wallet-convert-head">
+                                    <Banknote size={24}/>
+                                    <div>
+                                        <strong>M-Pesa Cash <em className="wallet-coming-soon">Coming soon</em></strong>
+                                        <span>M-Pesa cash conversion is not available yet.</span>
+                                    </div>
+                                </div>
+                                <div className="wallet-reward-grid">
+                                    {cashOptions.map(option => (
+                                        <button type="button" disabled key={option.value} className="wallet-reward-card cash">
+                                            <div className="market-cash-stack"><Banknote size={30}/></div>
+                                            <b>{option.label}</b>
+                                            <span><Coins size={14}/>{option.coins.toLocaleString()}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <button type="button" className="wallet-withdraw-btn" disabled>Coming soon</button>
+                            </section>
                         </div>
-                        <div className="wallet-reward-grid">
-                            {cashOptions.map(option => (
-                                <button type="button" disabled key={option.value} className="wallet-reward-card cash">
-                                    <div className="market-cash-stack"><Banknote size={30}/></div>
-                                    <b>{option.label}</b>
-                                    <span><Coins size={14}/>{option.coins.toLocaleString()}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <button type="button" className="wallet-withdraw-btn" disabled>Coming soon</button>
-                    </section>
-                </div>
-            ) : (
-                <div className="wallet-record-list">
-                    {rows.length ? rows.map(record => <RecordRow key={record.id} record={record} mode={tab}/>) : (
-                        <div className="wallet-empty">
-                            <Coins size={34}/>
-                            <strong>No records yet</strong>
-                            <p>{tab === "coins" ? "Play a game session to earn BongoCoins." : "Daily check-ins and reward claims will appear here."}</p>
+                    ) : (
+                        <div className="wallet-record-list">
+                            {rows.length ? rows.map(record => <RecordRow key={record.id} record={record} mode={tab}/>) : (
+                                <div className="wallet-empty">
+                                    <Coins size={34}/>
+                                    <strong>No records yet</strong>
+                                    <p>{tab === "coins" ? "Play a game session to earn BongoCoins." : "Daily check-ins and reward claims will appear here."}</p>
+                                </div>
+                            )}
                         </div>
                     )}
-                </div>
-            )}
+                </section>
+
+                <aside className="wallet-help-panel">
+                    <div className="wallet-help-title"><Info size={20}/><strong>How it works</strong></div>
+                    <div className="wallet-help-steps">
+                        <div className="wallet-help-step purple"><Gamepad2 size={24}/><div><strong>Play Games</strong><p>Earn points by playing games and completing challenges.</p></div></div>
+                        <div className="wallet-help-step yellow"><Coins size={24}/><div><strong>Earn BongoCoins</strong><p>Every 250 points earns you 1 BongoCoin.</p></div></div>
+                        <div className="wallet-help-step cyan"><Banknote size={24}/><div><strong>Convert & Withdraw</strong><p>Convert your BongoCoins to Airtime or M-Pesa Cash when available.</p></div></div>
+                    </div>
+                    <div className="wallet-safe-note"><ShieldCheck size={24}/><div><strong>Secure & Safe</strong><p>Your transactions are protected with top-notch security.</p></div></div>
+                </aside>
+            </main>
         </div>
     );
 };

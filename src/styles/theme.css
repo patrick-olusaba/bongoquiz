@@ -1,0 +1,249 @@
+/* ──────────────────────────────────────────────────────────────
+   BongoQuiz Design System — theme.css
+   Global design tokens used across all components
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Backgrounds ─────────────────────────────────────── */
+  --bg:          #060914;
+  --bg-2:        #0C1238;
+  --bg-card:     rgba(255, 255, 255, 0.035);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  --bg-input:    rgba(255, 255, 255, 0.06);
+  --bg-overlay:  rgba(6, 9, 20, 0.85);
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --border:      rgba(255, 255, 255, 0.08);
+  --border-2:    rgba(255, 255, 255, 0.14);
+  --border-gold: rgba(245, 197, 24, 0.35);
+  --border-purple: rgba(123, 97, 255, 0.35);
+
+  /* ── Brand Colours ───────────────────────────────────── */
+  --gold:        #F5C518;
+  --gold-2:      #F59E0B;
+  --gold-dim:    rgba(245, 197, 24, 0.15);
+  --purple:      #7B61FF;
+  --purple-dim:  rgba(123, 97, 255, 0.15);
+  --cyan:        #06D6E0;
+  --cyan-dim:    rgba(6, 214, 224, 0.12);
+  --green:       #10B981;
+  --green-dim:   rgba(16, 185, 129, 0.15);
+  --red:         #EF4444;
+  --red-dim:     rgba(239, 68, 68, 0.15);
+  --orange:      #F97316;
+
+  /* ── Text ────────────────────────────────────────────── */
+  --text:        #FFFFFF;
+  --text-2:      rgba(255, 255, 255, 0.70);
+  --text-3:      rgba(255, 255, 255, 0.42);
+  --text-4:      rgba(255, 255, 255, 0.22);
+
+  /* ── Gradients ───────────────────────────────────────── */
+  --grad-gold:   linear-gradient(135deg, #F5C518, #F59E0B);
+  --grad-purple: linear-gradient(135deg, #7B61FF, #A855F7);
+  --grad-hero:   linear-gradient(180deg, #0C1238 0%, #060914 100%);
+  --grad-bg:     radial-gradient(ellipse at 50% 0%, rgba(123,97,255,0.18) 0%, transparent 60%),
+                 radial-gradient(ellipse at 80% 80%, rgba(6,214,224,0.08) 0%, transparent 50%),
+                 linear-gradient(180deg, #060914 0%, #040610 100%);
+
+  /* ── Shadows ─────────────────────────────────────────── */
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md:   0 8px 24px rgba(0,0,0,0.4);
+  --shadow-lg:   0 20px 60px rgba(0,0,0,0.5);
+  --shadow-gold: 0 0 24px rgba(245,197,24,0.25);
+  --shadow-purple: 0 0 24px rgba(123,97,255,0.25);
+
+  /* ── Blur ────────────────────────────────────────────── */
+  --blur-sm:     blur(8px);
+  --blur-md:     blur(16px);
+  --blur-lg:     blur(24px);
+
+  /* ── Radius ──────────────────────────────────────────── */
+  --r-sm:   6px;
+  --r-md:   12px;
+  --r-lg:   18px;
+  --r-xl:   24px;
+  --r-pill: 999px;
+
+  /* ── Spacing ─────────────────────────────────────────── */
+  --sp-1:   4px;
+  --sp-2:   8px;
+  --sp-3:   12px;
+  --sp-4:   16px;
+  --sp-5:   20px;
+  --sp-6:   24px;
+  --sp-8:   32px;
+  --sp-10:  40px;
+  --sp-12:  48px;
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── Transitions ─────────────────────────────────────── */
+  --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --t-fast: 120ms;
+  --t-base: 220ms;
+  --t-slow: 380ms;
+
+  /* ── Nav ─────────────────────────────────────────────── */
+  --nav-h:  60px;
+  --topbar-h: 56px;
+}
+
+/* ── Reusable utility classes ─────────────────────────────── */
+
+/* Glass card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+}
+
+.card-gold {
+  background: linear-gradient(135deg, rgba(245,197,24,0.08), rgba(245,197,24,0.03));
+  border: 1px solid var(--border-gold);
+  border-radius: var(--r-lg);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--t-base) var(--ease);
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary {
+  background: var(--grad-gold);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(245,197,24,0.3);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(245,197,24,0.4); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border-2); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--bg-card); color: var(--text); }
+
+.btn-danger {
+  background: var(--red-dim);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Live badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: var(--r-pill);
+  color: #FF6B6B;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.live-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FF6B6B;
+  animation: pulse-live 1.4s ease-in-out infinite;
+}
+
+/* Rank colors */
+.rank-1 { color: #F5C518; }
+.rank-2 { color: #C0C0C0; }
+.rank-3 { color: #CD7F32; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+/* Animations */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: scale(0.5) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(245,197,24,0.2); }
+  50%       { box-shadow: 0 0 40px rgba(245,197,24,0.45); }
+}

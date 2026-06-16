@@ -1,6 +1,6 @@
 // HomeScreen.tsx
 import {type FC, type KeyboardEvent, useEffect, useRef, useState} from "react";
-import {Home, Gamepad2, Trophy, Zap, FolderOpen, RotateCw, Clock3, Bell, Gift, ShieldCheck, Users, CalendarCheck, Sparkles, Megaphone, BookOpen, Coins, Trash2, ArrowLeft, PlusCircle, Wallet, ShoppingBag, LogIn, UserPlus} from 'lucide-react';
+import {Home, Gamepad2, Trophy, Zap, FolderOpen, RotateCw, Clock3, Bell, Gift, ShieldCheck, Users, CalendarCheck, Sparkles, Megaphone, BookOpen, Coins, Trash2, ArrowLeft, PlusCircle, Wallet, LogIn, UserPlus, HelpCircle, UserCog, History, ClipboardList, Share2, Headphones, LogOut} from 'lucide-react';
 import {
     FaYoutube,
     FaFacebook,
@@ -24,6 +24,8 @@ import {db} from "../../firebase.ts";
 import '../../styles/HomeScreen.css';
 import {BrowseGames} from "./BrowseGames.tsx";
 import { getBongoCoinBalance, recordBonusReward, syncReconciledBongoCoins } from "../../utils/bongoWallet.ts";
+import { getReferralLink, buildWhatsAppShareUrl } from "../../utils/referral.ts";
+import { DesktopSidebar, type SidebarKey, type SidebarAction } from "./DesktopSidebar.tsx";
 // import {BrowseGames} from "./BrowseGames.tsx";
 
 interface Props {
@@ -32,6 +34,7 @@ interface Props {
     onHistory?: () => void;
     onReviewSession?: () => void;
     hasPaidSession?: boolean;
+    freeTrialAvailable?: boolean;
     triggerPlay?: boolean;
     onTriggerPlayDone?: () => void;
     onViewAllGames?: () => void;
@@ -105,6 +108,7 @@ export const HomeScreen: FC<Props> = ({
                                           onHistory,
                                           onReviewSession,
                                           hasPaidSession = false,
+                                          freeTrialAvailable = false,
                                           triggerPlay,
                                           onTriggerPlayDone,
                                           onViewAllGames,
@@ -126,7 +130,6 @@ export const HomeScreen: FC<Props> = ({
     const [playerPhone, setPlayerPhone] = useState(() =>
         localStorage.getItem("bongo_player_phone") ?? ""
     );
-    const [menuOpen, setMenuOpen] = useState(false);
     const [personalBest, setPersonalBest] = useState(() =>
         parseInt(localStorage.getItem("bongo_best_score") ?? "0")
     );
@@ -558,6 +561,58 @@ export const HomeScreen: FC<Props> = ({
         }
     };
 
+    const handleInviteFriends = () => {
+        if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) {
+            setAuthMode("login");
+            setStartAfterAuth(false);
+            setShowNameModal(true);
+            return;
+        }
+        const link = getReferralLink(playerPhone);
+        const text = `You are invited to join BongoQuiz. Play trivia games, climb the leaderboard, and earn BongoCoins when you score. Use my invite link to get started: ${link}`;
+        window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    };
+
+    const handleShareApp = () => {
+        const text = `Play Bongo Quiz - 3 rounds of trivia, bonus points, and leaderboard rankings.\n${window.location.href}`;
+        if (navigator.share) {
+            navigator.share({ title: 'Bongo Quiz', text, url: window.location.href }).catch(() => {});
+        } else {
+            navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!')).catch(() => {});
+        }
+    };
+
+    const handleLogoutHome = () => {
+        ["bongo_player_name", "bongo_player_phone", "bongo_best_score", "bongo_total_points",
+            "bongo_session_score", "bongo_achievements", "bongo_streak", "bongo_last_activity"].forEach(k => localStorage.removeItem(k));
+        setPlayerName("Player");
+        setPlayerPhone("");
+    };
+
+    const sidebarActions: SidebarAction[] = [
+        { key: "htp", label: "How to Play", sub: "Learn the rules & rounds", icon: <HelpCircle size={18} />, onClick: () => setShowHTP(true) },
+        { key: "edit", label: "Edit Profile", sub: `${playerName} · ${playerPhone || "No phone set"}`, icon: <UserCog size={18} />, onClick: () => { setAuthMode("login"); setStartAfterAuth(false); setShowNameModal(true); } },
+        ...(onHistory ? [{ key: "history", label: "Game History", sub: "View your past sessions", icon: <History size={18} />, onClick: () => onHistory() } as SidebarAction] : []),
+        ...(onReviewSession ? [{ key: "review", label: "Review Last Game", sub: "See questions & answers", icon: <ClipboardList size={18} />, onClick: () => onReviewSession() } as SidebarAction] : []),
+        { key: "share", label: "Share", sub: "Invite friends to play", icon: <Share2 size={18} />, onClick: handleShareApp },
+        { key: "support", label: "Contact Support", sub: "Live chat, email & WhatsApp", icon: <Headphones size={18} />, onClick: () => { window.location.href = "/contact"; } },
+        ...(playerPhone ? [{ key: "logout", label: "Log Out", sub: "Sign out of your account", icon: <LogOut size={18} />, danger: true, onClick: handleLogoutHome } as SidebarAction] : []),
+    ];
+
+    const sidebarNavigate = (key: SidebarKey) => {
+        switch (key) {
+            case "home": break;
+            case "games": onViewAllGames?.(); break;
+            case "leaderboard": onLeaderboard(); break;
+            case "tournaments":
+            case "community": window.dispatchEvent(new Event('bongo:goto-community')); break;
+            case "wallet": onWallet?.(); break;
+            case "market": onMarket?.(); break;
+            case "rewards": setRewardsOpen(true); break;
+            case "alerts": setNotificationsOpen(true); break;
+        }
+    };
+
     const handlePlay = () => {
         localStorage.setItem("bongo_last_activity", Date.now().toString());
         if (!playerPhone || !/^07\d{8}$/.test(playerPhone)) {
@@ -678,6 +733,8 @@ export const HomeScreen: FC<Props> = ({
     // ];
 
     return (
+        <div className="home-shell">
+        <DesktopSidebar active="home" onNavigate={sidebarNavigate} playerName={playerName} points={totalPoints} actions={sidebarActions} />
         <div className="home-root">
             <div className="bongo-top-bar">
                 <div className="topbar-left">
@@ -701,248 +758,238 @@ export const HomeScreen: FC<Props> = ({
                     <button className="topbar-nav-link" onClick={onLeaderboard}><Trophy size={16}
                                                                                         strokeWidth={2}/> Leaderboard
                     </button>
+                    <button className="topbar-nav-link" onClick={() => window.dispatchEvent(new Event('bongo:goto-community'))}><Users size={16}
+                                                                                        strokeWidth={2}/> Community
+                    </button>
                 </div>
                 <div className="topbar-right">
                     {hasValidPlayer && <>
-                    {personalBest > 0 && (
-                        <div className="topbar-score">
-                            <span>🏆</span>
-                            <span>{personalBest.toLocaleString()}</span>
-                        </div>
-                    )}
+                        {personalBest > 0 && (
+                            <div className="topbar-score">
+                                <span>🏆</span>
+                                <span>{personalBest.toLocaleString()}</span>
+                            </div>
+                        )}
 
-                    <button
-                        type="button"
-                        className="topbar-notification-btn topbar-wallet-btn"
-                        onClick={onWallet}
-                        aria-label="BongoCoin wallet"
-                    >
-                        <Wallet size={18} strokeWidth={2.35}/>
-                        <span className="topbar-action-label">Wallet</span>
-                    </button>
-                    <button
-                        type="button"
-                        className="topbar-notification-btn topbar-market-btn"
-                        onClick={onMarket}
-                        aria-label="Bongo Market"
-                    >
-                        <ShoppingBag size={18} strokeWidth={2.35}/>
-                        <span className="topbar-action-label">Market</span>
-                    </button>
-
-                    <div className="topbar-notification-wrap" ref={rewardsRef}>
                         <button
-                            className="topbar-notification-btn"
-                            onClick={() => setRewardsOpen(open => !open)}
-                            aria-label="Rewards"
-                            aria-expanded={rewardsOpen}
+                            type="button"
+                            className="topbar-notification-btn topbar-wallet-btn"
+                            onClick={onWallet}
+                            aria-label="BongoCoin wallet"
                         >
-                            <Gift size={18} strokeWidth={2.35}/>
-                            <span className="topbar-action-label">Rewards</span>
+                            <Wallet size={18} strokeWidth={2.35}/>
+                            <span className="topbar-action-label">Wallet</span>
                         </button>
-                        {rewardsOpen && (
-                            <div className="home-notification-panel">
-                                <div className="home-notification-top">
-                                    <button className="home-notification-icon-btn" onClick={() => setRewardsOpen(false)} aria-label="Close rewards"><ArrowLeft size={18}/></button>
-                                    <strong>Rewards</strong>
-                                    <div style={{width: 34}}/>
-                                </div>
-                                <div className="home-notification-hero home-checkin-card">
-                                    <div className="home-checkin-top">
-                                        <div className="home-checkin-bonus">
-                                            <span><Coins size={20}/></span>
-                                            <strong>{currentDailyBonus}</strong>
-                                            <small>Your bonus</small>
-                                        </div>
-                                        <div className="home-checkin-gift"><Gift size={72}/></div>
+
+                        <div className="topbar-notification-wrap" ref={rewardsRef}>
+                            <button
+                                className="topbar-notification-btn"
+                                onClick={() => setRewardsOpen(open => !open)}
+                                aria-label="Rewards"
+                                aria-expanded={rewardsOpen}
+                            >
+                                <Gift size={18} strokeWidth={2.35}/>
+                                <span className="topbar-action-label">Rewards</span>
+                            </button>
+                            {rewardsOpen && (
+                                <div className="home-notification-panel">
+                                    <div className="home-notification-top">
+                                        <button className="home-notification-icon-btn" onClick={() => setRewardsOpen(false)} aria-label="Close rewards"><ArrowLeft size={18}/></button>
+                                        <strong>Rewards</strong>
+                                        <div style={{width: 34}}/>
                                     </div>
-                                    <div className="home-checkin-body">
-                                        <strong>Daily check-in</strong>
-                                        <p>Earn rewards for check-in</p>
-                                        <div className="home-checkin-days">
-                                            {dailyBonusRewards.map((points, index) => {
-                                                const day = index + 1;
-                                                const isActive = day === activeBonusDay;
-                                                const isDone = dailyBonusClaimedToday && day === activeBonusDay;
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={day}
-                                                        className={"home-checkin-day" + (isActive ? " active" : "") + (isDone ? " claimed" : "")}
-                                                        disabled={!isActive || claimingDailyBonus || dailyBonusClaimedToday}
-                                                        onClick={claimDailyBonus}
-                                                        aria-label={"Claim day " + day + " bonus"}>
-                                                        <Coins size={22}/>
-                                                        <strong>+{points}</strong>
-                                                        <span>Day {day}</span>
-                                                    </button>
-                                                );
-                                            })}
+                                    <div className="home-notification-hero home-checkin-card">
+                                        <div className="home-checkin-top">
+                                            <div className="home-checkin-bonus">
+                                                <span><Coins size={20}/></span>
+                                                <strong>{currentDailyBonus}</strong>
+                                                <small>Your bonus</small>
+                                            </div>
+                                            <div className="home-checkin-gift"><Gift size={72}/></div>
                                         </div>
-                                        <button className="home-daily-bonus-btn" disabled={claimingDailyBonus || dailyBonusClaimedToday} onClick={claimDailyBonus}>
-                                            {claimingDailyBonus ? "Claiming..." : dailyBonusClaimedToday ? "Bonus claimed" : "Claim daily bonus"}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="home-reward-section-title">Quests & Rewards</div>
-                                <div className="home-reward-list">
-                                    {availableQuests.map(q => {
-                                        // Match backend YYYY-MM-DD format
-                                        const now = new Date();
-                                        const pts = new Intl.DateTimeFormat("en-CA", {
-                                            timeZone: "Africa/Nairobi",
-                                            year: "numeric",
-                                            month: "2-digit",
-                                            day: "2-digit",
-                                        }).formatToParts(now);
-                                        const getVal = (type: string) => pts.find(p => p.type === type)?.value ?? "";
-                                        const todayKey = `${getVal("year")}-${getVal("month")}-${getVal("day")}`;
-
-                                        const progressKey = q.targetType === "daily_games" ? `${q.id}_${todayKey}` : q.id;
-                                        const progress = playerQuestProgress[progressKey];
-                                        const isClaimed = progress?.claimed;
-                                        const canClaim = progress?.readyToClaim && !isClaimed;
-                                        const currentVal = progress?.progress || 0;
-                                        const targetVal = q.targetCount;
-                                        const Icon = getAnnouncementIcon(q.icon || (q.targetType === "new_user" ? "sparkles" : "gamepad"));
-
-                                        return (
-                                            <div
-                                                className={"home-reward-row" + (isClaimed ? " is-claimed" : "") + (!isClaimed ? " is-clickable" : "")}
-                                                key={q.id}
-                                                role={!isClaimed ? "button" : undefined}
-                                                tabIndex={!isClaimed ? 0 : undefined}
-                                                onClick={() => {
-                                                    if (isClaimed) return;
-                                                    if (canClaim) {
-                                                        runPanelAction(() => handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined));
-                                                    } else {
-                                                        openGamesFromPanel();
-                                                    }
-                                                }}
-                                                onKeyDown={(event) => handlePanelActionKey(event, () => {
-                                                    if (isClaimed) return;
-                                                    if (canClaim) {
-                                                        runPanelAction(() => handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined));
-                                                    } else {
-                                                        openGamesFromPanel();
-                                                    }
+                                        <div className="home-checkin-body">
+                                            <strong>Daily check-in</strong>
+                                            <p>Earn rewards for check-in</p>
+                                            <div className="home-checkin-days">
+                                                {dailyBonusRewards.map((points, index) => {
+                                                    const day = index + 1;
+                                                    const isActive = day === activeBonusDay;
+                                                    const isDone = dailyBonusClaimedToday && day === activeBonusDay;
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={day}
+                                                            className={"home-checkin-day" + (isActive ? " active" : "") + (isDone ? " claimed" : "")}
+                                                            disabled={!isActive || claimingDailyBonus || dailyBonusClaimedToday}
+                                                            onClick={claimDailyBonus}
+                                                            aria-label={"Claim day " + day + " bonus"}>
+                                                            <Coins size={22}/>
+                                                            <strong>+{points}</strong>
+                                                            <span>Day {day}</span>
+                                                        </button>
+                                                    );
                                                 })}
-                                            >
-                                                <div className="home-reward-icon">
-                                                    <Icon size={20}/>
-                                                </div>
-                                                <div className="home-reward-info">
-                                                    <strong>{q.title}</strong>
-                                                    <div className="home-reward-pts">
-                                                        <Coins size={14}/>
-                                                        <span>+{q.rewardPoints}</span>
-                                                        {q.targetType !== "new_user" && (
-                                                            <small>({currentVal}/{targetVal})</small>
+                                            </div>
+                                            <button className="home-daily-bonus-btn" disabled={claimingDailyBonus || dailyBonusClaimedToday} onClick={claimDailyBonus}>
+                                                {claimingDailyBonus ? "Claiming..." : dailyBonusClaimedToday ? "Bonus claimed" : "Claim daily bonus"}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="home-reward-section-title">Quests & Rewards</div>
+                                    <div className="home-reward-list">
+                                        {availableQuests.map(q => {
+                                            // Match backend YYYY-MM-DD format
+                                            const now = new Date();
+                                            const pts = new Intl.DateTimeFormat("en-CA", {
+                                                timeZone: "Africa/Nairobi",
+                                                year: "numeric",
+                                                month: "2-digit",
+                                                day: "2-digit",
+                                            }).formatToParts(now);
+                                            const getVal = (type: string) => pts.find(p => p.type === type)?.value ?? "";
+                                            const todayKey = `${getVal("year")}-${getVal("month")}-${getVal("day")}`;
+
+                                            const progressKey = q.targetType === "daily_games" ? `${q.id}_${todayKey}` : q.id;
+                                            const progress = playerQuestProgress[progressKey];
+                                            const isClaimed = progress?.claimed;
+                                            const canClaim = progress?.readyToClaim && !isClaimed;
+                                            const currentVal = progress?.progress || 0;
+                                            const targetVal = q.targetCount;
+                                            const Icon = getAnnouncementIcon(q.icon || (q.targetType === "new_user" ? "sparkles" : "gamepad"));
+
+                                            return (
+                                                <div
+                                                    className={"home-reward-row" + (isClaimed ? " is-claimed" : "") + (!isClaimed ? " is-clickable" : "")}
+                                                    key={q.id}
+                                                    role={!isClaimed ? "button" : undefined}
+                                                    tabIndex={!isClaimed ? 0 : undefined}
+                                                    onClick={() => {
+                                                        if (isClaimed) return;
+                                                        if (canClaim) {
+                                                            runPanelAction(() => handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined));
+                                                        } else {
+                                                            openGamesFromPanel();
+                                                        }
+                                                    }}
+                                                    onKeyDown={(event) => handlePanelActionKey(event, () => {
+                                                        if (isClaimed) return;
+                                                        if (canClaim) {
+                                                            runPanelAction(() => handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined));
+                                                        } else {
+                                                            openGamesFromPanel();
+                                                        }
+                                                    })}
+                                                >
+                                                    <div className="home-reward-icon">
+                                                        <Icon size={20}/>
+                                                    </div>
+                                                    <div className="home-reward-info">
+                                                        <strong>{q.title}</strong>
+                                                        <div className="home-reward-pts">
+                                                            <Coins size={14}/>
+                                                            <span>+{q.rewardPoints}</span>
+                                                            {q.targetType !== "new_user" && (
+                                                                <small>({currentVal}/{targetVal})</small>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="home-reward-action">
+                                                        {isClaimed ? (
+                                                            <button className="home-reward-btn claimed" disabled>Claimed</button>
+                                                        ) : canClaim ? (
+                                                            <button
+                                                                className="home-reward-btn claim"
+                                                                disabled={claimingRewardId === q.id}
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined);
+                                                                }}
+                                                            >
+                                                                {claimingRewardId === q.id ? "..." : "Claim"}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                className="home-reward-btn go"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    openGamesFromPanel();
+                                                                }}
+                                                            >
+                                                                Go
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="home-reward-action">
-                                                    {isClaimed ? (
-                                                        <button className="home-reward-btn claimed" disabled>Claimed</button>
-                                                    ) : canClaim ? (
-                                                        <button
-                                                            className="home-reward-btn claim"
-                                                            disabled={claimingRewardId === q.id}
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                handleClaimReward(q.id, q.targetType === "daily_games" ? todayKey : undefined);
-                                                            }}
-                                                        >
-                                                            {claimingRewardId === q.id ? "..." : "Claim"}
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            className="home-reward-btn go"
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
-                                                                openGamesFromPanel();
-                                                            }}
-                                                        >
-                                                            Go
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    {availableQuests.length === 0 && (
-                                        <div className="home-reward-empty">No active quests right now. Check back soon!</div>
-                                    )}
-                                </div>
+                                            );
+                                        })}
+                                        {availableQuests.length === 0 && (
+                                            <div className="home-reward-empty">No active quests right now. Check back soon!</div>
+                                        )}
+                                    </div>
 
-                                <div className="home-notification-footer">Come back daily for more rewards!</div>
-                            </div>
-                        )}
-                    </div>
+                                    <div className="home-notification-footer">Come back daily for more rewards!</div>
+                                </div>
+                            )}
+                        </div>
 
-                    <div className="topbar-notification-wrap" ref={notificationRef}>
-                        <button
-                            className="topbar-notification-btn"
-                            onClick={() => setNotificationsOpen(open => !open)}
-                            aria-label="Notifications"
-                            aria-expanded={notificationsOpen}
-                        >
-                            <Bell size={18} strokeWidth={2.35}/>
-                            <span className="topbar-action-label">Alerts</span>
-                            {unreadAnnouncementCount > 0 && <span className="topbar-notification-badge">{unreadAnnouncementCount}</span>}
-                        </button>
-                        {notificationsOpen && (
-                            <div className="home-notification-panel">
-                                <div className="home-notification-top">
-                                    <button className="home-notification-icon-btn" onClick={() => setNotificationsOpen(false)} aria-label="Close notifications"><ArrowLeft size={18}/></button>
-                                    <strong>Notifications</strong>
-                                    <button className="home-notification-icon-btn" onClick={markAnnouncementsRead} aria-label="Mark notifications read"><Trash2 size={17}/></button>
-                                </div>
-                                <div className="home-notification-tabs">
-                                    {notificationTabs.map(tab => (
-                                        <button key={tab.id} className={notificationFilter === tab.id ? "active" : ""} onClick={() => setNotificationFilter(tab.id)}>{tab.label}</button>
-                                    ))}
-                                </div>
-                                <div className="home-notification-list">
-                                    {visibleAnnouncements.length ? visibleAnnouncements.map(item => {
-                                        const at = getAnnouncementDate(item);
-                                        const Icon = getAnnouncementIcon(item.icon);
-                                        return (
-                                            <button
-                                                type="button"
-                                                className={`home-notification-item is-clickable${readAnnouncementIds.has(item.id) ? " is-read" : ""}`}
-                                                key={item.id}
-                                                onClick={() => handleNotificationClick(item)}
-                                                aria-label={`Open notification: ${item.title}`}
-                                            >
-                                                <span className={`home-notification-item-icon ${item.category ?? "updates"}`}><Icon size={22}/></span>
-                                                <span className="home-notification-item-copy">
+                        <div className="topbar-notification-wrap" ref={notificationRef}>
+                            <button
+                                className="topbar-notification-btn"
+                                onClick={() => setNotificationsOpen(open => !open)}
+                                aria-label="Notifications"
+                                aria-expanded={notificationsOpen}
+                            >
+                                <Bell size={18} strokeWidth={2.35}/>
+                                <span className="topbar-action-label">Alerts</span>
+                                {unreadAnnouncementCount > 0 && <span className="topbar-notification-badge">{unreadAnnouncementCount}</span>}
+                            </button>
+                            {notificationsOpen && (
+                                <div className="home-notification-panel">
+                                    <div className="home-notification-top">
+                                        <button className="home-notification-icon-btn" onClick={() => setNotificationsOpen(false)} aria-label="Close notifications"><ArrowLeft size={18}/></button>
+                                        <strong>Notifications</strong>
+                                        <button className="home-notification-icon-btn" onClick={markAnnouncementsRead} aria-label="Mark notifications read"><Trash2 size={17}/></button>
+                                    </div>
+                                    <div className="home-notification-tabs">
+                                        {notificationTabs.map(tab => (
+                                            <button key={tab.id} className={notificationFilter === tab.id ? "active" : ""} onClick={() => setNotificationFilter(tab.id)}>{tab.label}</button>
+                                        ))}
+                                    </div>
+                                    <div className="home-notification-list">
+                                        {visibleAnnouncements.length ? visibleAnnouncements.map(item => {
+                                            const at = getAnnouncementDate(item);
+                                            const Icon = getAnnouncementIcon(item.icon);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    className={`home-notification-item is-clickable${readAnnouncementIds.has(item.id) ? " is-read" : ""}`}
+                                                    key={item.id}
+                                                    onClick={() => handleNotificationClick(item)}
+                                                    aria-label={`Open notification: ${item.title}`}
+                                                >
+                                                    <span className={`home-notification-item-icon ${item.category ?? "updates"}`}><Icon size={22}/></span>
+                                                    <span className="home-notification-item-copy">
                                                     <strong>{item.title}</strong>
                                                     <p>{item.message}</p>
                                                 </span>
-                                                <small>{timeAgo(at)}</small>
-                                                {!readAnnouncementIds.has(item.id) && <i/>}
-                                            </button>
-                                        );
-                                    }) : (
-                                        <div className="home-notification-empty">No notifications in this category.</div>
-                                    )}
+                                                    <small>{timeAgo(at)}</small>
+                                                    {!readAnnouncementIds.has(item.id) && <i/>}
+                                                </button>
+                                            );
+                                        }) : (
+                                            <div className="home-notification-empty">No notifications in this category.</div>
+                                        )}
+                                    </div>
+                                    <div className="home-notification-footer">You're all caught up!</div>
                                 </div>
-                                <div className="home-notification-footer">You're all caught up!</div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
                     </>}
                     {!hasValidPlayer && <div className="topbar-guest-actions">
                         <button className="topbar-auth-btn topbar-auth-btn--login" onClick={() => { setAuthMode("login"); setStartAfterAuth(false); setShowNameModal(true); }}><LogIn size={15}/><span>Log in</span></button>
                         <button className="topbar-auth-btn topbar-auth-btn--signup" onClick={() => { setAuthMode("signup"); setStartAfterAuth(false); setShowNameModal(true); }}><UserPlus size={15}/><span>Sign up</span></button>
                     </div>}
-                    <button className="topbar-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-                        <span className="topbar-hamburger-lines"><i/><i/><i/></span>
-                        <span className="topbar-action-label">Menu</span>
-                    </button>
                 </div>
             </div>
 
@@ -951,125 +998,8 @@ export const HomeScreen: FC<Props> = ({
             {/*    <img src={logoBg} alt="Bongo Quiz" className="home-title-image"/>*/}
             {/*</div>*/}
 
-            {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)}/>}
-            <div className={`menu-drawer${menuOpen ? ' menu-drawer--open' : ''}`}>
-                <div className="menu-drawer-header">
-                    <img src={logoBg} alt="" style={{width: 32}}/>
-                    <span className="menu-drawer-title">Menu</span>
-                    <button className="menu-close-btn" onClick={() => setMenuOpen(false)}>✕</button>
-                </div>
-                <div className="menu-items">
-                    <button className="menu-item" onClick={() => {
-                        setMenuOpen(false);
-                        setShowHTP(true);
-                    }}>
-                        <span className="menu-item-icon">❓</span>
-                        <div>
-                            <div className="menu-item-label">How to Play</div>
-                            <div className="menu-item-sub">Learn the rules & rounds</div>
-                        </div>
-                    </button>
-                    <div className="hideonmobile">
-                        <button className="menu-item" onClick={() => {
-                            setMenuOpen(false);
-                            onLeaderboard();
-                        }}>
-                            <span className="menu-item-icon">🏆</span>
-                            <div>
-                                <div className="menu-item-label">Leaderboard</div>
-                                <div className="menu-item-sub">See top players</div>
-                            </div>
-                        </button>
-                        <button className="menu-item" onClick={() => {
-                            setMenuOpen(false);
-                            setAuthMode("login");
-                            setStartAfterAuth(false);
-                            setShowNameModal(true);
-                        }}>
-                            <span className="menu-item-icon">👤</span>
-                            <div>
-                                <div className="menu-item-label">Edit Profile</div>
-                                <div className="menu-item-sub">{playerName} · {playerPhone || 'No phone set'}</div>
-                            </div>
-                        </button>
-                    </div>
-
-                    {onHistory && (
-                        <button className="menu-item" onClick={() => {
-                            setMenuOpen(false);
-                            onHistory();
-                        }}>
-                            <span className="menu-item-icon">📜</span>
-                            <div>
-                                <div className="menu-item-label">Game History</div>
-                                <div className="menu-item-sub">View your past sessions</div>
-                            </div>
-                        </button>
-                    )}
-                    {onReviewSession && (
-                        <button className="menu-item" onClick={() => {
-                            setMenuOpen(false);
-                            onReviewSession();
-                        }}>
-                            <span className="menu-item-icon">📋</span>
-                            <div>
-                                <div className="menu-item-label">Review Last Game</div>
-                                <div className="menu-item-sub">See questions & answers</div>
-                            </div>
-                        </button>
-                    )}
-                    <button className="menu-item" onClick={() => {
-                        const text = `Play Bongo Quiz - 3 rounds of trivia, bonus points, and leaderboard rankings.\n${window.location.href}`;
-                        if (navigator.share) {
-                            navigator.share({title: 'Bongo Quiz', text, url: window.location.href}).catch(() => {
-                            });
-                        } else {
-                            navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!')).catch(() => {
-                            });
-                        }
-                    }}>
-                        <span className="menu-item-icon">🔗</span>
-                        <div>
-                            <div className="menu-item-label">Share</div>
-                            <div className="menu-item-sub">Invite friends to play</div>
-                        </div>
-                    </button>
-                    <button className="menu-item" onClick={() => {
-                        setMenuOpen(false);
-                        window.location.href = "/contact";
-                    }}>
-                        <span className="menu-item-icon">🎧</span>
-                        <div>
-                            <div className="menu-item-label">Contact Support</div>
-                            <div className="menu-item-sub">Live chat, email & WhatsApp</div>
-                        </div>
-                    </button>
-                    {/*<button className="menu-item" onClick={toggleSound}>*/}
-                    {/*    <span className="menu-item-icon">{soundOn ? '🔊' : '🔇'}</span>*/}
-                    {/*    <div><div className="menu-item-label">Sound</div><div className="menu-item-sub">{soundOn ? 'On — tap to mute' : 'Off — tap to unmute'}</div></div>*/}
-                    {/*    <span className={`menu-toggle${soundOn ? ' menu-toggle--on' : ''}`}/>*/}
-                    {/*</button>*/}
-                    {playerPhone && (
-                        <button className="menu-item" style={{color: "#ef4444"}} onClick={() => {
-                            ["bongo_player_name", "bongo_player_phone", "bongo_best_score", "bongo_total_points",
-                                "bongo_session_score", "bongo_achievements", "bongo_streak", "bongo_last_activity"].forEach(k => localStorage.removeItem(k));
-                            setPlayerName("Player");
-                            setPlayerPhone("");
-                            setMenuOpen(false);
-                        }}>
-                            <span className="menu-item-icon">🚪</span>
-                            <div>
-                                <div className="menu-item-label" style={{color: "#ef4444"}}>Log Out</div>
-                                <div className="menu-item-sub">Sign out of your account</div>
-                            </div>
-                        </button>
-                    )}
-                </div>
-                {personalBest > 0 && (
-                    <div className="menu-best">🏅 Personal Best: <strong>{personalBest.toLocaleString()} pts</strong>
-                    </div>
-                )}
-            </div>
+            {/* Menu actions now live in the left sidebar (DesktopSidebar) — opened
+                via the top-bar Menu button or the sidebar's own hamburger. */}
 
             <canvas ref={canvasRef} className="home-canvas"/>
             <img ref={logoRef} src={logoBg} alt="" className="home-logo-bg"/>
@@ -1092,12 +1022,21 @@ export const HomeScreen: FC<Props> = ({
 
                         <p className="home-hero-rounds">SCORE POINTS</p>
                         <p className="home-hero-win">CLIMB THE BOARD</p>
+                        {!hasPaidSession && freeTrialAvailable && (
+                            <div className="home-free-banner" role="status">
+                                🎁 <strong>Your first game is FREE</strong> — all 3 rounds, no charge.
+                            </div>
+                        )}
                         <div className="home-hero-actions">
                             <button className="home-btn" onClick={handlePlay}>
                                 <span className="home-btn-shine"/>
-                                {hasPaidSession ? "Continue" : "Start Quiz"}
+                                {hasPaidSession ? "Continue" : freeTrialAvailable ? "Play Free 🎁" : "Start Quiz"}
                             </button>
-                            {/*<button className="home-hero-secondary" onClick={onLeaderboard}>Leaderboard</button>*/}
+                            {hasValidPlayer && (
+                                <button className="home-hero-secondary home-invite-btn" onClick={handleInviteFriends}>
+                                    🟢 Invite &amp; Earn
+                                </button>
+                            )}
                         </div>
                         <div className="home-hero-stats" aria-label="Player score summary">
                             <div>
@@ -1403,6 +1342,7 @@ export const HomeScreen: FC<Props> = ({
                     </div>
                 </div>
             </footer>
+        </div>
         </div>
     );
 };
