@@ -284,12 +284,12 @@ export const BongoMain: FC = () => {
     }
 
     if (screen === "community")
-        return <CommunityPage
+        return renderWithDesktopSidebar("tournaments", <CommunityPage
             onBack={() => setScreen("home")}
             onEnterTournament={(tournament) => { setActiveTournament(tournament); setScreen("tournament_play"); }}
             onLeaderboard={() => setScreen("leaderboard")}
             onNavigate={handleMainNav}
-        />;
+        />);
 
     if (screen === "tournament_play" && activeTournament) {
         const leaveTournament = (to: GameScreen) => { clearActiveTournamentSession(); setActiveTournament(null); setScreen(to); };
@@ -516,10 +516,10 @@ export const BongoMain: FC = () => {
                 playerName={playerName}
                 r1TimeLeft={r1TimeLeft} r2Correct={r2Correct}
                 r2Total={r2Total}       maxStreak={r1MaxStreak}
-                onPlayAgain={() => setScreen("leaderboard")}
-                onViewSummary={() => setShowSummary(true)}
+                onPlayAgain={() => setScreen("box_select")}
+                onLeaderboard={() => setScreen("leaderboard")}
+                onHome={() => setScreen("home")}
             />
-            {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
         </>;
     }
 

@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { BarChart3, Gamepad2, Home, User, Users } from 'lucide-react';
+import { BarChart3, Gamepad2, Home, Trophy, User } from 'lucide-react';
 import '../../styles/BottomNav.css';
 import type { MainNavTab } from '../../types/gametypes.ts';
 
@@ -21,9 +21,9 @@ export const BottomNav: FC<Props> = ({ active, onNavigate }) => {
             </button>
             <button className={`bottom-nav-item bottom-nav-spin ${active === 'community' ? 'active' : ''}`} onClick={() => onNavigate('community')}>
                 <div className="spin-icon-wrapper">
-                    <Users size={27} strokeWidth={2} />
+                    <Trophy size={27} strokeWidth={2} />
                 </div>
-                <span>Community</span>
+                <span>Tournaments</span>
             </button>
             <button className={`bottom-nav-item ${active === 'leaderboard' ? 'active' : ''}`} onClick={() => onNavigate('leaderboard')}>
                 <BarChart3 size={22} strokeWidth={2} />

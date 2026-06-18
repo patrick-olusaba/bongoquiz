@@ -984,6 +984,75 @@ export const rebuildQuizTournament = functions.https.onCall(async (data, context
     return { success: true, rebuilt: totals.size };
 });
 
+// ── Tournament badges → player profile ───────────────────────────────────────
+// Reward items are descriptive strings (e.g. "5 Coins", "Winner Badge"). Coins
+// and points are payouts; everything else (badges / medals) is a profile badge.
+function badgeItemsFromReward(reward: any): string[] {
+    const items = Array.isArray(reward?.items) ? reward.items : [];
+    return items.map((item: any) => String(item).trim()).filter((item: string) => item && !/coins?|points?/i.test(item));
+}
+
+/**
+ * Award the rewards' badge items to the top-ranked players of a tournament and
+ * store them on each player's profile (`players/{phone}.tournamentBadges`).
+ * Idempotent: a badge already recorded for the same tournament + label is skipped.
+ */
+async function awardTournamentBadges(tournamentId: string) {
+    const tournamentRef = db.collection("quizTournaments").doc(tournamentId);
+    const tournamentSnap = await tournamentRef.get();
+    if (!tournamentSnap.exists) return { awarded: 0 };
+    const tournament = tournamentSnap.data() || {};
+    const rewards: any[] = Array.isArray(tournament.rewards) ? tournament.rewards : [];
+    if (!rewards.length) return { awarded: 0 };
+    const title = String(tournament.title || "Tournament");
+
+    const entriesSnap = await tournamentRef.collection("entries").orderBy("points", "desc").limit(10).get();
+    let awarded = 0;
+    for (let i = 0; i < entriesSnap.docs.length; i++) {
+        const rank = i + 1;
+        const data = entriesSnap.docs[i].data();
+        const phone = String(data.phone || entriesSnap.docs[i].id);
+        if (!/^07\d{8}$/.test(phone)) continue;
+        if (Number(data.points || 0) <= 0) continue; // must have actually scored
+        const reward = rewards[Math.min(rank - 1, rewards.length - 1)] || {};
+        const labels = badgeItemsFromReward(reward);
+        if (!labels.length) continue;
+        const rankLabel = String(reward.rank || `Rank ${rank}`);
+
+        const playerRef = db.collection("players").doc(phone);
+        const playerSnap = await playerRef.get();
+        const existing: any[] = Array.isArray(playerSnap.data()?.tournamentBadges) ? playerSnap.data()!.tournamentBadges : [];
+        const newBadges = labels
+            .filter(label => !existing.some(b => b?.tournamentId === tournamentId && b?.label === label))
+            .map(label => ({ label, tournamentId, tournamentTitle: title, rank, rankLabel, awardedAt: Date.now() }));
+        if (!newBadges.length) continue;
+        await playerRef.set({ tournamentBadges: admin.firestore.FieldValue.arrayUnion(...newBadges) }, { merge: true });
+        awarded += newBadges.length;
+    }
+    await tournamentRef.set({ badgesAwardedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return { awarded };
+}
+
+// Auto-award when an admin marks a tournament "completed".
+export const onQuizTournamentCompleted = functions.firestore
+    .document("quizTournaments/{tournamentId}")
+    .onUpdate(async (change, context) => {
+        const before = change.before.data() || {};
+        const after = change.after.data() || {};
+        const becameCompleted = before.status !== "completed" && after.status === "completed";
+        if (!becameCompleted || after.badgesAwardedAt) return;
+        await awardTournamentBadges(context.params.tournamentId);
+    });
+
+// Admin-triggered award (covers tournaments already completed before this shipped).
+export const awardTournamentBadgesNow = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    const tournamentId = String(data?.tournamentId || "");
+    if (!tournamentId) throw new functions.https.HttpsError("invalid-argument", "Tournament id required");
+    const result = await awardTournamentBadges(tournamentId);
+    return { success: true, ...result };
+});
+
 
 interface SaveSessionData {
     name: string;

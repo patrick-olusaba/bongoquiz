@@ -1,6 +1,6 @@
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { CalendarDays, Clock3, Coins, Gamepad2, Gift, Home, Info, Medal, Share2, Star, Trophy, User, Users } from "lucide-react";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { CalendarDays, Clock3, Coins, Gift, Medal, Share2, Star, Trophy, Users } from "lucide-react";
 import { db } from "../../firebase.ts";
 import { buildWhatsAppShareUrl, getReferralLink } from "../../utils/referral.ts";
 import { ensureReferralCode } from "../../utils/playerAuth.ts";
@@ -43,10 +43,11 @@ function formatStartDate(value: unknown) {
 const playerTitle = (rank: number) =>
     rank === 1 ? "Quiz Master" : rank === 2 ? "Knowledge King" : rank === 3 ? "Top Player" : "Active Member";
 
-export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderboard, onNavigate }) => {
+export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate }) => {
     const [tournaments, setTournaments] = useState<QuizTournament[]>([]);
     const [selectedId, setSelectedId] = useState("");
     const [leaders, setLeaders] = useState<TournamentEntry[]>([]);
+    const [allLeaders, setAllLeaders] = useState<TournamentEntry[]>([]);
     const [referrals, setReferrals] = useState<any[]>([]);
     const [tab, setTab] = useState<"ongoing" | "upcoming" | "past" | "referrals">("ongoing");
     const [ongoingSub, setOngoingSub] = useState<"daily" | "weekly" | "participated">("daily");
@@ -100,6 +101,13 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
 
     const cycleOf = (t: QuizTournament) => (t.tournamentCycle === "weekly" ? "weekly" : "daily");
 
+    // A tournament hasn't begun yet if it's scheduled or its start time is in the future.
+    const notStarted = (t: QuizTournament) => {
+        if (t.status === "scheduled") return true;
+        const start = toDate(t.startsAt)?.getTime() ?? 0;
+        return start > Date.now();
+    };
+
     const grouped = useMemo(() => {
         const ongoing = tournaments.filter(t => t.status === "active");
         const openToPlay = ongoing.filter(t => !playedIds.has(t.id));
@@ -111,10 +119,11 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
             // split by cycle, so they can go attend the ones still open to them.
             daily: openToPlay.filter(t => cycleOf(t) === "daily"),
             weekly: openToPlay.filter(t => cycleOf(t) === "weekly"),
-            // Tournaments the player already finished (any status).
-            participated: tournaments.filter(t => playedIds.has(t.id)),
+            // Tournaments the player already finished — but never future/scheduled
+            // ones (a rescheduled tournament keeps the old entry; it isn't "played").
+            participated: tournaments.filter(t => playedIds.has(t.id) && !notStarted(t)),
         };
-    }, [tournaments, playedIds]);
+    }, [tournaments, playedIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const showUpcomingTab = grouped.upcoming.length > 0;
     const showPastTab = grouped.past.length > 0;
@@ -150,15 +159,41 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
         return onSnapshot(q, snap => setLeaders(snap.docs.map(d => ({ id: d.id, ...d.data() } as TournamentEntry))), () => setLeaders([]));
     }, [selectedTournamentId]);
 
+    // Top Players across ALL tournaments — points summed per player — so the
+    // panel always reflects everyone playing tournaments, regardless of which
+    // tab/tournament is selected. Aggregated from per-tournament reads (a
+    // collection-group query is blocked by the current security rules).
+    useEffect(() => {
+        if (!tournaments.length) { setAllLeaders([]); return; }
+        let cancelled = false;
+        Promise.all(tournaments.map(t =>
+            getDocs(query(collection(db, "quizTournaments", t.id, "entries"), limit(200))).catch(() => null)
+        )).then(snaps => {
+            if (cancelled) return;
+            const totals = new Map<string, TournamentEntry>();
+            snaps.forEach(snapshot => snapshot?.docs.forEach(d => {
+                const data = d.data() as any;
+                const phone = String(data.phone || d.id);
+                if (!/^0\d{9}$/.test(phone)) return;
+                const current = totals.get(phone) || ({ id: phone, phone, name: data.name || "Player", points: 0 } as TournamentEntry);
+                current.points = Number(current.points || 0) + Number(data.points || 0);
+                if (data.name) current.name = data.name;
+                totals.set(phone, current);
+            }));
+            setAllLeaders(Array.from(totals.values()).sort((a, b) => Number(b.points || 0) - Number(a.points || 0)).slice(0, 30));
+        });
+        return () => { cancelled = true; };
+    }, [tournamentIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const alreadyPlayed = !!currentPhone && (playedIds.has(selected?.id ?? "") || leaders.some(entry => entry.phone === currentPhone));
-    const currentRank = leaders.findIndex(entry => entry.phone === currentPhone) + 1;
+    const currentRank = allLeaders.findIndex(entry => entry.phone === currentPhone) + 1;
     const parts = useMemo(() => countdownParts(toDate(selected?.endsAt)), [selected?.endsAt, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const topScore = leaders[0]?.points ? Math.round(leaders[0].points) : 0;
+    const topScore = allLeaders[0]?.points ? Math.round(allLeaders[0].points) : 0;
     const stats = [
         { icon: <Users size={20} />, value: grouped.ongoing.length, label: "Live Now", cls: "stat-purple" },
         { icon: <Trophy size={20} />, value: tournaments.length, label: "Tournaments", cls: "stat-blue" },
-        { icon: <Star size={20} />, value: leaders.length, label: "Players", cls: "stat-green" },
+        { icon: <Star size={20} />, value: allLeaders.length, label: "Players", cls: "stat-green" },
         { icon: <Medal size={20} />, value: topScore.toLocaleString(), label: "Top Score", cls: "stat-gold" },
     ];
 
@@ -196,48 +231,14 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
         onEnterTournament(selected);
     };
 
-    const navItems: { icon: typeof Home; label: string; onClick: () => void; active?: boolean }[] = [
-        { icon: Trophy, label: "Tournaments", onClick: () => setTab("ongoing"), active: true },
-        { icon: Medal, label: "Leaderboard", onClick: onLeaderboard },
-        { icon: Home, label: "Home", onClick: () => onNavigate("home") },
-        { icon: Gamepad2, label: "Games", onClick: () => onNavigate("games") },
-        { icon: User, label: "My Profile", onClick: () => onNavigate("profile") },
-        { icon: Info, label: "How It Works", onClick: () => howRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-    ];
-
     return (
         <div className="cm-root">
-            {/* ── Desktop sidebar ─────────────────────────────────────────── */}
-            <aside className="cm-sidebar">
-                <div className="cm-brand">
-                    <img src={brandLogo} alt="BongoQuiz" />
-                    <div><strong>BongoQuiz</strong><span>Community</span></div>
-                </div>
-                <nav className="cm-nav">
-                    {navItems.map(item => (
-                        <button key={item.label} className={item.active ? "active" : ""} onClick={item.onClick}>
-                            <item.icon size={18} /> {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="cm-sidebar-cta">
-                    <div className="cm-sidebar-cta-icon"><Trophy size={26} /></div>
-                    <strong>Play a Tournament</strong>
-                    <p>Pick a live cup and climb the leaderboard.</p>
-                    <button onClick={() => setTab("ongoing")}>Browse Live <span>›</span></button>
-                </div>
-                <div className="cm-profile-chip">
-                    <span className="cm-avatar">{initials(playerName)}</span>
-                    <div><strong>{playerName}</strong><span>{currentPhone || "Not signed in"}</span></div>
-                </div>
-            </aside>
-
             {/* ── Mobile top bar ──────────────────────────────────────────── */}
             <header className="cm-mobile-top">
                 <button className="cm-mobile-back" onClick={onBack} aria-label="Back">‹</button>
                 <div className="cm-brand">
                     <img src={brandLogo} alt="BongoQuiz" />
-                    <div><strong>BongoQuiz</strong><span>Community</span></div>
+                    <div><strong>BongoQuiz</strong><span>Tournaments</span></div>
                 </div>
             </header>
 
@@ -440,9 +441,9 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
                 </div>
 
                 <div className="cm-card">
-                    <h4><Trophy size={16} /> Top Players <button className="cm-card-link" onClick={onLeaderboard}>View All</button></h4>
+                    <h4><Trophy size={16} /> Top Players</h4>
                     <div className="cm-top-players">
-                        {leaders.length ? leaders.slice(0, 5).map((entry, index) => (
+                        {allLeaders.length ? allLeaders.slice(0, 5).map((entry, index) => (
                             <div className={`cm-tp-row ${entry.phone === currentPhone ? "me" : ""}`} key={entry.id}>
                                 <span className={`cm-tp-rank rank-${index + 1}`}>{index + 1}</span>
                                 <span className="cm-avatar sm">{initials(entry.name)}</span>
@@ -450,12 +451,12 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
                                 <span className="cm-tp-score"><Star size={13} /> {Math.round(entry.points || 0).toLocaleString()}</span>
                             </div>
                         )) : <div className="cm-tp-empty">No scores yet. Be the first to play!</div>}
-                        {currentRank > 5 && leaders[currentRank - 1] && (
+                        {currentRank > 5 && allLeaders[currentRank - 1] && (
                             <div className="cm-tp-row me sticky">
                                 <span className="cm-tp-rank">{currentRank}</span>
                                 <span className="cm-avatar sm">{initials(playerName)}</span>
                                 <div className="cm-tp-name"><b>You</b><small>{playerTitle(currentRank)}</small></div>
-                                <span className="cm-tp-score"><Star size={13} /> {Math.round(leaders[currentRank - 1].points || 0).toLocaleString()}</span>
+                                <span className="cm-tp-score"><Star size={13} /> {Math.round(allLeaders[currentRank - 1].points || 0).toLocaleString()}</span>
                             </div>
                         )}
                     </div>

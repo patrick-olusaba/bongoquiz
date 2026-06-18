@@ -1655,7 +1655,17 @@ function Referrals() {
     const recentRewards = [...referrals].sort(byTimeDesc);
     const totalReferralCoins = recentRewards.reduce((sum, row) => sum + Number(row.referrerCoins || 0), 0);
     const totalWelcomeCoins = recentRewards.reduce((sum, row) => sum + Number(row.welcomeCoins || 0), 0);
-    const pendingPlayers = players.filter(player => String(player.pendingReferrer || '').trim());
+    // Map masked referral code → owner phone so we can resolve code-based pending invites.
+    const codeOwner = new Map<string, string>();
+    players.forEach(player => { if (player.referralCode) codeOwner.set(String(player.referralCode), String(player.phone || player.id || '')); });
+    const resolvePendingReferrer = (player: any): string => {
+        const legacy = String(player.pendingReferrer || '').trim();
+        if (legacy) return legacy;
+        const code = String(player.pendingReferralCode || '').trim();
+        if (code) return codeOwner.get(code) || `code ${code}`;
+        return '';
+    };
+    const pendingPlayers = players.filter(player => resolvePendingReferrer(player));
     const topInviters = [...players]
         .filter(player => Number(player.referralCount || 0) > 0 || Number(player.referralEarnedCoins || 0) > 0)
         .sort((a, b) => Number(b.referralEarnedCoins || 0) - Number(a.referralEarnedCoins || 0))
@@ -1735,7 +1745,7 @@ function Referrals() {
                     <span key={`phone-${index}`}>{player.phone ?? '—'}</span>,
                     <span key={`count-${index}`}>{Number(player.referralCount || 0).toLocaleString()}</span>,
                     <span key={`earned-${index}`}>{Number(player.referralEarnedCoins || 0).toLocaleString()}</span>,
-                    <span key={`pending-${index}`}>{player.pendingReferrer ? String(player.pendingReferrer) : '—'}</span>,
+                    <span key={`pending-${index}`}>{resolvePendingReferrer(player) || '—'}</span>,
                 ]) : [[<span key="empty">No inviters yet</span>, '—', '—', '—', '—']]}
             />
         </Card>
@@ -1759,7 +1769,7 @@ function Referrals() {
                 heads={["Player", "Pending referrer", "Name", "Referral count"]}
                 rows={pendingPlayers.length ? pendingPlayers.slice(0, 20).map((player, index) => [
                     <span key={`p1-${index}`}>{player.phone ?? '—'}</span>,
-                    <span key={`p2-${index}`}>{String(player.pendingReferrer || '—')}</span>,
+                    <span key={`p2-${index}`}>{resolvePendingReferrer(player) || '—'}</span>,
                     <span key={`p3-${index}`}>{player.name ?? '—'}</span>,
                     <span key={`p4-${index}`}>{Number(player.referralCount || 0).toLocaleString()}</span>,
                 ]) : [[<span key="empty">No pending referrals</span>, '—', '—', '—']]}

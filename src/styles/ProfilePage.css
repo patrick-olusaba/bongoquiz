@@ -178,6 +178,27 @@
 .profile-section-head h2 { font-size: 0.95rem; font-weight: 800; }
 .profile-section-head span { font-size: 0.75rem; color: var(--text-3); }
 
+/* ── Tournament badges ────────────────────────────────── */
+.profile-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.profile-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-dim, rgba(255,196,61,0.25));
+  border-radius: var(--r-lg);
+}
+.profile-badge-emoji { font-size: 1.8rem; line-height: 1; }
+.profile-badge strong { font-size: 0.82rem; font-weight: 800; }
+.profile-badge small { font-size: 0.68rem; color: var(--text-3); line-height: 1.3; }
+
 /* ── Session cards ────────────────────────────────────── */
 .session-list { display: flex; flex-direction: column; gap: 8px; }
 

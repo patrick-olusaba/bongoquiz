@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Trophy, Star, Gamepad2, Flame } from 'lucide-react';
 import { BottomNav } from './BottomNav';
@@ -35,6 +35,18 @@ interface Props { onBack: () => void; onNavigate: (tab: MainNavTab) => void; }
 
 interface Session { total?: number; score?: number; playedAt: any; power?: string; gameType?: string; r1Score?: number; }
 
+interface TournamentBadge { label: string; tournamentTitle?: string; rankLabel?: string; rank?: number; tournamentId?: string; awardedAt?: number; }
+
+// Pick an emoji for a badge from its label.
+function badgeEmoji(label: string): string {
+    const l = label.toLowerCase();
+    if (l.includes('winner') || l.includes('champion') || l.includes('gold')) return '🏆';
+    if (l.includes('silver')) return '🥈';
+    if (l.includes('bronze')) return '🥉';
+    if (l.includes('medal')) return '🎖️';
+    return '🏅';
+}
+
 export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
     const [name, setName] = useState(() => localStorage.getItem('bongo_player_name') ?? 'Player');
     const [phone, setPhone] = useState(() => localStorage.getItem('bongo_player_phone') ?? '');
@@ -42,6 +54,7 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
     const [showEdit, setShowEdit] = useState(false);
     const [allSessions, setAllSessions] = useState<Session[]>([]);
     const [leaderboardTotal, setLeaderboardTotal] = useState<number | null>(null);
+    const [badges, setBadges] = useState<TournamentBadge[]>([]);
 
     useEffect(() => {
         if (!phone) return;
@@ -80,6 +93,16 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
                 setSessions(sorted.slice(0, 10));
                 setAllSessions(all);
             }).catch(() => {});
+    }, [phone]);
+
+    // Tournament badges earned by this player (stored on their player doc).
+    useEffect(() => {
+        if (!phone || !/^07\d{8}$/.test(phone)) { setBadges([]); return; }
+        getDoc(doc(db, 'players', phone)).then(snap => {
+            const list = (snap.exists() ? (snap.data() as any).tournamentBadges : []) || [];
+            const rows: TournamentBadge[] = Array.isArray(list) ? list : [];
+            setBadges([...rows].sort((a, b) => (b.awardedAt ?? 0) - (a.awardedAt ?? 0)));
+        }).catch(() => setBadges([]));
     }, [phone]);
 
     const gamesPlayed = allSessions.length;
@@ -138,6 +161,25 @@ export const ProfilePage: FC<Props> = ({ onBack, onNavigate }) => {
                         <div className="profile-stat-label">Day Streak</div>
                     </div>
                 </div>
+
+                {/* Tournament Badges */}
+                {badges.length > 0 && (
+                    <div className="profile-section">
+                        <div className="profile-section-head">
+                            <h2>Tournament Badges</h2>
+                            <span>{badges.length} earned</span>
+                        </div>
+                        <div className="profile-badges">
+                            {badges.map((b, i) => (
+                                <div key={`${b.tournamentId}-${b.label}-${i}`} className="profile-badge" title={`${b.label}${b.tournamentTitle ? ` · ${b.tournamentTitle}` : ''}`}>
+                                    <span className="profile-badge-emoji">{badgeEmoji(b.label)}</span>
+                                    <strong>{b.label}</strong>
+                                    <small>{b.rankLabel || (b.rank ? `Rank ${b.rank}` : '')}{b.tournamentTitle ? ` · ${b.tournamentTitle}` : ''}</small>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Recent Games */}
                 <div className="profile-section">

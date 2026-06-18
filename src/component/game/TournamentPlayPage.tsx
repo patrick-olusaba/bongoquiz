@@ -112,6 +112,20 @@ export const TournamentPlayPage: FC<Props> = ({ tournament, onBack, onDone, onNa
         return () => { cancelled = true; unsubscribe(); };
     }, [tournament, tournamentQuizType, resuming, durationSeconds]);
 
+    // Preload every question's logo/visual image up front so they appear
+    // instantly when each question shows — no mid-question loading flash on the
+    // timed quiz (matters most for Car Logos / Brand Logos where the image IS
+    // the question).
+    useEffect(() => {
+        questions.forEach(question => {
+            if (question.visualImageUrl) {
+                const img = new Image();
+                img.decoding = "async";
+                img.src = question.visualImageUrl;
+            }
+        });
+    }, [questions]);
+
     useEffect(() => {
         if (submitted) return;
         const tick = () => {
@@ -296,7 +310,7 @@ export const TournamentPlayPage: FC<Props> = ({ tournament, onBack, onDone, onNa
                                     <span className="tp-chip">📚 {chipLabel}</span>
                                     <h1>{currentQuestion.question}</h1>
                                     {currentQuestion.visualImageUrl && (
-                                        <div className="tp-visual"><img src={currentQuestion.visualImageUrl} alt={currentQuestion.visual || currentQuestion.question} /></div>
+                                        <div className="tp-visual"><img src={currentQuestion.visualImageUrl} alt={currentQuestion.visual || currentQuestion.question} loading="eager" decoding="async" /></div>
                                     )}
                                     <p className="tp-hint"><Lightbulb size={15} /> Hint: {currentQuestion.difficulty === "hard" ? "Take your time on this one." : "Trust your first instinct."}</p>
 

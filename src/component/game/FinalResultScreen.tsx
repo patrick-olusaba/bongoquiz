@@ -1,37 +1,37 @@
 // FinalResultScreen.tsx
 import { type FC, useEffect, useState, useRef } from "react";
+import { Home, RotateCcw, Trophy } from "lucide-react";
 import type { PrizeItem } from "../../types/bongotypes.ts";
 import type { WheelSegment } from "../../types/gametypes.ts";
 import { checkAchievements, unlockAchievements, type Achievement } from "../../utils/achievements.ts";
 import { recordPlayToday } from "../../utils/streakDays.ts";
-import { getReferralLink, buildWhatsAppShareUrl } from "../../utils/referral.ts";
-import { ensureReferralCode } from "../../utils/playerAuth.ts";
 import '../../styles/style.css';
 import '../../styles/FinalResultScreen.css';
 
 interface Props {
-    power:       PrizeItem;
-    r1Score:     number;
-    r2Score:     number;
-    r3Bonus:     number;
-    segment:     WheelSegment | null;
-    total:       number;
-    playerName:  string;
-    r1TimeLeft:  number;
-    r2Correct:   number;
-    r2Total:     number;
-    maxStreak:   number;
-    onPlayAgain: () => void;
-    onViewSummary?: () => void;
+    power:        PrizeItem;
+    r1Score:      number;
+    r2Score:      number;
+    r3Bonus:      number;
+    segment:      WheelSegment | null;
+    total:        number;
+    playerName:   string;
+    r1TimeLeft:   number;
+    r2Correct:    number;
+    r2Total:      number;
+    maxStreak:    number;
+    onPlayAgain:  () => void;   // → BongoQuiz box selection
+    onLeaderboard: () => void;  // → leaderboard
+    onHome:       () => void;   // → home
 }
 
 export const FinalResultScreen: FC<Props> = ({
                                                  power, r1Score, r2Score, r3Bonus, segment, total,
-                                                 playerName, r1TimeLeft, r2Correct, r2Total, maxStreak, onPlayAgain, onViewSummary
+                                                 playerName, r1TimeLeft, r2Correct, r2Total, maxStreak,
+                                                 onPlayAgain, onLeaderboard, onHome
                                              }) => {
     const [isNewBest,    setIsNewBest]    = useState(false);
     const [prevBest,     setPrevBest]     = useState(0);
-    const [copied,       setCopied]       = useState(false);
     const [newBadges,    setNewBadges]    = useState<Achievement[]>([]);
     const [showBadgeIdx, setShowBadgeIdx] = useState(0);
     const savedRef = useRef(false);
@@ -81,26 +81,6 @@ export const FinalResultScreen: FC<Props> = ({
         if (segment.label === "★★★")       return "🎡 No Bonus";
         return `🎡 ${segment.label}`;
     })();
-
-    const handleWhatsAppInvite = () => {
-        const phone = localStorage.getItem("bongo_player_phone");
-        void ensureReferralCode(phone);
-        const link  = getReferralLink(phone);
-        const text  = `I scored ${total.toLocaleString()} points on BongoQuiz as ${playerName}. Join me on BongoQuiz, play any non-tournament game, and start earning BongoCoins when you score. Use my invite link: ${link}`;
-        window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
-    };
-
-    const handleShare = () => {
-        const text = `🎯 I scored ${total.toLocaleString()} pts on Bongo Quiz as "${playerName}"!\n${rating}\nCan you beat me? 🏆`;
-        if (navigator.share) {
-            navigator.share({ title: "Bongo Quiz", text }).catch(() => {});
-        } else {
-            navigator.clipboard.writeText(text).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            });
-        }
-    };
 
     return (
         <div className="fr-root">
@@ -173,17 +153,18 @@ export const FinalResultScreen: FC<Props> = ({
                     </div>
                 )}
 
-                <div className="fr-invite-banner">🎁 Invite a friend — you both earn BongoCoins when they play!</div>
-
                 <div className="fr-actions">
-                    <button className="fr-btn fr-btn--play"  onClick={onPlayAgain}>🔄 Play Again</button>
-                    <button className="fr-btn fr-btn--wa" onClick={handleWhatsAppInvite}>🟢 Invite on WhatsApp</button>
-                    <button className="fr-btn fr-btn--share" onClick={handleShare}>
-                        {copied ? "✅ Copied!" : "📤 Share"}
+                    <button className="fr-btn fr-btn--play" onClick={onPlayAgain}>
+                        <RotateCcw size={18} /> Play Again
                     </button>
-                    {onViewSummary && (
-                        <button className="fr-btn fr-btn--summary" onClick={onViewSummary}>📋 Review Questions</button>
-                    )}
+                    <div className="fr-actions-row">
+                        <button className="fr-btn fr-btn--leaderboard" onClick={onLeaderboard}>
+                            <Trophy size={18} /> Leaderboard
+                        </button>
+                        <button className="fr-btn fr-btn--home" onClick={onHome}>
+                            <Home size={18} /> Back Home
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

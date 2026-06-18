@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, collectionGroup, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Award, BarChart3, CalendarClock, Coins, FileUp, Gift, ListChecks, Medal, Plus, RefreshCw, Save, Search, Settings, Shirt, Star, Trophy, Users } from "lucide-react";
@@ -177,6 +177,7 @@ export function AdminTournament() {
     const [leaderboardScope, setLeaderboardScope] = useState<LeaderboardScope>("daily");
     const [saving, setSaving] = useState(false);
     const [rebuilding, setRebuilding] = useState(false);
+    const [awarding, setAwarding] = useState(false);
     const [message, setMessage] = useState("");
     const [queryText, setQueryText] = useState("");
     const [questions, setQuestions] = useState<TournamentQuestion[]>([]);
@@ -213,9 +214,16 @@ export function AdminTournament() {
         else window.localStorage.removeItem(ADMIN_TOURNAMENT_SELECTED_KEY);
     }, [selectedId]);
 
+    // Seed the editable draft from the selected tournament — but ONLY when the
+    // selection actually changes. The tournaments snapshot re-fires on any field
+    // change (e.g. lastEntryAt when a player submits), and re-seeding on every
+    // snapshot was wiping the admin's unsaved edits (rewards "resetting back").
+    const seededIdRef = useRef<string>("");
     useEffect(() => {
         const selected = tournaments.find(tournament => tournament.id === selectedId);
         if (!selected) return;
+        if (seededIdRef.current === selectedId) return; // already editing this one — keep edits
+        seededIdRef.current = selectedId;
         setDraft(makeDraft(selected));
         setStartsAt(dateInputValue(selected.startsAt));
         setEndsAt(dateInputValue(selected.endsAt) || defaultEndsAt());
@@ -243,25 +251,38 @@ export function AdminTournament() {
         }, () => setQuestions([]));
     }, [draft.quizType]);
 
+    // Aggregate entries + events across ALL tournaments via per-tournament reads.
+    // A collection-group query (the old approach) is blocked by the security
+    // rules, which left the All-Tournaments Leaderboard and Recent Plays empty.
+    // Re-fetches whenever a tournament records a new entry / is rebuilt.
+    const tournamentsActivityKey = tournaments
+        .map(t => `${t.id}:${(t as any).lastEntryAt?.seconds ?? 0}:${(t as any).lastRebuiltAt?.seconds ?? 0}`)
+        .join("|");
     useEffect(() => {
-        const q = query(collectionGroup(db, "entries"));
-        return onSnapshot(q, snap => {
-            const rows = snap.docs
-                .filter(entryDoc => entryDoc.ref.path.startsWith("quizTournaments/"))
-                .map(entryDoc => ({ id: entryDoc.id, ...entryDoc.data() } as TournamentEntry));
-            setAllTournamentEntries(rows);
-        }, () => setAllTournamentEntries([]));
-    }, []);
-
-    useEffect(() => {
-        const q = query(collectionGroup(db, "events"));
-        return onSnapshot(q, snap => {
-            const rows = snap.docs
-                .filter(eventDoc => eventDoc.ref.path.startsWith("quizTournaments/"))
-                .map(eventDoc => ({ id: eventDoc.id, ...eventDoc.data() } as TournamentEvent));
-            setAllTournamentEvents(rows);
-        }, () => setAllTournamentEvents([]));
-    }, []);
+        if (!tournaments.length) { setAllTournamentEntries([]); setAllTournamentEvents([]); return; }
+        let cancelled = false;
+        (async () => {
+            const [entriesSnaps, eventsSnaps] = await Promise.all([
+                Promise.all(tournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "entries"), limit(200))).catch(() => null))),
+                Promise.all(tournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "events"), orderBy("createdAt", "desc"), limit(100))).catch(() => null))),
+            ]);
+            if (cancelled) return;
+            const entryRows: TournamentEntry[] = [];
+            entriesSnaps.forEach((snapshot, idx) => {
+                const t = tournaments[idx];
+                snapshot?.docs.forEach(d => entryRows.push({
+                    id: d.id, ...d.data(),
+                    _tournamentTitle: t?.title || "",
+                    _quizType: normalizeTournamentQuizType(t?.quizType),
+                } as unknown as TournamentEntry));
+            });
+            const eventRows: TournamentEvent[] = [];
+            eventsSnaps.forEach(snapshot => snapshot?.docs.forEach(d => eventRows.push({ id: d.id, ...d.data() } as TournamentEvent)));
+            setAllTournamentEntries(entryRows);
+            setAllTournamentEvents(eventRows);
+        })();
+        return () => { cancelled = true; };
+    }, [tournamentsActivityKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const filteredEntries = entries.filter(entry => `${entry.name || ""} ${entry.phone || ""}`.toLowerCase().includes(queryText.toLowerCase()));
 
@@ -291,7 +312,30 @@ export function AdminTournament() {
         return [...totals.values()]
             .filter(entry => `${entry.name || ""} ${entry.phone || ""}`.toLowerCase().includes(queryText.toLowerCase()))
             .sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
-    }, [scopedEvents, allTournamentEntries, queryText]);    const activeCount = tournaments.filter(tournament => tournament.active && tournament.status !== "completed").length;
+    }, [scopedEvents, allTournamentEntries, queryText]);
+
+    // All-time: every tournament player, the games/tournaments they played, and points.
+    const allPlayersLeaderboard = useMemo(() => {
+        const totals = new Map<string, any>();
+        allTournamentEntries.forEach((entry: any) => {
+            const key = String(entry.phone || entry.id || entry.name || "unknown");
+            const current = totals.get(key) || { phone: entry.phone || key, name: entry.name || "Player", points: 0, tournaments: 0, correct: 0, totalQuestions: 0, games: new Set<string>(), titles: new Set<string>() };
+            current.name = entry.name || current.name;
+            current.points += Number(entry.points || 0);
+            current.tournaments += 1;
+            current.correct += Number(entry.correct || 0);
+            current.totalQuestions += Number(entry.totalQuestions || 0);
+            if (entry._quizType) current.games.add(quizTypeLabels[entry._quizType as TournamentQuizType] || String(entry._quizType));
+            if (entry._tournamentTitle) current.titles.add(entry._tournamentTitle);
+            totals.set(key, current);
+        });
+        return [...totals.values()]
+            .map(p => ({ ...p, accuracy: p.totalQuestions ? Math.round((p.correct / p.totalQuestions) * 100) : 0, gamesList: [...p.games], titlesList: [...p.titles] }))
+            .filter(p => `${p.name || ""} ${p.phone || ""}`.toLowerCase().includes(queryText.toLowerCase()))
+            .sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+    }, [allTournamentEntries, queryText]);
+
+    const activeCount = tournaments.filter(tournament => tournament.active && tournament.status !== "completed").length;
     const totalPoints = allTournamentEntries.reduce((sum, entry) => sum + Math.round(entry.points || 0), 0);
     const rewardSlots = draft.rewards.slice(0, Math.min(draft.rewards.length, Math.max(entries.length, 1)));
     const totalCoinsAwarded = rewardSlots.reduce((sum, reward) => sum + reward.items.reduce((itemSum, item) => {
@@ -393,6 +437,22 @@ export function AdminTournament() {
             setMessage("Failed to rebuild standings: " + String(error));
         } finally {
             setRebuilding(false);
+        }
+    };
+
+    const awardBadges = async () => {
+        if (!selectedId) return;
+        setAwarding(true);
+        setMessage("");
+        try {
+            const fn = httpsCallable(getFunctions(), "awardTournamentBadgesNow");
+            const result = await fn({ tournamentId: selectedId });
+            await writeAdminAudit({ action: "Tournament badges awarded", target: selectedId, details: result.data as any });
+            setMessage(`Badges awarded to top players (${(result.data as any)?.awarded ?? 0} badge${(result.data as any)?.awarded === 1 ? "" : "s"}).`);
+        } catch (error) {
+            setMessage("Failed to award badges: " + String(error));
+        } finally {
+            setAwarding(false);
         }
     };
 
@@ -690,7 +750,10 @@ export function AdminTournament() {
                 <div className="adm-tournament-card">
                     <div className="adm-tournament-card-head">
                         <div><h2>Per-Tournament Entries</h2><span>{tournaments.find(t => t.id === selectedId)?.title || "Selected tournament"} · {filteredEntries.length} players</span></div>
-                        <button className="secondary" disabled={!selectedId || rebuilding} onClick={rebuildStandings}><RefreshCw size={15} /> {rebuilding ? "Rebuilding..." : "Rebuild Standings"}</button>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <button className="secondary" disabled={!selectedId || awarding} onClick={awardBadges} title="Give the reward badges to the current top players (added to their profile)"><Award size={15} /> {awarding ? "Awarding..." : "Award Badges"}</button>
+                            <button className="secondary" disabled={!selectedId || rebuilding} onClick={rebuildStandings}><RefreshCw size={15} /> {rebuilding ? "Rebuilding..." : "Rebuild Standings"}</button>
+                        </div>
                     </div>
                     <div className="adm-tournament-table leaderboard">
                         <div className="thead"><span>Rank</span><span>Player</span><span>Points</span><span>Correct</span><span>Accuracy</span></div>
@@ -715,6 +778,20 @@ export function AdminTournament() {
                             <span className="accuracy">{safeAccuracy(entry)}%</span>
                             <span>All tournaments</span>
                         </div>) : <div className="admin-empty-row">No tournament entries yet. Players appear here after entering and playing any tournament.</div>}
+                    </div>
+                </div>
+                <div className="adm-tournament-card">
+                    <div className="adm-tournament-card-head"><h2>All Tournament Players</h2><span>Every player across all tournaments (all-time) · {allPlayersLeaderboard.length} players</span></div>
+                    <div className="adm-tournament-table leaderboard">
+                        <div className="thead"><span>Rank</span><span>Player</span><span>Points</span><span>Tournaments</span><span>Accuracy</span><span>Games played</span></div>
+                        {allPlayersLeaderboard.length ? allPlayersLeaderboard.slice(0, 200).map((entry, index) => <div className="trow" key={entry.phone || index}>
+                            <span className={`rank rank-${Math.min(index + 1, 4)}`}>{index + 1}</span>
+                            <span className="player-cell"><b>{initials(entry.name)}</b><strong>{entry.name || "Player"}</strong><small>{entry.phone}</small></span>
+                            <span>{Math.round(entry.points || 0).toLocaleString()}</span>
+                            <span>{entry.tournaments || 0}</span>
+                            <span className="accuracy">{entry.accuracy}%</span>
+                            <span title={entry.titlesList.join(", ")}>{entry.gamesList.length ? entry.gamesList.join(", ") : "—"}</span>
+                        </div>) : <div className="admin-empty-row">No tournament players yet.</div>}
                     </div>
                 </div>
                 <div className="adm-tournament-card recent-plays-card">

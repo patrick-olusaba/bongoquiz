@@ -85,10 +85,10 @@ export function normalizeTournamentQuizType(value: unknown): TournamentQuizType 
 }
 
 export const defaultTournamentRewards: TournamentReward[] = [
-    { rank: "1st Place", title: "Champion Pack", items: ["2,000 Coins", "Exclusive Shirt", "Winner Badge"] },
-    { rank: "2nd Place", title: "Silver Pack", items: ["1,000 Coins", "Exclusive Shirt", "Silver Medal"] },
-    { rank: "3rd Place", title: "Bronze Pack", items: ["500 Coins", "Exclusive Shirt", "Bronze Medal"] },
-    { rank: "Top 10", title: "Community Recognition", items: ["Badge", "200 Coins"] },
+    { rank: "1st Place", title: "Champion Pack", items: ["5 Coins", "Winner Badge"] },
+    { rank: "2nd Place", title: "Silver Pack", items: ["3 Coins", "Silver Medal"] },
+    { rank: "3rd Place", title: "Bronze Pack", items: ["1 Coins", "Bronze Medal"] },
+    { rank: "Top 10", title: "Community Recognition", items: ["10 points", "Badge"] },
 ];
 
 export function emptyTournament(): Omit<QuizTournament, "id"> {

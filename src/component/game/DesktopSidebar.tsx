@@ -3,7 +3,7 @@
 // collapsed; on mobile it's a slide-in drawer toggled by a hamburger. It also
 // hosts the menu actions (How to Play, Share, Log Out, …) via the `actions` prop.
 import { type FC, type ReactNode, useEffect, useState } from "react";
-import { Gamepad2, Home, Medal, Menu, Trophy, User, Users, X } from "lucide-react";
+import { Gamepad2, Home, Medal, Menu, Trophy, User, X } from "lucide-react";
 import brandLogo from "../../assets/logo.png";
 import { initials } from "../../utils/tournaments.ts";
 import "../../styles/Sidebar.css";
@@ -39,7 +39,6 @@ const ITEMS: { key: SidebarKey; label: string; Icon: typeof Home }[] = [
     { key: "tournaments", label: "Tournaments", Icon: Trophy },
     { key: "games",       label: "Games",       Icon: Gamepad2 },
     { key: "leaderboard", label: "Leaderboard", Icon: Medal },
-    { key: "community",   label: "Community",   Icon: Users },
     { key: "profile",     label: "Profile",     Icon: User },
 ];
 
