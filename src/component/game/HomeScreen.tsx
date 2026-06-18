@@ -25,6 +25,7 @@ import '../../styles/HomeScreen.css';
 import {BrowseGames} from "./BrowseGames.tsx";
 import { getBongoCoinBalance, recordBonusReward, syncReconciledBongoCoins } from "../../utils/bongoWallet.ts";
 import { getReferralLink, buildWhatsAppShareUrl } from "../../utils/referral.ts";
+import { ensureReferralCode } from "../../utils/playerAuth.ts";
 import { DesktopSidebar, type SidebarKey, type SidebarAction } from "./DesktopSidebar.tsx";
 // import {BrowseGames} from "./BrowseGames.tsx";
 
@@ -568,6 +569,7 @@ export const HomeScreen: FC<Props> = ({
             setShowNameModal(true);
             return;
         }
+        void ensureReferralCode(playerPhone);
         const link = getReferralLink(playerPhone);
         const text = `You are invited to join BongoQuiz. Play trivia games, climb the leaderboard, and earn BongoCoins when you score. Use my invite link to get started: ${link}`;
         window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");

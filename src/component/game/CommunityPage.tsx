@@ -3,6 +3,7 @@ import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, where } fro
 import { CalendarDays, Clock3, Coins, Gamepad2, Gift, Home, Info, Medal, Share2, Star, Trophy, User, Users } from "lucide-react";
 import { db } from "../../firebase.ts";
 import { buildWhatsAppShareUrl, getReferralLink } from "../../utils/referral.ts";
+import { ensureReferralCode } from "../../utils/playerAuth.ts";
 import { BottomNav } from "./BottomNav.tsx";
 import type { MainNavTab } from "../../types/gametypes.ts";
 import brandLogo from "../../assets/logo.png";
@@ -48,6 +49,8 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
     const [leaders, setLeaders] = useState<TournamentEntry[]>([]);
     const [referrals, setReferrals] = useState<any[]>([]);
     const [tab, setTab] = useState<"ongoing" | "upcoming" | "past" | "referrals">("ongoing");
+    const [ongoingSub, setOngoingSub] = useState<"daily" | "weekly" | "participated">("daily");
+    const [playedIds, setPlayedIds] = useState<Set<string>>(new Set());
     const [rewardsOpen, setRewardsOpen] = useState(false);
     const [tick, setTick] = useState(0);
     const howRef = useRef<HTMLDivElement>(null);
@@ -68,12 +71,6 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
     }, []);
 
     useEffect(() => {
-        if (!selectedId) { setLeaders([]); return; }
-        const q = query(collection(db, "quizTournaments", selectedId, "entries"), orderBy("points", "desc"), limit(30));
-        return onSnapshot(q, snap => setLeaders(snap.docs.map(d => ({ id: d.id, ...d.data() } as TournamentEntry))), () => setLeaders([]));
-    }, [selectedId]);
-
-    useEffect(() => {
         const timer = window.setInterval(() => setTick(value => value + 1), 1000);
         return () => window.clearInterval(timer);
     }, []);
@@ -89,22 +86,71 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
         }, () => setReferrals([]));
     }, [currentPhone]);
 
-    const grouped = useMemo(() => ({
-        ongoing: tournaments.filter(t => t.status === "active"),
-        upcoming: tournaments.filter(t => t.status === "scheduled"),
-        past: tournaments.filter(t => t.status === "completed"),
-    }), [tournaments]);
+    // Which tournaments has this player already finished? (entries/{phone} exists)
+    const tournamentIdsKey = tournaments.map(t => t.id).join(",");
+    useEffect(() => {
+        if (!/^07\d{8}$/.test(currentPhone) || !tournaments.length) { setPlayedIds(new Set()); return; }
+        let cancelled = false;
+        Promise.all(tournaments.map(async t => {
+            try { return (await getDoc(doc(db, "quizTournaments", t.id, "entries", currentPhone))).exists() ? t.id : null; }
+            catch { return null; }
+        })).then(ids => { if (!cancelled) setPlayedIds(new Set(ids.filter(Boolean) as string[])); });
+        return () => { cancelled = true; };
+    }, [tournamentIdsKey, currentPhone]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const tournamentTab = tab === "referrals" ? "ongoing" : tab;
-    const currentList = grouped[tournamentTab];
-    const selected = currentList.find(t => t.id === selectedId) || currentList[0] || tournaments.find(t => t.id === selectedId) || tournaments[0];
+    const cycleOf = (t: QuizTournament) => (t.tournamentCycle === "weekly" ? "weekly" : "daily");
+
+    const grouped = useMemo(() => {
+        const ongoing = tournaments.filter(t => t.status === "active");
+        const openToPlay = ongoing.filter(t => !playedIds.has(t.id));
+        return {
+            ongoing,
+            upcoming: tournaments.filter(t => t.status === "scheduled"),
+            past: tournaments.filter(t => t.status === "completed"),
+            // Ongoing sub-lists: only tournaments the player has NOT finished yet,
+            // split by cycle, so they can go attend the ones still open to them.
+            daily: openToPlay.filter(t => cycleOf(t) === "daily"),
+            weekly: openToPlay.filter(t => cycleOf(t) === "weekly"),
+            // Tournaments the player already finished (any status).
+            participated: tournaments.filter(t => playedIds.has(t.id)),
+        };
+    }, [tournaments, playedIds]);
+
+    const showUpcomingTab = grouped.upcoming.length > 0;
+    const showPastTab = grouped.past.length > 0;
+
+    // If the active tab loses all its content (e.g. last upcoming/past one cleared),
+    // fall back to Ongoing so the user never lands on an empty hidden tab.
+    useEffect(() => {
+        if (tab === "upcoming" && !showUpcomingTab) setTab("ongoing");
+        if (tab === "past" && !showPastTab) setTab("ongoing");
+    }, [tab, showUpcomingTab, showPastTab]);
+
+    const currentList =
+        tab === "upcoming" ? grouped.upcoming
+        : tab === "past" ? grouped.past
+        : ongoingSub === "weekly" ? grouped.weekly
+        : ongoingSub === "participated" ? grouped.participated
+        : grouped.daily;
+
+    // Selection is scoped to the current list only — never bleed an ongoing
+    // tournament into the Upcoming / Past tabs.
+    const selected = currentList.find(t => t.id === selectedId) || currentList[0];
 
     const upNext = useMemo(() => {
-        const pool = grouped.upcoming.length ? grouped.upcoming : grouped.ongoing.filter(t => t.id !== selected?.id);
+        const pool = grouped.upcoming.length ? grouped.upcoming : [...grouped.daily, ...grouped.weekly].filter(t => t.id !== selected?.id);
         return pool.slice(0, 6);
     }, [grouped, selected?.id]);
 
-    const alreadyPlayed = !!currentPhone && leaders.some(entry => entry.phone === currentPhone);
+    // Leaderboard for whatever tournament is actually shown.
+    const selectedTournamentId = selected?.id ?? "";
+    useEffect(() => {
+        if (!selectedTournamentId) { setLeaders([]); return; }
+        const q = query(collection(db, "quizTournaments", selectedTournamentId, "entries"), orderBy("points", "desc"), limit(30));
+        return onSnapshot(q, snap => setLeaders(snap.docs.map(d => ({ id: d.id, ...d.data() } as TournamentEntry))), () => setLeaders([]));
+    }, [selectedTournamentId]);
+
+    const alreadyPlayed = !!currentPhone && (playedIds.has(selected?.id ?? "") || leaders.some(entry => entry.phone === currentPhone));
     const currentRank = leaders.findIndex(entry => entry.phone === currentPhone) + 1;
     const parts = useMemo(() => countdownParts(toDate(selected?.endsAt)), [selected?.endsAt, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,6 +165,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
     const isLive = !!selected && selected.status === "active";
 
     const handleReferAndEarn = () => {
+        void ensureReferralCode(currentPhone);
         const link = getReferralLink(currentPhone);
         const text = `You are invited to join BongoQuiz at bongoquiz.com. Play trivia games, climb the leaderboard, and earn BongoCoins with every qualifying score. Join here: ${link}`;
         window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
@@ -126,7 +173,10 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
 
     const chooseTournament = (tournament: QuizTournament) => {
         setSelectedId(tournament.id);
-        setTab(tournament.status === "scheduled" ? "upcoming" : tournament.status === "completed" ? "past" : "ongoing");
+        if (tournament.status === "scheduled") { setTab("upcoming"); return; }
+        if (tournament.status === "completed") { setTab("past"); return; }
+        setTab("ongoing");
+        setOngoingSub(playedIds.has(tournament.id) ? "participated" : cycleOf(tournament));
     };
 
     const joinTournament = async () => {
@@ -200,10 +250,18 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
 
                 <div className="cm-tabs">
                     <button className={tab === "ongoing" ? "active" : ""} onClick={() => setTab("ongoing")}><Trophy size={16} /> Ongoing</button>
-                    <button className={tab === "upcoming" ? "active" : ""} onClick={() => setTab("upcoming")}><CalendarDays size={16} /> Upcoming</button>
-                    <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}><Clock3 size={16} /> Past Results</button>
+                    {showUpcomingTab && <button className={tab === "upcoming" ? "active" : ""} onClick={() => setTab("upcoming")}><CalendarDays size={16} /> Upcoming</button>}
+                    {showPastTab && <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}><Clock3 size={16} /> Past Results</button>}
                     <button className={tab === "referrals" ? "active" : ""} onClick={() => setTab("referrals")}><Share2 size={16} /> Refer & Earn</button>
                 </div>
+
+                {tab === "ongoing" && (
+                    <div className="cm-tabs cm-subtabs">
+                        <button className={ongoingSub === "daily" ? "active" : ""} onClick={() => setOngoingSub("daily")}>Daily{grouped.daily.length ? ` (${grouped.daily.length})` : ""}</button>
+                        <button className={ongoingSub === "weekly" ? "active" : ""} onClick={() => setOngoingSub("weekly")}>Weekly{grouped.weekly.length ? ` (${grouped.weekly.length})` : ""}</button>
+                        <button className={ongoingSub === "participated" ? "active" : ""} onClick={() => setOngoingSub("participated")}>Participated{grouped.participated.length ? ` (${grouped.participated.length})` : ""}</button>
+                    </div>
+                )}
 
                 {tab === "referrals" ? (
                     <section className="cm-referrals-panel">
@@ -247,7 +305,18 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onLeaderbo
                 )}
 
                 {!selected ? (
-                    <section className="cm-empty"><Trophy size={44} /><strong>No tournaments yet</strong><span>New tournaments appear here once an admin makes them visible.</span></section>
+                    <section className="cm-empty">
+                        <Trophy size={44} />
+                        {tab === "ongoing" && ongoingSub === "participated"
+                            ? <><strong>No tournaments played yet</strong><span>Tournaments you finish will show up here.</span></>
+                        : tab === "ongoing" && ongoingSub === "weekly"
+                            ? <><strong>No weekly tournaments open</strong><span>You're all caught up — check the Daily tab or come back later.</span></>
+                        : tab === "ongoing"
+                            ? <><strong>No daily tournaments open</strong><span>You're all caught up — try the Weekly tab or come back later.</span></>
+                        : tab === "upcoming"
+                            ? <><strong>No upcoming tournaments</strong><span>Scheduled tournaments will appear here.</span></>
+                            : <><strong>No past results</strong><span>Completed tournaments will appear here.</span></>}
+                    </section>
                 ) : (
                     <>
                         {/* Featured tournament */}

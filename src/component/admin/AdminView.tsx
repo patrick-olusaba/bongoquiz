@@ -542,9 +542,15 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
                     counts[name] = (counts[name] ?? 0) + 1;
                     return counts;
                 }, {});
+                // Distinct people who actually played in this period (by phone).
+                const normPhone = (p: any) => String(p ?? "").replace(/^\+?254|^0/, "").slice(-9);
+                const activePlayers = new Set(
+                    sessionsInRange.map((session: any) => normPhone(session.phone)).filter(Boolean)
+                ).size;
                 return {
                     label,
                     users: usersInRange.length,
+                    players: activePlayers,
                     games: sessionsInRange.length,
                     gameCounts,
                     revenue: paidInRange.reduce((sum: number, payment: any) => sum + (payment.amount ?? 0), 0),
@@ -624,10 +630,12 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
     const analyticsRows = data.analytics?.[analyticsRange] ?? [];
     const analyticsTotals = analyticsRows.reduce((acc: any, row: any) => ({
         users: acc.users + (row.users ?? 0),
+        players: Math.max(acc.players, row.players ?? 0),
         games: acc.games + row.games,
         revenue: acc.revenue + row.revenue,
         payments: acc.payments + row.payments,
-    }), {users: 0, games: 0, revenue: 0, payments: 0});
+    }), {users: 0, players: 0, games: 0, revenue: 0, payments: 0});
+    const rangeLabel = analyticsRange === "weekly" ? "day" : analyticsRange === "monthly" ? "month" : "year";
     const chartGames = [
         {name: "Bongo Quiz", color: "#4361ee"},
         {name: "Bible Quiz", color: "#059669"},
@@ -637,25 +645,31 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
         {name: "Sudoku", color: "#10b981"},
         {name: "Connect Dots", color: "#e11d48"},
     ];
-    const chartSeries = chartGames.map(game => ({
-        ...game,
-        key: game.name,
-        label: game.name,
-        max: Math.max(...analyticsRows.map((row: any) => row.gameCounts?.[game.name] ?? 0), 1),
-    }));
-    const chartWidth = 760;
-    const chartHeight = 260;
-    const chartPad = {top: 18, right: 28, bottom: 38, left: 42};
-    const pointX = (index: number) => chartPad.left + (index / Math.max(analyticsRows.length - 1, 1)) * (chartWidth - chartPad.left - chartPad.right);
-    const pointY = (value: number, max: number) => chartHeight - chartPad.bottom - (value / Math.max(max, 1)) * (chartHeight - chartPad.top - chartPad.bottom);
-    const chartValue = (row: any, series: any) => row.gameCounts?.[series.name] ?? 0;
-    const makeLinePoints = (series: any) => analyticsRows.map((row: any, index: number) => `${pointX(index)},${pointY(chartValue(row, series), series.max)}`).join(" ");
-    const makeAreaPoints = (series: any) => {
-        const baseY = chartHeight - chartPad.bottom;
-        const line = analyticsRows.map((row: any, index: number) => `${pointX(index)},${pointY(chartValue(row, series), series.max)}`);
-        if (!line.length) return "";
-        return [`${pointX(0)},${baseY}`, ...line, `${pointX(analyticsRows.length - 1)},${baseY}`].join(" ");
+    const chartGameNames = new Set(chartGames.map(g => g.name));
+    // Any session whose gameName isn't in the known list rolls up into "Other".
+    const otherColor = "#94a3b8";
+    const segmentsFor = (row: any) => {
+        const counts: Record<string, number> = {...(row.gameCounts ?? {})};
+        const known = chartGames.map(g => ({...g, value: counts[g.name] ?? 0}));
+        const otherValue = Object.entries(counts).reduce((sum, [name, v]) => sum + (chartGameNames.has(name) ? 0 : Number(v)), 0);
+        return otherValue > 0 ? [...known, {name: "Other", color: otherColor, value: otherValue}] : known;
     };
+    const hasOther = analyticsRows.some((row: any) => Object.keys(row.gameCounts ?? {}).some((name: string) => !chartGameNames.has(name)));
+    const legendItems = hasOther ? [...chartGames, {name: "Other", color: otherColor}] : chartGames;
+    // Shared, real y-axis: tallest total games in any bucket (rounded up a bit).
+    const rawMax = Math.max(...analyticsRows.map((row: any) => row.games ?? 0), 1);
+    const niceMax = (n: number) => { const step = Math.max(1, Math.ceil(n / 4)); return step * 4; };
+    const chartMax = niceMax(rawMax);
+    const chartWidth = 760;
+    const chartHeight = 280;
+    const chartPad = {top: 22, right: 24, bottom: 40, left: 44};
+    const plotW = chartWidth - chartPad.left - chartPad.right;
+    const plotH = chartHeight - chartPad.top - chartPad.bottom;
+    const baseY = chartHeight - chartPad.bottom;
+    const slot = plotW / Math.max(analyticsRows.length, 1);
+    const barW = Math.min(46, slot * 0.55);
+    const slotCenter = (index: number) => chartPad.left + slot * index + slot / 2;
+    const yFor = (value: number) => baseY - (value / chartMax) * plotH;
 
     return <>
         <div className="adm-dashboard-head">
@@ -832,39 +846,75 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
                     ))}
                 </div>
             </div>
-            <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 10, marginBottom: 16}}>
-                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#22c55e", fontSize: "1.2rem"}}>{analyticsTotals.users.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Users</span></div>
-                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#2563eb", fontSize: "1.2rem"}}>{analyticsTotals.games.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Games</span></div>
+            <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 140px), 1fr))", gap: 10, marginBottom: 16}}>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#2563eb", fontSize: "1.2rem"}}>{analyticsTotals.games.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Games played</span></div>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#0891b2", fontSize: "1.2rem"}}>{analyticsTotals.players.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Peak players / {rangeLabel}</span></div>
+                <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#22c55e", fontSize: "1.2rem"}}>{analyticsTotals.users.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>New users</span></div>
                 <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#a855f7", fontSize: "1.2rem"}}>{analyticsTotals.payments.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Payments</span></div>
                 <div style={{background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 8, padding: 12}}><strong style={{color: "#f97316", fontSize: "1.2rem"}}>KSh {analyticsTotals.revenue.toLocaleString()}</strong><br/><span style={{fontSize: "0.75rem", color: "#667085"}}>Revenue</span></div>
             </div>
             <div style={{display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", justifyContent: "center", marginBottom: 10}}>
-                {chartSeries.map(series => (
-                    <span key={series.key} style={{display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.72rem", color: "#667085", fontWeight: 700}}>
-                        <span style={{width: 9, height: 9, borderRadius: 9, background: series.color}}/>{series.label}
+                {legendItems.map(item => (
+                    <span key={item.name} style={{display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.72rem", color: "#667085", fontWeight: 700}}>
+                        <span style={{width: 9, height: 9, borderRadius: 3, background: item.color}}/>{item.name}
                     </span>
                 ))}
+                <span style={{display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.72rem", color: "#667085", fontWeight: 700}}>
+                    <span style={{width: 16, height: 0, borderTop: "3px solid #02173f"}}/>Players
+                </span>
             </div>
             <div style={{width: "100%", overflowX: "auto"}}>
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Analytics area line chart" style={{width: "100%", minWidth: 560, height: "auto", display: "block"}}>
+                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`Games played per ${rangeLabel} with distinct players`} style={{width: "100%", minWidth: 560, height: "auto", display: "block"}}>
+                    {/* Y-axis gridlines + real value labels */}
                     {[0, 1, 2, 3, 4].map(i => {
-                        const y = chartPad.top + i * ((chartHeight - chartPad.top - chartPad.bottom) / 4);
-                        return <line key={i} x1={chartPad.left} x2={chartWidth - chartPad.right} y1={y} y2={y} stroke="#eef2f7" strokeWidth="1"/>;
+                        const value = Math.round((chartMax / 4) * (4 - i));
+                        const y = chartPad.top + i * (plotH / 4);
+                        return (
+                            <g key={i}>
+                                <line x1={chartPad.left} x2={chartWidth - chartPad.right} y1={y} y2={y} stroke="#eef2f7" strokeWidth="1"/>
+                                <text x={chartPad.left - 8} y={y + 4} textAnchor="end" fill="#98a2b3" fontSize="10" fontWeight="700">{value}</text>
+                            </g>
+                        );
                     })}
+                    {/* Stacked game bars per period (height = total games, real scale) */}
+                    {analyticsRows.map((row: any, index: number) => {
+                        const cx = slotCenter(index);
+                        let cursor = baseY;
+                        return (
+                            <g key={`bar-${row.label}`}>
+                                {segmentsFor(row).filter(seg => seg.value > 0).map(seg => {
+                                    const h = (seg.value / chartMax) * plotH;
+                                    cursor -= h;
+                                    return <rect key={seg.name} x={cx - barW / 2} y={cursor} width={barW} height={h} fill={seg.color} rx="2">
+                                        <title>{`${seg.name}: ${seg.value} game${seg.value === 1 ? "" : "s"}`}</title>
+                                    </rect>;
+                                })}
+                                {row.games > 0 && <text x={cx} y={yFor(row.games) - 16} textAnchor="middle" fill="#344054" fontSize="11" fontWeight="800">{row.games}</text>}
+                            </g>
+                        );
+                    })}
+                    {/* Distinct players line (same axis — players ≤ games always) */}
+                    <polyline
+                        points={analyticsRows.map((row: any, index: number) => `${slotCenter(index)},${yFor(row.players ?? 0)}`).join(" ")}
+                        fill="none" stroke="#02173f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 0"
+                    />
                     {analyticsRows.map((row: any, index: number) => (
-                        <text key={row.label} x={pointX(index)} y={chartHeight - 12} textAnchor="middle" fill="#667085" fontSize="11" fontWeight="700">{row.label}</text>
-                    ))}
-                    {chartSeries.map(series => (
-                        <g key={series.key}>
-                            <polygon points={makeAreaPoints(series)} fill={series.color} opacity="0.14"/>
-                            <polyline points={makeLinePoints(series)} fill="none" stroke={series.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                            {analyticsRows.map((row: any, index: number) => (
-                                <circle key={`${series.key}-${row.label}`} cx={pointX(index)} cy={pointY(chartValue(row, series), series.max)} r="4" fill="#fff" stroke={series.color} strokeWidth="2"/>
-                            ))}
+                        <g key={`pl-${row.label}`}>
+                            <circle cx={slotCenter(index)} cy={yFor(row.players ?? 0)} r="4" fill="#fff" stroke="#02173f" strokeWidth="2">
+                                <title>{`${row.players ?? 0} player${(row.players ?? 0) === 1 ? "" : "s"}`}</title>
+                            </circle>
+                            {(row.players ?? 0) > 0 && <text x={slotCenter(index)} y={yFor(row.players ?? 0) - 8} textAnchor="middle" fill="#02173f" fontSize="9.5" fontWeight="800">{row.players}</text>}
                         </g>
+                    ))}
+                    {/* X-axis labels */}
+                    {analyticsRows.map((row: any, index: number) => (
+                        <text key={`x-${row.label}`} x={slotCenter(index)} y={chartHeight - 14} textAnchor="middle" fill="#667085" fontSize="11" fontWeight="700">{row.label}</text>
                     ))}
                 </svg>
             </div>
+            <p style={{fontSize: "0.72rem", color: "#98a2b3", textAlign: "center", margin: "8px 0 0"}}>
+                Bars show games played per {rangeLabel} (coloured by game); the dark line shows how many distinct people played.
+            </p>
         </div>
 
     </>;
@@ -904,8 +954,10 @@ function Players() {
         const paidAmt = payments.filter(pay => norm(pay.phone) === pNorm && pay.status === "paid")
             .reduce((a, pay) => a + (pay.amount ?? 0), 0);
         const lastSess = [...pSessions].sort((a: any, b: any) => (b.playedAt?.seconds ?? 0) - (a.playedAt?.seconds ?? 0))[0];
+        const friendsCount = Array.isArray(p.friends) ? p.friends.filter((x: any) => /^07\d{8}$/.test(String(x))).length : 0;
         return {
             ...p, phone07, games: pSessions.length, spent: paidAmt,
+            friendsCount,
             lastPlayed: lastSess?.playedAt?.toDate?.() ?? null,
             isBanned: banned.has(phone07) || banned.has(p.phone ?? "")
         };
@@ -960,7 +1012,7 @@ function Players() {
                 <table style={s.table}>
                     <thead>
                     <tr>
-                        {["#", "Name", "Phone", "Games", "Spent", "Last Played", "Status", "Action"].map(h => <th
+                        {["#", "Name", "Phone", "Games", "Friends", "Spent", "Last Played", "Status", "Action"].map(h => <th
                             key={h} style={s.th}>{h}</th>)}
                     </tr>
                     </thead>
@@ -975,6 +1027,7 @@ function Players() {
                             <td style={s.td}>{p.name ?? "—"}</td>
                             <td style={s.td}>{p.phone ?? "—"}</td>
                             <td style={{...s.td, fontWeight: 600}}>{p.games}</td>
+                            <td style={{...s.td, fontWeight: 600, color: p.friendsCount ? "#7c3aed" : "#aaa"}}>{p.friendsCount}</td>
                             <td style={{...s.td, color: "#059669", fontWeight: 600}}>KSh {p.spent.toLocaleString()}</td>
                             <td style={{
                                 ...s.td,
@@ -1005,7 +1058,7 @@ function Players() {
                         </tr>
                     )) : (
                         <tr>
-                            <td colSpan={8} style={{...s.td, textAlign: "center", color: "#aaa"}}>No players yet</td>
+                            <td colSpan={9} style={{...s.td, textAlign: "center", color: "#aaa"}}>No players yet</td>
                         </tr>
                     )}
                     </tbody>
@@ -1608,6 +1661,22 @@ function Referrals() {
         .sort((a, b) => Number(b.referralEarnedCoins || 0) - Number(a.referralEarnedCoins || 0))
         .slice(0, 12);
 
+    // ── Social / Friends (manual friend connections) ───────────────────────────
+    const friendsOf = (player: any) => Array.isArray(player.friends)
+        ? player.friends.filter((x: any) => /^07\d{8}$/.test(String(x))) : [];
+    const usingFriends = players.filter(player => friendsOf(player).length > 0);
+    const totalFriendLinks = usingFriends.reduce((sum, player) => sum + friendsOf(player).length, 0);
+    const friendConnections = Math.round(totalFriendLinks / 2); // mutual pairs
+    const avgFriends = usingFriends.length ? (totalFriendLinks / usingFriends.length).toFixed(1) : '0';
+    const mostConnected = [...usingFriends]
+        .sort((a, b) => friendsOf(b).length - friendsOf(a).length)
+        .slice(0, 12);
+    const socialSummary = [
+        { label: 'Players using friends', value: usingFriends.length.toLocaleString() },
+        { label: 'Friend connections', value: friendConnections.toLocaleString() },
+        { label: 'Avg friends / user', value: avgFriends },
+    ];
+
     const summary = [
         { label: 'Redemptions', value: recentRewards.length.toLocaleString() },
         { label: 'Referrer coins', value: totalReferralCoins.toLocaleString() },
@@ -1694,6 +1763,33 @@ function Referrals() {
                     <span key={`p3-${index}`}>{player.name ?? '—'}</span>,
                     <span key={`p4-${index}`}>{Number(player.referralCount || 0).toLocaleString()}</span>,
                 ]) : [[<span key="empty">No pending referrals</span>, '—', '—', '—']]}
+            />
+        </Card>
+
+        <Card title="Social & Friends">
+            <div style={{display: 'grid', gap: 14}}>
+                <div style={{fontSize: '0.82rem', color: '#475467', lineHeight: 1.5}}>
+                    Manual friend connections (players adding each other by phone to track points). These are tracking-only — no coins are earned from added friends.
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12}}>
+                    {socialSummary.map(item => (
+                        <div key={item.label} style={{padding: 14, borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb'}}>
+                            <div style={{fontSize: '0.72rem', color: '#667085', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em'}}>{item.label}</div>
+                            <div style={{fontSize: '1.4rem', fontWeight: 900, color: '#7c3aed'}}>{item.value}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </Card>
+
+        <Card title="Most Connected Players">
+            <Table
+                heads={["Player", "Phone", "Friends added"]}
+                rows={mostConnected.length ? mostConnected.map((player, index) => [
+                    <span key={`mc1-${index}`}>{player.name ?? '—'}</span>,
+                    <span key={`mc2-${index}`}>{player.phone ?? player.id ?? '—'}</span>,
+                    <span key={`mc3-${index}`}>{friendsOf(player).length.toLocaleString()}</span>,
+                ]) : [[<span key="empty">No friend connections yet</span>, '—', '—']]}
             />
         </Card>
     </>;

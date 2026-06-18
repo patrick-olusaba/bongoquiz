@@ -83,6 +83,24 @@ function referralCoinsForScore(score: number): number {
     return Math.min(Math.floor(score / REFERRAL_COIN_STEP), REFERRAL_MAX_REFERRER_COINS);
 }
 
+/**
+ * Resolve a referee's stored referral marker to the referrer's phone.
+ * Supports the new masked code (`pendingReferralCode`, looked up against the
+ * `players.referralCode` field) and legacy raw-phone links (`pendingReferrer`).
+ * Returns "" when no single owner can be resolved.
+ */
+async function resolveReferrerPhone(playerData: FirebaseFirestore.DocumentData | undefined): Promise<string> {
+    const legacyPhone = String(playerData?.pendingReferrer || "");
+    if (/^07\d{8}$/.test(legacyPhone)) return legacyPhone;
+
+    const code = String(playerData?.pendingReferralCode || "");
+    if (!/^[a-z0-9]{6,14}$/.test(code)) return "";
+    const matches = await db.collection("players").where("referralCode", "==", code).limit(2).get();
+    if (matches.size !== 1) return ""; // unknown or ambiguous code
+    const phone = String(matches.docs[0].get("phone") || matches.docs[0].id);
+    return /^07\d{8}$/.test(phone) ? phone : "";
+}
+
 async function redeemEligibleReferralForSession(params: { newUserPhone: string; score: number; game: string; sessionId: string; name?: string }) {
     const { newUserPhone, score, game, sessionId, name = "Player" } = params;
     if (!/^07\d{8}$/.test(newUserPhone)) return { redeemed: false, reason: "invalid-phone" };
@@ -92,16 +110,26 @@ async function redeemEligibleReferralForSession(params: { newUserPhone: string; 
 
     const playerRef = db.collection("players").doc(newUserPhone);
     const redemptionRef = db.collection("referrals").doc(newUserPhone);
+
+    // Resolve the referrer before the transaction. New links carry a masked
+    // code (`pendingReferralCode`); legacy links carry the raw phone
+    // (`pendingReferrer`). Resolving a code needs a query, which is cleaner
+    // outside the transaction.
+    const preSnap = await playerRef.get();
+    const resolvedReferrerPhone = await resolveReferrerPhone(preSnap.data());
+    if (!/^07\d{8}$/.test(resolvedReferrerPhone)) return { redeemed: false, reason: "no-referrer" };
+    if (resolvedReferrerPhone === newUserPhone) return { redeemed: false, reason: "self-referral" };
+
     let referrerPhone = "";
 
     const result = await db.runTransaction(async (tx) => {
         const [playerSnap, existing] = await Promise.all([tx.get(playerRef), tx.get(redemptionRef)]);
         if (existing.exists) return { redeemed: false, reason: "already-redeemed" };
 
-        const pendingReferrer = String(playerSnap.data()?.pendingReferrer || "");
-        if (!/^07\d{8}$/.test(pendingReferrer)) return { redeemed: false, reason: "no-referrer" };
-        if (pendingReferrer === newUserPhone) return { redeemed: false, reason: "self-referral" };
-        referrerPhone = pendingReferrer;
+        // Re-check the pending marker still exists (guards a concurrent redeem).
+        const data = playerSnap.data() || {};
+        if (!data.pendingReferrer && !data.pendingReferralCode) return { redeemed: false, reason: "no-referrer" };
+        referrerPhone = resolvedReferrerPhone;
 
         tx.set(redemptionRef, {
             newUserPhone,
@@ -132,6 +160,7 @@ async function redeemEligibleReferralForSession(params: { newUserPhone: string; 
         }, { merge: true });
         tx.update(playerRef, {
             pendingReferrer: admin.firestore.FieldValue.delete(),
+            pendingReferralCode: admin.firestore.FieldValue.delete(),
             referredBy: referrerPhone,
             referralRedeemedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -2071,14 +2100,24 @@ export const onPlayerCreated = functions.firestore
  * The normal path is server-side via saved non-tournament sessions.
  */
 export const redeemReferral = functions.https.onCall(
-    async (data: { newUserPhone?: string; referrerPhone?: string; score?: number; game?: string; sessionId?: string; name?: string }) => {
+    async (data: { newUserPhone?: string; referrerPhone?: string; referrerCode?: string; score?: number; game?: string; sessionId?: string; name?: string }) => {
         const newUserPhone = String(data?.newUserPhone || "");
         const referrerPhone = String(data?.referrerPhone || "");
+        const referrerCode = String(data?.referrerCode || "").trim().toLowerCase();
         const score = Number(data?.score || 0);
         if (!/^07\d{8}$/.test(newUserPhone)) throw new functions.https.HttpsError("invalid-argument", "Invalid new user phone");
-        if (!/^07\d{8}$/.test(referrerPhone)) throw new functions.https.HttpsError("invalid-argument", "Invalid referrer phone");
-        if (newUserPhone === referrerPhone) throw new functions.https.HttpsError("invalid-argument", "Cannot refer yourself");
-        await db.collection("players").doc(newUserPhone).set({ pendingReferrer: referrerPhone }, { merge: true });
+
+        // New path: masked code. Legacy path: raw referrer phone.
+        let pending: Record<string, string>;
+        if (/^[a-z0-9]{6,14}$/.test(referrerCode)) {
+            pending = { pendingReferralCode: referrerCode };
+        } else if (/^07\d{8}$/.test(referrerPhone)) {
+            if (newUserPhone === referrerPhone) throw new functions.https.HttpsError("invalid-argument", "Cannot refer yourself");
+            pending = { pendingReferrer: referrerPhone };
+        } else {
+            throw new functions.https.HttpsError("invalid-argument", "A referrer code or phone is required");
+        }
+        await db.collection("players").doc(newUserPhone).set(pending, { merge: true });
         return redeemEligibleReferralForSession({
             newUserPhone,
             score,

@@ -5,6 +5,7 @@ import type { WheelSegment } from "../../types/gametypes.ts";
 import { checkAchievements, unlockAchievements, type Achievement } from "../../utils/achievements.ts";
 import { recordPlayToday } from "../../utils/streakDays.ts";
 import { getReferralLink, buildWhatsAppShareUrl } from "../../utils/referral.ts";
+import { ensureReferralCode } from "../../utils/playerAuth.ts";
 import '../../styles/style.css';
 import '../../styles/FinalResultScreen.css';
 
@@ -83,6 +84,7 @@ export const FinalResultScreen: FC<Props> = ({
 
     const handleWhatsAppInvite = () => {
         const phone = localStorage.getItem("bongo_player_phone");
+        void ensureReferralCode(phone);
         const link  = getReferralLink(phone);
         const text  = `I scored ${total.toLocaleString()} points on BongoQuiz as ${playerName}. Join me on BongoQuiz, play any non-tournament game, and start earning BongoCoins when you score. Use my invite link: ${link}`;
         window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");

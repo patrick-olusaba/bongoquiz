@@ -130,6 +130,44 @@
 .lb-full-btn { width: calc(100% - 32px); min-height: 66px; margin: 16px; border: 2px solid #be22ff; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #fff; background: rgba(70, 0, 110, .18); font: inherit; font-size: 1.08rem; font-weight: 950; text-transform: uppercase; }
 .lb-full-btn svg:last-child { margin-left: auto; }
 
+/* Friends board */
+.lb-friends { border-top: 1px solid rgba(255,255,255,.08); }
+.lb-refer-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 16px 18px 4px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,196,61,.3); background: linear-gradient(135deg, rgba(152,0,255,.16), rgba(255,196,61,.08)); }
+.lb-refer-copy { flex: 1; min-width: 180px; }
+.lb-refer-copy strong { display: inline-flex; align-items: center; gap: 6px; color: #ffd86b; font-size: 1rem; font-weight: 950; }
+.lb-refer-copy span { display: block; margin-top: 3px; color: rgba(255,255,255,.66); font-size: .82rem; line-height: 1.45; }
+.lb-refer-btn { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #9800ff, #d000c8); font: inherit; font-weight: 950; cursor: pointer; box-shadow: 0 8px 22px rgba(152,0,255,.3); }
+.lb-friend-add-block { padding: 10px 18px 0; }
+.lb-friend-add-label { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,.5); font-size: .8rem; font-weight: 700; margin-bottom: 8px; }
+.lb-friend-add { display: flex; gap: 10px; padding: 0 0 6px; }
+.lb-friend-add input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05); color: #fff; font: inherit; font-size: 1rem; }
+.lb-friend-add input::placeholder { color: rgba(255,255,255,.42); }
+.lb-friend-add button { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #9800ff, #5a0c8c); font: inherit; font-weight: 900; cursor: pointer; }
+.lb-friend-error { color: #ff7a90; font-size: .88rem; font-weight: 700; margin: 4px 18px 0; }
+.lb-friends-empty { padding: 26px 22px; text-align: center; color: rgba(255,255,255,.6); font-size: .98rem; line-height: 1.5; }
+.lb-friends-note { padding: 12px 18px 18px; color: rgba(255,255,255,.42); font-size: .76rem; line-height: 1.5; }
+.lb-friends-note b { color: rgba(255,255,255,.62); }
+
+/* Compact, mobile-first friend rows */
+.lb-friend-list { border-top: 1px solid rgba(255,255,255,.08); }
+.lb-friend-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-top: 1px solid rgba(255,255,255,.06); }
+.lb-friend-row:first-child { border-top: 0; }
+.lb-friend-row.is-player { background: rgba(152,0,255,.12); }
+.lb-friend-rank { flex: none; width: 18px; text-align: center; color: rgba(255,255,255,.5); font-weight: 900; font-size: .9rem; }
+.lb-friend-avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #196ee8, #d000c8); font-weight: 950; font-size: .85rem; }
+.lb-friend-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lb-friend-main b { color: #fff; font-size: .98rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-friend-main small { color: rgba(255,255,255,.44); font-size: .76rem; }
+.lb-friend-right { flex: none; display: flex; align-items: center; gap: 8px; }
+.lb-friend-points { display: inline-flex; align-items: baseline; gap: 3px; color: #ffd400; font-size: 1.02rem; font-weight: 950; }
+.lb-friend-points small { color: rgba(255,212,0,.6); font-size: .66rem; font-weight: 800; }
+.lb-friend-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: .66rem; font-weight: 900; text-transform: uppercase; letter-spacing: .3px; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.lb-friend-tag.referred { color: #ffd86b; background: rgba(255,196,61,.14); border: 1px solid rgba(255,196,61,.3); }
+.lb-friend-tag.referrer { color: #8fd0ff; background: rgba(33,150,243,.14); border: 1px solid rgba(33,150,243,.32); }
+.lb-friend-tag.added { color: rgba(255,255,255,.55); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16); }
+.lb-friend-remove { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); cursor: pointer; }
+.lb-friend-remove:hover { color: #ff7a90; border-color: rgba(255,122,144,.5); }
+
 .lb-more-games { margin: 22px 0 0; }
 .lb-more-games .home-browse-games { margin: 0; padding: 22px 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(18, 17, 45, .7); }
 .lb-more-games .home-browse-header { margin-bottom: 18px; }
