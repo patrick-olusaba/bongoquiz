@@ -180,6 +180,7 @@ export function AdminTournament() {
     const [awarding, setAwarding] = useState(false);
     const [message, setMessage] = useState("");
     const [queryText, setQueryText] = useState("");
+    const [recordTournaments, setRecordTournaments] = useState<QuizTournament[]>([]);
     const [questions, setQuestions] = useState<TournamentQuestion[]>([]);
     const blankQuestion = { question: "", options: ["", "", "", ""], answer: 0 };
     const [questionDraft, setQuestionDraft] = useState<Omit<TournamentQuestion, "id">>({...blankQuestion, difficulty: "easy"});
@@ -199,10 +200,15 @@ export function AdminTournament() {
     useEffect(() => {
         const q = query(collection(db, "quizTournaments"), orderBy("updatedAt", "desc"), limit(30));
         return onSnapshot(q, snap => {
-            const rows = snap.docs.map(d => ({ id: d.id, ...d.data() } as QuizTournament & { deleted?: boolean })).filter(tournament => !tournament.deleted);
+            const allRows = snap.docs.map(d => ({ id: d.id, ...d.data() } as QuizTournament));
+            const rows = allRows.filter(tournament => !tournament.deleted);
+            setRecordTournaments(allRows);
             setTournaments(rows);
             setSelectedId(current => rows.some(tournament => tournament.id === current) ? current : rows[0]?.id || "");
-        }, () => setTournaments([]));
+        }, () => {
+            setRecordTournaments([]);
+            setTournaments([]);
+        });
     }, []);
 
     useEffect(() => {
@@ -255,21 +261,21 @@ export function AdminTournament() {
     // A collection-group query (the old approach) is blocked by the security
     // rules, which left the All-Tournaments Leaderboard and Recent Plays empty.
     // Re-fetches whenever a tournament records a new entry / is rebuilt.
-    const tournamentsActivityKey = tournaments
+    const tournamentsActivityKey = recordTournaments
         .map(t => `${t.id}:${(t as any).lastEntryAt?.seconds ?? 0}:${(t as any).lastRebuiltAt?.seconds ?? 0}`)
         .join("|");
     useEffect(() => {
-        if (!tournaments.length) { setAllTournamentEntries([]); setAllTournamentEvents([]); return; }
+        if (!recordTournaments.length) { setAllTournamentEntries([]); setAllTournamentEvents([]); return; }
         let cancelled = false;
         (async () => {
             const [entriesSnaps, eventsSnaps] = await Promise.all([
-                Promise.all(tournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "entries"), limit(200))).catch(() => null))),
-                Promise.all(tournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "events"), orderBy("createdAt", "desc"), limit(100))).catch(() => null))),
+                Promise.all(recordTournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "entries"), limit(200))).catch(() => null))),
+                Promise.all(recordTournaments.map(t => getDocs(query(collection(db, "quizTournaments", t.id, "events"), orderBy("createdAt", "desc"), limit(100))).catch(() => null))),
             ]);
             if (cancelled) return;
             const entryRows: TournamentEntry[] = [];
             entriesSnaps.forEach((snapshot, idx) => {
-                const t = tournaments[idx];
+                const t = recordTournaments[idx];
                 snapshot?.docs.forEach(d => entryRows.push({
                     id: d.id, ...d.data(),
                     _tournamentTitle: t?.title || "",
@@ -409,12 +415,15 @@ export function AdminTournament() {
                 endsAt: endsAt ? new Date(endsAt).toISOString() : null,
                 rewards: draft.rewards.map(reward => ({ ...reward, items: reward.items.map(item => item.trim()).filter(Boolean) })),
             };
-            const payloadId = draft.id || selectedId;
+            const payloadId = draft.id;
             if (payloadId) payload.id = payloadId;
             const fn = httpsCallable(getFunctions(), "saveQuizTournament");
             const result = await fn(payload);
             const id = (result.data as any)?.id || payloadId;
-            if (id) setSelectedId(id);
+            if (id) {
+                setSelectedId(id);
+                setDraft(current => ({ ...current, id }));
+            }
             await writeAdminAudit({ action: "Quiz tournament saved", target: id || draft.title, details: payload });
             setMessage("Tournament saved.");
         } catch (error) {
@@ -650,9 +659,9 @@ export function AdminTournament() {
                 setSelectedId(nextTournament?.id || "");
                 setDraft(makeDraft(nextTournament));
             }
-            await writeAdminAudit({ action: "Quiz tournament archived", target: pendingDelete.id, details: { title: pendingDelete.title, questionsKept: true } });
+            await writeAdminAudit({ action: "Quiz tournament archived", target: pendingDelete.id, details: { title: pendingDelete.title, questionsKept: true, playerRecordsKept: true } });
             setPendingDelete(null);
-            setMessage("Tournament deleted from the active list. Its questions were kept.");
+            setMessage("Tournament removed from the active list. Its questions and player records were kept.");
         } catch (error) {
             setMessage("Failed to delete tournament: " + String(error));
         } finally {
@@ -682,7 +691,7 @@ export function AdminTournament() {
             {pendingDelete && <div className="adm-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-tournament-title">
                 <div className="adm-confirm-modal">
                     <h2 id="delete-tournament-title">Delete tournament?</h2>
-                    <p><strong>{pendingDelete.title}</strong> will be removed from the active tournament list. Its questions will be kept.</p>
+                    <p><strong>{pendingDelete.title}</strong> will be removed from the active tournament list. Its questions and player records will be kept.</p>
                     <div className="adm-confirm-actions"><button type="button" className="secondary" onClick={() => setPendingDelete(null)} disabled={deletingTournament}>Cancel</button><button type="button" className="danger" onClick={confirmDeleteTournament} disabled={deletingTournament}>{deletingTournament ? "Deleting..." : "Delete Tournament"}</button></div>
                 </div>
             </div>}

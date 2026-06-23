@@ -1,6 +1,7 @@
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { CalendarDays, Clock3, Coins, Gift, Medal, Share2, Star, Trophy, Users } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Coins, Gift, Headset, Medal, Rocket, Search, Share2, Star, Trophy, User, Users, Zap } from "lucide-react";
 import { db } from "../../firebase.ts";
 import { buildWhatsAppShareUrl, getReferralLink } from "../../utils/referral.ts";
 import { ensureReferralCode } from "../../utils/playerAuth.ts";
@@ -44,15 +45,20 @@ const playerTitle = (rank: number) =>
     rank === 1 ? "Quiz Master" : rank === 2 ? "Knowledge King" : rank === 3 ? "Top Player" : "Active Member";
 
 export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate }) => {
+    const navigate = useNavigate();
     const [tournaments, setTournaments] = useState<QuizTournament[]>([]);
+    const [recordTournaments, setRecordTournaments] = useState<QuizTournament[]>([]);
     const [selectedId, setSelectedId] = useState("");
     const [leaders, setLeaders] = useState<TournamentEntry[]>([]);
     const [allLeaders, setAllLeaders] = useState<TournamentEntry[]>([]);
     const [referrals, setReferrals] = useState<any[]>([]);
-    const [tab, setTab] = useState<"ongoing" | "upcoming" | "past" | "referrals">("ongoing");
-    const [ongoingSub, setOngoingSub] = useState<"daily" | "weekly" | "participated">("daily");
+    const [search, setSearch] = useState("");
+    const [tab, setTab] = useState<"ongoing" | "upcoming" | "past" | "activity" | "referrals">("ongoing");
+    const [ongoingSub, setOngoingSub] = useState<"daily" | "weekly">("daily");
     const [playedIds, setPlayedIds] = useState<Set<string>>(new Set());
     const [rewardsOpen, setRewardsOpen] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [myEntries, setMyEntries] = useState<{ tournament: QuizTournament; entry: TournamentEntry; rank: number; field: number }[]>([]);
     const [tick, setTick] = useState(0);
     const howRef = useRef<HTMLDivElement>(null);
 
@@ -62,13 +68,17 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     useEffect(() => {
         const q = query(collection(db, "quizTournaments"), orderBy("updatedAt", "desc"), limit(30));
         return onSnapshot(q, snap => {
-            const rows = snap.docs
-                .map(d => ({ id: d.id, ...d.data() } as QuizTournament & { deleted?: boolean }))
-                .filter(t => t.active !== false && !t.deleted)
+            const allRows = snap.docs
+                .map(d => ({ id: d.id, ...d.data() } as QuizTournament))
                 .map(t => ({ ...t, quizType: normalizeTournamentQuizType(t.quizType) } as QuizTournament));
+            const rows = allRows.filter(t => t.active !== false && !t.deleted);
+            setRecordTournaments(allRows);
             setTournaments(rows);
             setSelectedId(current => current || rows.find(t => t.status === "active")?.id || rows[0]?.id || "");
-        }, () => setTournaments([]));
+        }, () => {
+            setRecordTournaments([]);
+            setTournaments([]);
+        });
     }, []);
 
     useEffect(() => {
@@ -88,11 +98,11 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     }, [currentPhone]);
 
     // Which tournaments has this player already finished? (entries/{phone} exists)
-    const tournamentIdsKey = tournaments.map(t => t.id).join(",");
+    const tournamentIdsKey = recordTournaments.map(t => t.id).join(",");
     useEffect(() => {
-        if (!/^07\d{8}$/.test(currentPhone) || !tournaments.length) { setPlayedIds(new Set()); return; }
+        if (!/^07\d{8}$/.test(currentPhone) || !recordTournaments.length) { setPlayedIds(new Set()); return; }
         let cancelled = false;
-        Promise.all(tournaments.map(async t => {
+        Promise.all(recordTournaments.map(async t => {
             try { return (await getDoc(doc(db, "quizTournaments", t.id, "entries", currentPhone))).exists() ? t.id : null; }
             catch { return null; }
         })).then(ids => { if (!cancelled) setPlayedIds(new Set(ids.filter(Boolean) as string[])); });
@@ -121,30 +131,37 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
             weekly: openToPlay.filter(t => cycleOf(t) === "weekly"),
             // Tournaments the player already finished — but never future/scheduled
             // ones (a rescheduled tournament keeps the old entry; it isn't "played").
-            participated: tournaments.filter(t => playedIds.has(t.id) && !notStarted(t)),
+            participated: recordTournaments.filter(t => playedIds.has(t.id) && !notStarted(t)),
         };
-    }, [tournaments, playedIds]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [tournaments, recordTournaments, playedIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const showUpcomingTab = grouped.upcoming.length > 0;
-    const showPastTab = grouped.past.length > 0;
 
     // If the active tab loses all its content (e.g. last upcoming/past one cleared),
     // fall back to Ongoing so the user never lands on an empty hidden tab.
+    // "upcoming" is an internal state reached only by tapping an Up Next card;
+    // if its tournament disappears, fall back to Ongoing. Past Results / My
+    // Activity are always-visible tabs that show their own empty states.
     useEffect(() => {
         if (tab === "upcoming" && !showUpcomingTab) setTab("ongoing");
-        if (tab === "past" && !showPastTab) setTab("ongoing");
-    }, [tab, showUpcomingTab, showPastTab]);
+    }, [tab, showUpcomingTab]);
 
     const currentList =
         tab === "upcoming" ? grouped.upcoming
         : tab === "past" ? grouped.past
+        : tab === "activity" ? grouped.participated
         : ongoingSub === "weekly" ? grouped.weekly
-        : ongoingSub === "participated" ? grouped.participated
         : grouped.daily;
 
-    // Selection is scoped to the current list only — never bleed an ongoing
-    // tournament into the Upcoming / Past tabs.
-    const selected = currentList.find(t => t.id === selectedId) || currentList[0];
+    // Desktop search narrows the current list by title; an empty query is a no-op.
+    const searchTerm = search.trim().toLowerCase();
+    const visibleList = searchTerm
+        ? currentList.filter(t => (t.title || "").toLowerCase().includes(searchTerm))
+        : currentList;
+
+    // Selection is scoped to the current (visible) list only — never bleed an
+    // ongoing tournament into the Upcoming / Past tabs.
+    const selected = visibleList.find(t => t.id === selectedId) || visibleList[0] || (searchTerm ? undefined : currentList[0]);
 
     const upNext = useMemo(() => {
         const pool = grouped.upcoming.length ? grouped.upcoming : [...grouped.daily, ...grouped.weekly].filter(t => t.id !== selected?.id);
@@ -164,9 +181,9 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     // tab/tournament is selected. Aggregated from per-tournament reads (a
     // collection-group query is blocked by the current security rules).
     useEffect(() => {
-        if (!tournaments.length) { setAllLeaders([]); return; }
+        if (!recordTournaments.length) { setAllLeaders([]); return; }
         let cancelled = false;
-        Promise.all(tournaments.map(t =>
+        Promise.all(recordTournaments.map(t =>
             getDocs(query(collection(db, "quizTournaments", t.id, "entries"), limit(200))).catch(() => null)
         )).then(snaps => {
             if (cancelled) return;
@@ -185,6 +202,45 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         return () => { cancelled = true; };
     }, [tournamentIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Current player's entry + rank in every tournament they've finished — powers
+    // the My Activity dashboard (score, placement and accuracy per tournament).
+    const participatedKey = grouped.participated.map(t => t.id).join(",");
+    useEffect(() => {
+        if (!/^07\d{8}$/.test(currentPhone) || !grouped.participated.length) { setMyEntries([]); return; }
+        let cancelled = false;
+        Promise.all(grouped.participated.map(async t => {
+            try {
+                const snap = await getDocs(query(collection(db, "quizTournaments", t.id, "entries"), orderBy("points", "desc"), limit(200)));
+                const rows = snap.docs.map(d => ({ id: d.id, ...d.data() } as TournamentEntry));
+                const idx = rows.findIndex(e => e.phone === currentPhone || e.id === currentPhone);
+                return idx < 0 ? null : { tournament: t, entry: rows[idx], rank: idx + 1, field: rows.length };
+            } catch { return null; }
+        })).then(rows => { if (!cancelled) setMyEntries(rows.filter(Boolean) as { tournament: QuizTournament; entry: TournamentEntry; rank: number; field: number }[]); });
+        return () => { cancelled = true; };
+    }, [participatedKey, currentPhone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const isMe = (e: TournamentEntry) => e.phone === currentPhone || e.id === currentPhone;
+
+    const myTotals = useMemo(() => {
+        const points = myEntries.reduce((sum, m) => sum + Number(m.entry.points || 0), 0);
+        const correct = myEntries.reduce((sum, m) => sum + Number(m.entry.correct || 0), 0);
+        const answered = myEntries.reduce((sum, m) => sum + Number(m.entry.totalQuestions || 0), 0);
+        const bestRank = myEntries.reduce((best, m) => Math.min(best, m.rank), Infinity);
+        return {
+            played: myEntries.length,
+            points,
+            accuracy: answered ? Math.round((correct / answered) * 100) : 0,
+            podiums: myEntries.filter(m => m.rank <= 3).length,
+            bestRank: Number.isFinite(bestRank) ? bestRank : 0,
+        };
+    }, [myEntries]);
+
+    // Live + soon tournaments for the notification bell popover.
+    const notifItems = useMemo(() => [
+        ...grouped.ongoing.map(t => ({ t, kind: "live" as const })),
+        ...grouped.upcoming.map(t => ({ t, kind: "soon" as const })),
+    ], [grouped]);
+
     const alreadyPlayed = !!currentPhone && (playedIds.has(selected?.id ?? "") || leaders.some(entry => entry.phone === currentPhone));
     const currentRank = allLeaders.findIndex(entry => entry.phone === currentPhone) + 1;
     const parts = useMemo(() => countdownParts(toDate(selected?.endsAt)), [selected?.endsAt, tick]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -193,7 +249,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     const stats = [
         { icon: <Users size={20} />, value: grouped.ongoing.length, label: "Live Now", cls: "stat-purple" },
         { icon: <Trophy size={20} />, value: tournaments.length, label: "Tournaments", cls: "stat-blue" },
-        { icon: <Star size={20} />, value: allLeaders.length, label: "Players", cls: "stat-green" },
+        { icon: <Star size={20} />, value: allLeaders.length, label: "Players Online", cls: "stat-green" },
         { icon: <Medal size={20} />, value: topScore.toLocaleString(), label: "Top Score", cls: "stat-gold" },
     ];
 
@@ -210,8 +266,9 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         setSelectedId(tournament.id);
         if (tournament.status === "scheduled") { setTab("upcoming"); return; }
         if (tournament.status === "completed") { setTab("past"); return; }
+        if (playedIds.has(tournament.id)) { setTab("activity"); return; }
         setTab("ongoing");
-        setOngoingSub(playedIds.has(tournament.id) ? "participated" : cycleOf(tournament));
+        setOngoingSub(cycleOf(tournament));
     };
 
     const joinTournament = async () => {
@@ -240,27 +297,44 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                     <img src={brandLogo} alt="BongoQuiz" />
                     <div><strong>BongoQuiz</strong><span>Tournaments</span></div>
                 </div>
+                <button className="cm-bell" aria-label="Notifications" onClick={() => setNotifOpen(o => !o)}>
+                    <Bell size={18} />
+                    {grouped.ongoing.length > 0 && <i>{grouped.ongoing.length}</i>}
+                </button>
             </header>
 
             {/* ── Main column ─────────────────────────────────────────────── */}
             <main className="cm-main">
                 <div className="cm-head">
-                    <h1>{tab === "referrals" ? "Refer & Earn" : "🏆 Tournaments"}</h1>
-                    <p>{tab === "referrals" ? "Invite friends and track the BongoCoins you earn from referrals." : "Compete, learn and win with the BongoQuiz community."}</p>
+                    <div className="cm-head-titles">
+                        <h1>{tab === "referrals" ? "Refer & Earn" : "🏆 Tournaments"}</h1>
+                        <p>{tab === "referrals" ? "Invite friends and track the BongoCoins you earn from referrals." : "Compete, learn and win with the BongoQuiz community."}</p>
+                    </div>
+                    <div className="cm-head-actions">
+                        <label className="cm-search">
+                            <Search size={16} />
+                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tournaments..." aria-label="Search tournaments" />
+                        </label>
+                        <button className="cm-bell" aria-label="Notifications" onClick={() => setNotifOpen(o => !o)}>
+                            <Bell size={18} />
+                            {grouped.ongoing.length > 0 && <i>{grouped.ongoing.length}</i>}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="cm-tabs">
-                    <button className={tab === "ongoing" ? "active" : ""} onClick={() => setTab("ongoing")}><Trophy size={16} /> Ongoing</button>
-                    {showUpcomingTab && <button className={tab === "upcoming" ? "active" : ""} onClick={() => setTab("upcoming")}><CalendarDays size={16} /> Upcoming</button>}
-                    {showPastTab && <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}><Clock3 size={16} /> Past Results</button>}
-                    <button className={tab === "referrals" ? "active" : ""} onClick={() => setTab("referrals")}><Share2 size={16} /> Refer & Earn</button>
+                <div className="cm-tabs-row">
+                    <div className="cm-tabs">
+                        <button className={tab === "ongoing" ? "active" : ""} onClick={() => setTab("ongoing")}><Zap size={16} /> Ongoing</button>
+                        <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}><Clock3 size={16} /> Past Results</button>
+                        <button className={tab === "activity" ? "active" : ""} onClick={() => setTab("activity")}><User size={16} /> My Activity</button>
+                    </div>
+                    <button className={`cm-refer-btn ${tab === "referrals" ? "active" : ""}`} onClick={() => setTab("referrals")}><Gift size={16} /> Refer &amp; Earn</button>
                 </div>
 
                 {tab === "ongoing" && (
                     <div className="cm-tabs cm-subtabs">
                         <button className={ongoingSub === "daily" ? "active" : ""} onClick={() => setOngoingSub("daily")}>Daily{grouped.daily.length ? ` (${grouped.daily.length})` : ""}</button>
                         <button className={ongoingSub === "weekly" ? "active" : ""} onClick={() => setOngoingSub("weekly")}>Weekly{grouped.weekly.length ? ` (${grouped.weekly.length})` : ""}</button>
-                        <button className={ongoingSub === "participated" ? "active" : ""} onClick={() => setOngoingSub("participated")}>Participated{grouped.participated.length ? ` (${grouped.participated.length})` : ""}</button>
                     </div>
                 )}
 
@@ -292,11 +366,60 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                             )) : <div className="cm-referrals-empty">No invites redeemed yet.</div>}
                         </div>
                     </section>
+                ) : tab === "activity" ? (
+                    <section className="cm-activity">
+                        {!/^07\d{8}$/.test(currentPhone) ? (
+                            <div className="cm-empty">
+                                <User size={44} />
+                                <strong>Sign in to see your activity</strong>
+                                <span>Your tournament history and stats will appear here.</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="cm-activity-stats">
+                                    <div className="cm-stat stat-purple"><Trophy size={20} /><strong>{myTotals.played}</strong><span>Played</span></div>
+                                    <div className="cm-stat stat-gold"><Star size={20} /><strong>{myTotals.points.toLocaleString()}</strong><span>Total Points</span></div>
+                                    <div className="cm-stat stat-green"><Medal size={20} /><strong>{myTotals.accuracy}%</strong><span>Accuracy</span></div>
+                                    <div className="cm-stat stat-blue"><Medal size={20} /><strong>{myTotals.bestRank ? `#${myTotals.bestRank}` : "—"}</strong><span>Best Rank</span></div>
+                                </div>
+                                {myTotals.podiums > 0 && (
+                                    <div className="cm-activity-badge"><Medal size={18} /> You've finished on the podium {myTotals.podiums} time{myTotals.podiums > 1 ? "s" : ""}! 🎉</div>
+                                )}
+                                <div className="cm-section-head"><h3>Your Tournaments</h3></div>
+                                {myEntries.length ? (
+                                    <div className="cm-activity-list">
+                                        {myEntries.map(({ tournament, entry, rank, field }) => {
+                                            const acc = entry.totalQuestions ? Math.round((Number(entry.correct || 0) / Number(entry.totalQuestions)) * 100) : 0;
+                                            return (
+                                                <button key={tournament.id} className="cm-activity-item" onClick={() => chooseTournament(tournament)}>
+                                                    <span className="cm-activity-icon">{quizTypeIcons[normalizeTournamentQuizType(tournament.quizType)]}</span>
+                                                    <div className="cm-activity-meta">
+                                                        <b>{tournament.title}</b>
+                                                        <small>{quizTypeLabels[normalizeTournamentQuizType(tournament.quizType)]} · {acc}% accuracy</small>
+                                                    </div>
+                                                    <div className="cm-activity-score">
+                                                        <span className={`cm-activity-rank ${rank <= 3 ? `rank-${rank}` : ""}`}>#{rank}<i>/{field}</i></span>
+                                                        <b><Star size={12} /> {Math.round(Number(entry.points || 0)).toLocaleString()}</b>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="cm-empty">
+                                        <Trophy size={44} />
+                                        <strong>No tournaments played yet</strong>
+                                        <span>Join a live tournament to start building your history.</span>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </section>
                 ) : (
                     <>
-                {currentList.length > 1 && (
+                {visibleList.length > 1 && (
                     <div className="cm-picker">
-                        {currentList.map(t => (
+                        {visibleList.map(t => (
                             <button key={t.id} className={selected?.id === t.id ? "active" : ""} onClick={() => chooseTournament(t)}>
                                 <span className="cm-picker-icon">{quizTypeIcons[normalizeTournamentQuizType(t.quizType)]}</span>
                                 <span className="cm-picker-text"><b>{t.title}</b><small>{quizTypeLabels[normalizeTournamentQuizType(t.quizType)]}</small></span>
@@ -308,8 +431,8 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                 {!selected ? (
                     <section className="cm-empty">
                         <Trophy size={44} />
-                        {tab === "ongoing" && ongoingSub === "participated"
-                            ? <><strong>No tournaments played yet</strong><span>Tournaments you finish will show up here.</span></>
+                        {searchTerm
+                            ? <><strong>No tournaments match "{search.trim()}"</strong><span>Try a different search term.</span></>
                         : tab === "ongoing" && ongoingSub === "weekly"
                             ? <><strong>No weekly tournaments open</strong><span>You're all caught up — check the Daily tab or come back later.</span></>
                         : tab === "ongoing"
@@ -345,7 +468,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                                             </div>
                                             {alreadyPlayed
                                                 ? <div className="cm-enter played">✓ Played</div>
-                                                : <button className="cm-enter" onClick={joinTournament}>{quizTypeIcons[normalizeTournamentQuizType(selected.quizType)]} Enter Now</button>}
+                                                : <button className="cm-enter" onClick={joinTournament}><Rocket size={18} /> Join Now</button>}
                                             <small className="cm-enter-note">{alreadyPlayed ? "Score updates after each session" : "Join before time runs out!"}</small>
                                         </>
                                     ) : (
@@ -363,6 +486,59 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                                 </button>
                             )}
                         </section>
+
+                        {/* Live standings / final results for the selected tournament */}
+                        {(selected.status === "active" || selected.status === "completed") && leaders.length > 0 && (
+                            <section className="cm-section cm-standings">
+                                <div className="cm-section-head">
+                                    <h3>{selected.status === "completed" ? "🏁 Final Results" : "📊 Live Standings"}</h3>
+                                    <span className="cm-standings-count">{leaders.length.toLocaleString()} {leaders.length === 1 ? "player" : "players"}</span>
+                                </div>
+
+                                {selected.status === "completed" && leaders.length >= 3 && (
+                                    <div className="cm-podium">
+                                        {[1, 0, 2].map(slot => {
+                                            const e = leaders[slot];
+                                            if (!e) return <div key={slot} className="cm-podium-spot empty" />;
+                                            const place = slot + 1;
+                                            return (
+                                                <div key={e.id} className={`cm-podium-spot place-${place} ${isMe(e) ? "me" : ""}`}>
+                                                    <span className="cm-avatar">{initials(e.name)}</span>
+                                                    <Medal className={`medal-${place}`} size={20} />
+                                                    <b>{isMe(e) ? "You" : e.name}</b>
+                                                    <small><Star size={11} /> {Math.round(Number(e.points || 0)).toLocaleString()}</small>
+                                                    <i className="cm-podium-num">{place}</i>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                <div className="cm-standings-list">
+                                    {leaders.slice(0, 8).map((e, i) => (
+                                        <div className={`cm-st-row ${isMe(e) ? "me" : ""}`} key={e.id}>
+                                            <span className={`cm-st-rank rank-${i + 1}`}>{i + 1}</span>
+                                            <span className="cm-avatar sm">{initials(e.name)}</span>
+                                            <div className="cm-st-name"><b>{isMe(e) ? "You" : e.name}</b></div>
+                                            <span className="cm-st-score"><Star size={12} /> {Math.round(Number(e.points || 0)).toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                    {(() => {
+                                        const myIdx = leaders.findIndex(isMe);
+                                        if (myIdx < 8) return null;
+                                        const e = leaders[myIdx];
+                                        return (
+                                            <div className="cm-st-row me sticky">
+                                                <span className="cm-st-rank">{myIdx + 1}</span>
+                                                <span className="cm-avatar sm">{initials(e.name)}</span>
+                                                <div className="cm-st-name"><b>You</b></div>
+                                                <span className="cm-st-score"><Star size={12} /> {Math.round(Number(e.points || 0)).toLocaleString()}</span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </section>
+                        )}
 
                         {/* Mobile-only stats strip */}
                         <section className="cm-stats-strip">
@@ -465,7 +641,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                 <div className="cm-card cm-contact">
                     <strong>Have questions or feedback?</strong>
                     <span>We'd love to hear from you!</span>
-                    <button onClick={() => onNavigate("home")}>Back to Home</button>
+                    <button className="cm-contact-btn" onClick={() => navigate("/contact")}><Headset size={16} /> Contact Support</button>
                 </div>
             </aside>
 
@@ -487,6 +663,31 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                         </div>
                     </div>
                 </div>
+            )}
+
+            {notifOpen && (
+                <>
+                    <div className="cm-notif-backdrop" onClick={() => setNotifOpen(false)} />
+                    <div className="cm-notif" role="dialog" aria-label="Notifications">
+                        <div className="cm-notif-head">
+                            <strong><Bell size={15} /> Notifications</strong>
+                            <button type="button" onClick={() => setNotifOpen(false)} aria-label="Close">×</button>
+                        </div>
+                        {notifItems.length ? (
+                            <div className="cm-notif-list">
+                                {notifItems.map(({ t, kind }) => (
+                                    <button key={t.id} className="cm-notif-item" onClick={() => { chooseTournament(t); setNotifOpen(false); }}>
+                                        <span className="cm-notif-icon">{quizTypeIcons[normalizeTournamentQuizType(t.quizType)]}</span>
+                                        <div className="cm-notif-meta"><b>{t.title}</b><small>{t.subtitle}</small></div>
+                                        <span className={`cm-notif-tag ${kind}`}>{kind === "live" ? "LIVE" : "SOON"}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="cm-notif-empty">No live or upcoming tournaments right now.</div>
+                        )}
+                    </div>
+                </>
             )}
 
             <BottomNav active="community" onNavigate={onNavigate} />

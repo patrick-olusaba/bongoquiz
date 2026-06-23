@@ -20,6 +20,8 @@ export type QuizTournament = {
     startsAt?: any;
     endsAt?: any;
     rewards: TournamentReward[];
+    deleted?: boolean;
+    deletedAt?: any;
     createdAt?: any;
     updatedAt?: any;
 };
