@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-03
 **Status:** Design — approved for planning
-**Scope:** Slice 1 of a larger "make the website better" effort. This spec covers **player retention** only, plus a visual theme refresh applied to the retention surfaces.
+**Scope:** Slice 1 of a larger "make the website better" effort. Two co-equal tracks: (A) a **player retention** overhaul, and (B) a **look-and-feel refresh** of the player shell and core game (Refined Neon). The 8 mini-games keep their current styling in this spec.
 
 ---
 
@@ -33,12 +33,12 @@ Additionally, the current UI is a maximalist neon-arcade palette (gold + magenta
 - One clear, prominent **daily streak** with strict loss-aversion (miss a day → reset).
 - A working **web push** re-engagement channel with scheduled, targeted nudges.
 - A **comeback surface** that greets returning players.
-- A restrained **Refined Neon** theme (gold + cyan on deep navy; retire magenta/purple) applied to all new/affected retention surfaces.
+- A restrained **Refined Neon** theme (gold + cyan on deep navy; retire magenta/purple) applied across the **player shell and core game** — not just the retention surfaces.
 
 **Non-goals**
 - No streak-freeze / forgiveness token (explicit decision: strict streak).
-- No changes to core gameplay rounds, economy balance, or other games' internals.
-- No full-app re-theme in this spec — theme changes are scoped to home/streak/comeback/push surfaces and the shared design tokens they introduce. Broader re-theming is a follow-up.
+- No changes to core gameplay *logic*, economy balance, or the mini-games' internals.
+- No re-theme of the 8 mini-games (Bible, Biology, Math, General Knowledge, Sudoku, StreetBongo, ConnectDots, SumTen) in this spec — their bespoke internal styling is a follow-up. This spec re-themes the shared shell + core Bongo quiz only.
 
 ## 4. Design
 
@@ -89,14 +89,21 @@ When a returning player opens the app (detected via last-activity gap + server s
 - If the streak already lapsed while away: *"Your streak reset — start a new one today,"* framed as a fresh start, not a punishment.
 - Closes the loop from the push notification (push → open → comeback surface → play → streak advances).
 
-### 4.5 Refined Neon theme
+### 4.5 Refined Neon look-and-feel refresh (player shell + core game)
 
-Introduce shared design tokens (CSS variables) and apply them to the surfaces above; do **not** re-theme unrelated screens in this spec.
+A real visual refresh — not just recoloring the new retention surfaces. Introduce shared design tokens and roll them through the main player-facing shell and the core Bongo quiz.
 
-- **Palette:** deep navy background (`#0b0f24`–`#141a33`), **gold** primary (`#ffd200`), **cyan** secondary (`#22d3ee`/`#7dd3fc`), muted slate for structure (`#26304f`, `#5566aa`). **Retire** magenta/violet/green as hero colors on these surfaces.
-- **Tokens:** define as CSS custom properties (e.g., `--bq-bg`, `--bq-primary`, `--bq-secondary`, `--bq-surface`, `--bq-border`, `--bq-muted`) in a shared stylesheet (extend `src/styles/theme.css`) so later specs can adopt them app-wide.
-- **Applied to:** the streak card + week strip, the comeback card, the push opt-in prompt, and the home "Play now" primary CTA + leaderboard-row highlight for the current player.
-- Reference mockup: Direction **A · Refined Neon** (saved under `.superpowers/brainstorm/`).
+- **Palette:** deep navy background (`#0b0f24`–`#141a33`), **gold** primary (`#ffd200`), **cyan** secondary (`#22d3ee`/`#7dd3fc`), muted slate for structure (`#26304f`, `#5566aa`). **Retire** magenta/violet/green as hero colors. Reference mockup: Direction **A · Refined Neon** (saved under `.superpowers/brainstorm/`).
+- **Tokens (single source of truth):** define CSS custom properties (e.g., `--bq-bg`, `--bq-surface`, `--bq-primary`, `--bq-secondary`, `--bq-border`, `--bq-muted`, plus radius/shadow/spacing tokens) in a shared stylesheet (extend `src/styles/theme.css`). Every re-themed surface consumes tokens — no more hard-coded hexes on these screens — so the remaining mini-games and later slices can adopt the same system.
+- **In scope (player shell + core game):**
+  - App shell: loading screen, `PWAInstallBanner`, bottom nav (`BottomNav`), desktop sidebar (`DesktopSidebar`), top bars (`QuizTopBar`, `PointsBar`).
+  - Home: `HomeScreen` surfaces (hero/play CTA, browse games, plus the new streak/comeback cards from §4.2/§4.4).
+  - Core Bongo quiz rounds: `Round1Screen`, `Round2*`, `Round3SpinScreen`, transitions, `FinalResultScreen`, `SessionSummary`.
+  - Progress/economy surfaces: `Leaderboardscreen` (with current-player row highlight), `ProfilePage`, `BongoWalletPage`, `GameHistory`.
+  - Shared components: primary/secondary buttons, cards, modals (daily bonus, deduction, how-to-play, player-name), chips/badges.
+- **Consistency pass:** unify button/card/modal styling to the token set and a consistent radius/shadow/spacing scale so the shell reads as one product rather than many independently-styled screens.
+- **Out of scope (this spec):** the 8 mini-games' internal screens, admin, and support — they keep current styling (follow-up specs can adopt the same tokens).
+- **Non-regression:** re-theming is visual only; no layout logic, routing, or gameplay behavior changes. Verify each re-themed screen still functions and is responsive (mobile-first, given the PWA/WhatsApp audience).
 
 ## 5. Data & interfaces (summary)
 
@@ -116,13 +123,15 @@ Introduce shared design tokens (CSS variables) and apply them to the surfaces ab
 ## 7. Build sequence
 
 1. **Identity fix** (§4.1) — stop the bleeding; smallest, highest-safety, no new infra.
-2. **Streak unification + surface** (§4.2) + **Refined Neon tokens** (§4.5) — mostly surfacing existing server state.
-3. **Comeback surface** (§4.4) — depends on 1 & 2.
-4. **Web push** (§4.3) — largest; client SW + opt-in, then Firestore tokens, then scheduled functions, then cleanup.
+2. **Refined Neon tokens** (§4.5) — define the shared token set + base components first, so everything after consumes tokens.
+3. **Streak unification + surface** (§4.2) — surface existing server state, built token-native.
+4. **Shell + core-game re-theme** (§4.5) — roll tokens through app shell, home, rounds, leaderboard, profile, wallet, shared components; consistency pass.
+5. **Comeback surface** (§4.4) — depends on 1–3.
+6. **Web push** (§4.3) — largest; client SW + opt-in, then Firestore tokens, then scheduled functions, then cleanup.
 
 ## 8. Success criteria
 
 - Returning players retain identity/progress 100% of the time (regression test on the old wipe path).
 - One streak, visibly surfaced, advancing/resetting correctly across day boundaries.
 - Push opt-in obtainable and tokens stored; at least one scheduled nudge type delivering on device with a working deep link.
-- Refined Neon tokens applied consistently across streak, comeback, and push surfaces.
+- Refined Neon tokens applied consistently across the player shell + core game (§4.5 in-scope list), with no hard-coded hexes remaining on those screens and no functional/responsive regressions.
