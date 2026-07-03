@@ -15,7 +15,7 @@
   /* ── Borders ─────────────────────────────────────────── */
   --border:      rgba(255, 255, 255, 0.08);
   --border-2:    rgba(255, 255, 255, 0.14);
-  --border-gold: rgba(245, 197, 24, 0.35);
+  --border-gold: rgba(255, 210, 0, 0.35);
   --border-purple: rgba(123, 97, 255, 0.35);
 
   /* ── Brand Colours ───────────────────────────────────── */
@@ -40,7 +40,7 @@
   --text-4:      rgba(255, 255, 255, 0.22);
 
   /* ── Gradients ───────────────────────────────────────── */
-  --grad-gold:   linear-gradient(135deg, #F5C518, #F59E0B);
+  --grad-gold:   linear-gradient(135deg, #FFD200, #FFB800);
   --grad-purple: linear-gradient(135deg, #7B61FF, #A855F7);
   --grad-hero:   linear-gradient(180deg, #141A33 0%, #0B0F24 100%);
   --grad-bg:     radial-gradient(ellipse at 50% 0%, rgba(255,210,0,0.10) 0%, transparent 55%),
@@ -189,7 +189,7 @@
 }
 
 /* Rank colors */
-.rank-1 { color: #F5C518; }
+.rank-1 { color: #FFD200; }
 .rank-2 { color: #C0C0C0; }
 .rank-3 { color: #CD7F32; }
 
