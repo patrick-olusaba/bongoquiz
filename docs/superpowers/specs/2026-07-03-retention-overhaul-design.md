@@ -1,8 +1,8 @@
 # BongoQuiz — Player Retention Overhaul (+ Refined Neon theme)
 
 **Date:** 2026-07-03
-**Status:** Design — approved for planning
-**Scope:** Slice 1 of a larger "make the website better" effort. Two co-equal tracks: (A) a **player retention** overhaul, and (B) a **look-and-feel refresh** of the player shell and core game (Refined Neon). The 8 mini-games keep their current styling in this spec.
+**Status:** Design — **deferred** (next slice, after the look-and-feel refresh)
+**Scope:** The **player retention** overhaul. The Refined Neon look-and-feel refresh was split into its own spec that ships first — see `2026-07-03-look-and-feel-refresh-design.md`. This spec's retention surfaces (streak card, comeback screen, push prompt) **consume the design tokens** established there rather than defining their own; §4.5 below is retained only as the styling brief for those surfaces.
 
 ---
 
