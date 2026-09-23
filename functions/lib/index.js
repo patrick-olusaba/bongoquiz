@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateSudokuPuzzle = exports.redeemReferral = exports.onPlayerCreated = exports.saveConnectDotsScore = exports.connectDotsDeposit = exports.saveSudokuScore = exports.sudokuDeposit = exports.calculateScore = exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = exports.claimDailyBonus = exports.getDailyBonusStatus = exports.rebuildQuizTournament = exports.submitQuizTournamentAnswers = exports.saveQuizTournament = exports.saveTopScorersTournamentSettings = exports.rebuildTopScorersTournament = exports.stopGameTimer = exports.getGameTimer = exports.startGameTimer = exports.claimQuestReward = exports.onBongoMarketOrderChanged = exports.reconcileAllPlayerCoins = void 0;
+exports.generateSudokuPuzzle = exports.redeemReferral = exports.onPlayerCreated = exports.saveConnectDotsScore = exports.connectDotsDeposit = exports.saveSudokuScore = exports.sudokuDeposit = exports.saveSumTenSession = exports.calculateScore = exports.saveGenQuizSession = exports.genQuizDeposit = exports.saveBioQuizSession = exports.bioQuizDeposit = exports.saveMathQuizSession = exports.mathQuizDeposit = exports.saveBibleQuizSession = exports.bibleQuizDeposit = exports.stkCallback = exports.deposit = exports.getLeaderboard = exports.saveGameSession = exports.consumeGrantedSession = exports.claimDailyBonus = exports.getDailyBonusStatus = exports.awardTournamentBadgesNow = exports.onQuizTournamentCompleted = exports.rebuildQuizTournament = exports.submitQuizTournamentAnswers = exports.saveQuizTournament = exports.saveTopScorersTournamentSettings = exports.rebuildTopScorersTournament = exports.stopGameTimer = exports.getGameTimer = exports.startGameTimer = exports.claimQuestReward = exports.onBongoMarketOrderChanged = exports.reconcileAllPlayerCoins = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const http = __importStar(require("http"));
@@ -50,6 +50,7 @@ const COIN_LEADERBOARDS = {
     general: "genQuizLeaderboard",
     sudoku: "sudokuLeaderboard",
     connectDots: "connectDotsLeaderboard",
+    sumTen: "sumTenLeaderboard",
 };
 const COIN_SESSION_COLLECTIONS = [
     { collection: "gameSessions", scoreField: "total" },
@@ -59,6 +60,7 @@ const COIN_SESSION_COLLECTIONS = [
     { collection: "genQuizSessions", scoreField: "score" },
     { collection: "sudokuSessions", scoreField: "score" },
     { collection: "connectDotsSessions", scoreField: "score" },
+    { collection: "sumTenSessions", scoreField: "score" },
 ];
 function sessionCoinPoints(collectionName, data) {
     if (typeof data.pointsEarned === "number")
@@ -113,6 +115,25 @@ function referralCoinsForScore(score) {
         return 0;
     return Math.min(Math.floor(score / REFERRAL_COIN_STEP), REFERRAL_MAX_REFERRER_COINS);
 }
+/**
+ * Resolve a referee's stored referral marker to the referrer's phone.
+ * Supports the new masked code (`pendingReferralCode`, looked up against the
+ * `players.referralCode` field) and legacy raw-phone links (`pendingReferrer`).
+ * Returns "" when no single owner can be resolved.
+ */
+async function resolveReferrerPhone(playerData) {
+    const legacyPhone = String(playerData?.pendingReferrer || "");
+    if (/^07\d{8}$/.test(legacyPhone))
+        return legacyPhone;
+    const code = String(playerData?.pendingReferralCode || "");
+    if (!/^[a-z0-9]{6,14}$/.test(code))
+        return "";
+    const matches = await db.collection("players").where("referralCode", "==", code).limit(2).get();
+    if (matches.size !== 1)
+        return ""; // unknown or ambiguous code
+    const phone = String(matches.docs[0].get("phone") || matches.docs[0].id);
+    return /^07\d{8}$/.test(phone) ? phone : "";
+}
 async function redeemEligibleReferralForSession(params) {
     const { newUserPhone, score, game, sessionId, name = "Player" } = params;
     if (!/^07\d{8}$/.test(newUserPhone))
@@ -122,17 +143,26 @@ async function redeemEligibleReferralForSession(params) {
         return { redeemed: false, reason: "below-threshold" };
     const playerRef = db.collection("players").doc(newUserPhone);
     const redemptionRef = db.collection("referrals").doc(newUserPhone);
+    // Resolve the referrer before the transaction. New links carry a masked
+    // code (`pendingReferralCode`); legacy links carry the raw phone
+    // (`pendingReferrer`). Resolving a code needs a query, which is cleaner
+    // outside the transaction.
+    const preSnap = await playerRef.get();
+    const resolvedReferrerPhone = await resolveReferrerPhone(preSnap.data());
+    if (!/^07\d{8}$/.test(resolvedReferrerPhone))
+        return { redeemed: false, reason: "no-referrer" };
+    if (resolvedReferrerPhone === newUserPhone)
+        return { redeemed: false, reason: "self-referral" };
     let referrerPhone = "";
     const result = await db.runTransaction(async (tx) => {
         const [playerSnap, existing] = await Promise.all([tx.get(playerRef), tx.get(redemptionRef)]);
         if (existing.exists)
             return { redeemed: false, reason: "already-redeemed" };
-        const pendingReferrer = String(playerSnap.data()?.pendingReferrer || "");
-        if (!/^07\d{8}$/.test(pendingReferrer))
+        // Re-check the pending marker still exists (guards a concurrent redeem).
+        const data = playerSnap.data() || {};
+        if (!data.pendingReferrer && !data.pendingReferralCode)
             return { redeemed: false, reason: "no-referrer" };
-        if (pendingReferrer === newUserPhone)
-            return { redeemed: false, reason: "self-referral" };
-        referrerPhone = pendingReferrer;
+        referrerPhone = resolvedReferrerPhone;
         tx.set(redemptionRef, {
             newUserPhone,
             referrerPhone,
@@ -162,6 +192,7 @@ async function redeemEligibleReferralForSession(params) {
         }, { merge: true });
         tx.update(playerRef, {
             pendingReferrer: admin.firestore.FieldValue.delete(),
+            pendingReferralCode: admin.firestore.FieldValue.delete(),
             referredBy: referrerPhone,
             referralRedeemedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -541,6 +572,7 @@ async function rebuildCurrentTopScorersTournament() {
         { collection: "genQuizSessions", game: "general", scoreField: "score" },
         { collection: "sudokuSessions", game: "sudoku", scoreField: "score" },
         { collection: "connectDotsSessions", game: "connectDots", scoreField: "score" },
+        { collection: "sumTenSessions", game: "sumTen", scoreField: "score" },
     ];
     const totals = new Map();
     for (const config of collections) {
@@ -910,6 +942,78 @@ exports.rebuildQuizTournament = functions.https.onCall(async (data, context) => 
     await tournamentRef.set({ lastRebuiltAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     return { success: true, rebuilt: totals.size };
 });
+// ── Tournament badges → player profile ───────────────────────────────────────
+// Reward items are descriptive strings (e.g. "5 Coins", "Winner Badge"). Coins
+// and points are payouts; everything else (badges / medals) is a profile badge.
+function badgeItemsFromReward(reward) {
+    const items = Array.isArray(reward?.items) ? reward.items : [];
+    return items.map((item) => String(item).trim()).filter((item) => item && !/coins?|points?/i.test(item));
+}
+/**
+ * Award the rewards' badge items to the top-ranked players of a tournament and
+ * store them on each player's profile (`players/{phone}.tournamentBadges`).
+ * Idempotent: a badge already recorded for the same tournament + label is skipped.
+ */
+async function awardTournamentBadges(tournamentId) {
+    const tournamentRef = db.collection("quizTournaments").doc(tournamentId);
+    const tournamentSnap = await tournamentRef.get();
+    if (!tournamentSnap.exists)
+        return { awarded: 0 };
+    const tournament = tournamentSnap.data() || {};
+    const rewards = Array.isArray(tournament.rewards) ? tournament.rewards : [];
+    if (!rewards.length)
+        return { awarded: 0 };
+    const title = String(tournament.title || "Tournament");
+    const entriesSnap = await tournamentRef.collection("entries").orderBy("points", "desc").limit(10).get();
+    let awarded = 0;
+    for (let i = 0; i < entriesSnap.docs.length; i++) {
+        const rank = i + 1;
+        const data = entriesSnap.docs[i].data();
+        const phone = String(data.phone || entriesSnap.docs[i].id);
+        if (!/^07\d{8}$/.test(phone))
+            continue;
+        if (Number(data.points || 0) <= 0)
+            continue; // must have actually scored
+        const reward = rewards[Math.min(rank - 1, rewards.length - 1)] || {};
+        const labels = badgeItemsFromReward(reward);
+        if (!labels.length)
+            continue;
+        const rankLabel = String(reward.rank || `Rank ${rank}`);
+        const playerRef = db.collection("players").doc(phone);
+        const playerSnap = await playerRef.get();
+        const existing = Array.isArray(playerSnap.data()?.tournamentBadges) ? playerSnap.data().tournamentBadges : [];
+        const newBadges = labels
+            .filter(label => !existing.some(b => b?.tournamentId === tournamentId && b?.label === label))
+            .map(label => ({ label, tournamentId, tournamentTitle: title, rank, rankLabel, awardedAt: Date.now() }));
+        if (!newBadges.length)
+            continue;
+        await playerRef.set({ tournamentBadges: admin.firestore.FieldValue.arrayUnion(...newBadges) }, { merge: true });
+        awarded += newBadges.length;
+    }
+    await tournamentRef.set({ badgesAwardedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return { awarded };
+}
+// Auto-award when an admin marks a tournament "completed".
+exports.onQuizTournamentCompleted = functions.firestore
+    .document("quizTournaments/{tournamentId}")
+    .onUpdate(async (change, context) => {
+    const before = change.before.data() || {};
+    const after = change.after.data() || {};
+    const becameCompleted = before.status !== "completed" && after.status === "completed";
+    if (!becameCompleted || after.badgesAwardedAt)
+        return;
+    await awardTournamentBadges(context.params.tournamentId);
+});
+// Admin-triggered award (covers tournaments already completed before this shipped).
+exports.awardTournamentBadgesNow = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError("unauthenticated", "Admin sign-in required");
+    const tournamentId = String(data?.tournamentId || "");
+    if (!tournamentId)
+        throw new functions.https.HttpsError("invalid-argument", "Tournament id required");
+    const result = await awardTournamentBadges(tournamentId);
+    return { success: true, ...result };
+});
 exports.getDailyBonusStatus = functions.https.onCall(async (data) => {
     const phone = typeof data?.phone === "string" ? data.phone : "";
     if (!/^07\d{8}$/.test(phone))
@@ -930,7 +1034,7 @@ exports.getDailyBonusStatus = functions.https.onCall(async (data) => {
 exports.claimDailyBonus = functions.https.onCall(async (data) => {
     if (typeof data.name !== "string" || data.name.trim().length === 0)
         throw new functions.https.HttpsError("invalid-argument", "Invalid name");
-    if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone))
+    if (typeof data.phone !== "string" || !/^0\d{9}$/.test(data.phone))
         throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
     const name = data.name.trim().slice(0, 20);
     const phone = data.phone;
@@ -1840,6 +1944,53 @@ exports.calculateScore = functions.https.onCall(async (data) => {
     }
     return { score: Math.round(s) };
 });
+exports.saveSumTenSession = functions.https.onCall(async (data) => {
+    if (typeof data.name !== "string" || !data.name.trim())
+        throw new functions.https.HttpsError("invalid-argument", "Invalid name");
+    if (typeof data.phone !== "string" || !/^0\d{9}$/.test(data.phone))
+        throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    if (typeof data.score !== "number")
+        throw new functions.https.HttpsError("invalid-argument", "Invalid score");
+    const name = data.name.trim().slice(0, 20);
+    const score = Math.max(0, Math.round(data.score));
+    const level = Math.max(1, Math.round(Number(data.level || 1)));
+    const gameInLevel = Math.max(1, Math.round(Number(data.gameInLevel || 1)));
+    const totalGamesCompleted = Math.max(0, Math.round(Number(data.totalGamesCompleted || 0)));
+    const hintsUsed = Math.max(0, Math.round(Number(data.hintsUsed || 0)));
+    const completed = data.completed === true;
+    const endedReason = typeof data.endedReason === "string" ? data.endedReason.slice(0, 40) : "unknown";
+    const msisdn = data.phone.replace(/^0/, "254");
+    await postScoreToSql(msisdn, score);
+    const pointsEarned = score;
+    const sessionPayload = {
+        name,
+        phone: data.phone,
+        score,
+        pointsEarned,
+        level,
+        gameInLevel,
+        totalGamesCompleted,
+        hintsUsed,
+        completed,
+        endedReason,
+        playedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (typeof data.paidPaymentId === "string" && data.paidPaymentId.trim()) {
+        sessionPayload.paidPaymentId = data.paidPaymentId.trim().slice(0, 160);
+    }
+    const sessionRef = await db.collection("sumTenSessions").add(sessionPayload);
+    const lbRef = db.collection("sumTenLeaderboard").doc(data.phone);
+    const lbSnap = await lbRef.get();
+    if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < score) {
+        await lbRef.set({ name, phone: data.phone, score, level, gameInLevel, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+    await reconcilePlayerCoins(data.phone, name);
+    await redeemEligibleReferralForSession({ newUserPhone: data.phone, score, game: "sumTen", sessionId: sessionRef.id, name });
+    await addTopScorersTournamentPoints({ phone: data.phone, name, game: "sumTen", score });
+    await updateQuestProgress(data.phone, "daily_games");
+    await updateQuestProgress(data.phone, "total_games");
+    return { success: true, sessionId: sessionRef.id };
+});
 // ─────────────────────────────────────────────────────────────────────────────
 // SUDOKU BACKEND
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2073,14 +2224,24 @@ exports.onPlayerCreated = functions.firestore
 exports.redeemReferral = functions.https.onCall(async (data) => {
     const newUserPhone = String(data?.newUserPhone || "");
     const referrerPhone = String(data?.referrerPhone || "");
+    const referrerCode = String(data?.referrerCode || "").trim().toLowerCase();
     const score = Number(data?.score || 0);
     if (!/^07\d{8}$/.test(newUserPhone))
         throw new functions.https.HttpsError("invalid-argument", "Invalid new user phone");
-    if (!/^07\d{8}$/.test(referrerPhone))
-        throw new functions.https.HttpsError("invalid-argument", "Invalid referrer phone");
-    if (newUserPhone === referrerPhone)
-        throw new functions.https.HttpsError("invalid-argument", "Cannot refer yourself");
-    await db.collection("players").doc(newUserPhone).set({ pendingReferrer: referrerPhone }, { merge: true });
+    // New path: masked code. Legacy path: raw referrer phone.
+    let pending;
+    if (/^[a-z0-9]{6,14}$/.test(referrerCode)) {
+        pending = { pendingReferralCode: referrerCode };
+    }
+    else if (/^07\d{8}$/.test(referrerPhone)) {
+        if (newUserPhone === referrerPhone)
+            throw new functions.https.HttpsError("invalid-argument", "Cannot refer yourself");
+        pending = { pendingReferrer: referrerPhone };
+    }
+    else {
+        throw new functions.https.HttpsError("invalid-argument", "A referrer code or phone is required");
+    }
+    await db.collection("players").doc(newUserPhone).set(pending, { merge: true });
     return redeemEligibleReferralForSession({
         newUserPhone,
         score,

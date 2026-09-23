@@ -16,6 +16,7 @@ const COIN_LEADERBOARDS = {
     general: "genQuizLeaderboard",
     sudoku: "sudokuLeaderboard",
     connectDots: "connectDotsLeaderboard",
+    sumTen: "sumTenLeaderboard",
 } as const;
 
 const COIN_SESSION_COLLECTIONS = [
@@ -26,6 +27,7 @@ const COIN_SESSION_COLLECTIONS = [
     { collection: "genQuizSessions", scoreField: "score" },
     { collection: "sudokuSessions", scoreField: "score" },
     { collection: "connectDotsSessions", scoreField: "score" },
+    { collection: "sumTenSessions", scoreField: "score" },
 ] as const;
 
 function sessionCoinPoints(collectionName: string, data: FirebaseFirestore.DocumentData): number {
@@ -539,7 +541,7 @@ export const stopGameTimer = functions.https.onCall(async (data: GameTimerLookup
 });
 
 
-type TournamentGame = "bongo" | "bible" | "math" | "biology" | "general" | "sudoku" | "connectDots" | "generalKnowledge" | "sports" | "carLogos" | "brandLogos" | "trickQuestions" | "kenyaTrivia";
+type TournamentGame = "bongo" | "bible" | "math" | "biology" | "general" | "sudoku" | "connectDots" | "sumTen" | "generalKnowledge" | "sports" | "carLogos" | "brandLogos" | "trickQuestions" | "kenyaTrivia";
 
 type TournamentScoreInput = {
     phone: string;
@@ -629,6 +631,7 @@ async function rebuildCurrentTopScorersTournament() {
         { collection: "genQuizSessions", game: "general", scoreField: "score" },
         { collection: "sudokuSessions", game: "sudoku", scoreField: "score" },
         { collection: "connectDotsSessions", game: "connectDots", scoreField: "score" },
+        { collection: "sumTenSessions", game: "sumTen", scoreField: "score" },
     ];
     const totals = new Map<string, any>();
     for (const config of collections) {
@@ -1091,7 +1094,7 @@ export const getDailyBonusStatus = functions.https.onCall(async (data: { phone?:
 
 export const claimDailyBonus = functions.https.onCall(async (data: ClaimDailyBonusData) => {
     if (typeof data.name !== "string" || data.name.trim().length === 0) throw new functions.https.HttpsError("invalid-argument", "Invalid name");
-    if (typeof data.phone !== "string" || !/^07\d{8}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+    if (typeof data.phone !== "string" || !/^0\d{9}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
 
     const name = data.name.trim().slice(0, 20);
     const phone = data.phone;
@@ -1967,6 +1970,77 @@ export const calculateScore = functions.https.onCall(async (data: {
 
     return { score: Math.round(s) };
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUMTEN BACKEND
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SumTenSessionData {
+    name: string;
+    phone: string;
+    score: number;
+    level: number;
+    gameInLevel: number;
+    totalGamesCompleted: number;
+    hintsUsed: number;
+    completed: boolean;
+    endedReason: string;
+    paidPaymentId?: string;
+}
+
+export const saveSumTenSession = functions.https.onCall(
+    async (data: SumTenSessionData) => {
+        if (typeof data.name !== "string" || !data.name.trim()) throw new functions.https.HttpsError("invalid-argument", "Invalid name");
+        if (typeof data.phone !== "string" || !/^0\d{9}$/.test(data.phone)) throw new functions.https.HttpsError("invalid-argument", "Invalid phone");
+        if (typeof data.score !== "number") throw new functions.https.HttpsError("invalid-argument", "Invalid score");
+
+        const name = data.name.trim().slice(0, 20);
+        const score = Math.max(0, Math.round(data.score));
+        const level = Math.max(1, Math.round(Number(data.level || 1)));
+        const gameInLevel = Math.max(1, Math.round(Number(data.gameInLevel || 1)));
+        const totalGamesCompleted = Math.max(0, Math.round(Number(data.totalGamesCompleted || 0)));
+        const hintsUsed = Math.max(0, Math.round(Number(data.hintsUsed || 0)));
+        const completed = data.completed === true;
+        const endedReason = typeof data.endedReason === "string" ? data.endedReason.slice(0, 40) : "unknown";
+
+        const msisdn = data.phone.replace(/^0/, "254");
+        await postScoreToSql(msisdn, score);
+
+        const pointsEarned = score;
+        const sessionPayload: Record<string, any> = {
+            name,
+            phone: data.phone,
+            score,
+            pointsEarned,
+            level,
+            gameInLevel,
+            totalGamesCompleted,
+            hintsUsed,
+            completed,
+            endedReason,
+            playedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (typeof data.paidPaymentId === "string" && data.paidPaymentId.trim()) {
+            sessionPayload.paidPaymentId = data.paidPaymentId.trim().slice(0, 160);
+        }
+
+        const sessionRef = await db.collection("sumTenSessions").add(sessionPayload);
+
+        const lbRef = db.collection("sumTenLeaderboard").doc(data.phone);
+        const lbSnap = await lbRef.get();
+        if (!lbSnap.exists || (lbSnap.data()?.score ?? 0) < score) {
+            await lbRef.set({ name, phone: data.phone, score, level, gameInLevel, playedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+
+        await reconcilePlayerCoins(data.phone, name);
+        await redeemEligibleReferralForSession({ newUserPhone: data.phone, score, game: "sumTen", sessionId: sessionRef.id, name });
+        await addTopScorersTournamentPoints({ phone: data.phone, name, game: "sumTen", score });
+        await updateQuestProgress(data.phone, "daily_games");
+        await updateQuestProgress(data.phone, "total_games");
+
+        return { success: true, sessionId: sessionRef.id };
+    }
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUDOKU BACKEND
