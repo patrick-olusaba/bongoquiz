@@ -1,0 +1,491 @@
+// BongoMain.tsx — top-level game orchestrator
+import { type FC, type ReactNode, useState, useEffect, useRef } from "react";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFirestore, collection, query, where, limit, getDocs, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import type { PrizeItem }    from "../../types/bongotypes.ts";
+import { type GameScreen, type Category } from "../../types/gametypes.ts";
+import type { RoundRecord } from "../../types/sessionTypes.ts";
+
+import { HomeScreen }              from "./HomeScreen.tsx";
+import { BottomNav }               from "./BottomNav.tsx";
+import { DesktopSidebar, type SidebarKey } from "./DesktopSidebar.tsx";
+import { ProfilePage }             from "./ProfilePage.tsx";
+import { BoxSelectScreen }         from "./BoxSelectScreen.tsx";
+import { PowerRevealScreen }       from "./PowerRevealScreen.tsx";
+import { RoundTransitionScreen }   from "./RoundTransitionScreen.tsx";
+import { Round1Screen }            from "./Round1Screen.tsx";
+import { Round1ResultScreen }      from "./Round1ResultScreen.tsx";
+import { Round2QuestionScreen }    from "./Round2QuestionScreen.tsx";
+import { Round2ResultScreen }      from "./Round2ResultScreen.tsx";
+import { Round3SpinScreen }        from "./Round3SpinScreen.tsx";
+import { FinalResultScreen }       from "./FinalResultScreen.tsx";
+import { LeaderboardScreen }       from "./Leaderboardscreen.tsx";
+import { CommunityPage }           from "./CommunityPage.tsx";
+import { TournamentPlayPage }       from "./TournamentPlayPage.tsx";
+import { DeductionModal }          from "./DeductionModal.tsx";
+import { SessionSummary }          from "./SessionSummary.tsx";
+import { GameHistory }             from "./GameHistory.tsx";
+import { PlayerNameModal }         from "./Playernamemodal.tsx";
+import { clearQuestionsCache }     from "../../hooks/useQuestions.ts";
+import { SupportChat }             from "../support/SupportChat.tsx";
+import { BongoWalletPage }          from "./BongoWalletPage.tsx";
+import { awardBongoCoinsForSession } from "../../utils/bongoWallet.ts";
+import type { MainNavTab } from "../../types/gametypes.ts";
+import { clearActiveTournamentSession, readActiveTournamentSession, type QuizTournament } from "../../utils/tournaments.ts";
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export const BongoMain: FC<{ initialScreen?: GameScreen }> = ({ initialScreen }) => {
+    const [screen,      setScreen]      = useState<GameScreen>(() => {
+        // A mid-quiz tournament refresh resumes in place instead of dropping to home.
+        if (readActiveTournamentSession()) return "tournament_play";
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab === 'profile' || tab === 'community' || tab === 'leaderboard' || tab === 'wallet') return tab as GameScreen;
+        if (tab === 'spin') return "arena";
+        if (initialScreen) return initialScreen;
+        return "home";
+    });
+    const [playerName,  setPlayerName]  = useState(() => localStorage.getItem("bongo_player_name") ?? "Player");
+    const [playerPhone, setPlayerPhone] = useState(() => localStorage.getItem("bongo_player_phone") ?? "");
+    // Tracks a successful sign-in inside the auth gate so closing the modal
+    // doesn't bounce a freshly-logged-in player back to home.
+    const authedInGateRef = useRef(false);
+    const [power,       setPower]       = useState<PrizeItem | null>(null);
+    const [hasPaidSession, setHasPaidSession] = useState(false);
+    const hasPaidSessionRef = useRef(false);
+    const [triggerPlay, setTriggerPlay] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'spin');
+    const [activeTournament, setActiveTournament] = useState<QuizTournament | null>(() => readActiveTournamentSession()?.tournament ?? null);
+
+    useEffect(() => {
+        const handler = () => { setScreen("arena"); setTriggerPlay(true); };
+        window.addEventListener('trigger-play', handler);
+        const toLeaderboard = () => setScreen("leaderboard");
+        const toCommunity = () => setScreen("community");
+        const toGames = () => setScreen("home");
+        window.addEventListener('bongo:goto-leaderboard', toLeaderboard);
+        window.addEventListener('bongo:goto-community', toCommunity);
+        window.addEventListener('bongo:goto-games', toGames);
+        return () => {
+            window.removeEventListener('trigger-play', handler);
+            window.removeEventListener('bongo:goto-leaderboard', toLeaderboard);
+            window.removeEventListener('bongo:goto-community', toCommunity);
+            window.removeEventListener('bongo:goto-games', toGames);
+        };
+    }, []);
+
+    // Check on mount if this phone has a paid R1R2 session that was never played
+    useEffect(() => {
+        const phone = localStorage.getItem("bongo_player_phone");
+        if (!phone || !/^07\d{8}$/.test(phone)) return;
+        const phone254 = phone.replace(/^0/, "254");
+        const db = getFirestore();
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        getDocs(
+            query(
+                collection(db, "payments"),
+                where("phone", "==", phone254),
+                where("status", "==", "paid"),
+                where("amount", "==", 20),
+                limit(5)
+            )
+        ).then(async snap => {
+            if (snap.empty) return;
+
+            const sorted = snap.docs
+                .map(d => ({ ...d.data(), _paidAt: d.data().createdAt?.toDate?.() ?? new Date(0) }))
+                .sort((a, b) => b._paidAt.getTime() - a._paidAt.getTime());
+
+            const paidAt: Date = sorted[0]._paidAt;
+            if (paidAt < since) return;
+
+            // Confirm no game session was already played after this payment
+            const sessionSnap = await getDocs(
+                query(
+                    collection(db, "gameSessions"),
+                    where("phone", "==", phone),
+                    limit(10)
+                )
+            );
+            const alreadyPlayed = sessionSnap.docs.some(d => {
+                const playedAt: Date = d.data().playedAt?.toDate?.() ?? new Date(0);
+                return playedAt > paidAt;
+            });
+            if (!alreadyPlayed) {
+                hasPaidSessionRef.current = true;
+                setHasPaidSession(true);
+            }
+        }).catch((e) => { console.error("hasPaidSession check failed:", e); });
+
+        // Listen in real-time — fires immediately and whenever admin grants a session
+        const unsub = onSnapshot(
+            query(collection(db, "grantedSessions"), where("phone", "==", phone), limit(1)),
+            snap => {
+                if (!snap.empty && !hasPaidSessionRef.current) {
+                    hasPaidSessionRef.current = true;
+                    setHasPaidSession(true);
+                }
+            },
+            () => {}
+        );
+        return unsub;
+    }, []);
+
+    // Granted R3 session — admin can grant R3 access for stuck players
+    const [hasGrantedR3Session, setHasGrantedR3Session] = useState(false);
+    useEffect(() => {
+        const phone = localStorage.getItem("bongo_player_phone");
+        if (!phone) return;
+        const db = getFirestore();
+        const unsub = onSnapshot(doc(db, "grantedR3Sessions", phone), snap => {
+            if (snap.exists()) setHasGrantedR3Session(true);
+        }, () => {});
+        return unsub;
+    }, []);
+
+    // R1
+    const [r1Score,     setR1Score]     = useState(0);
+    const [r1TimeLeft,  setR1TimeLeft]  = useState(0);
+    const [r1MaxStreak, setR1MaxStreak] = useState(0);
+    const [r1Correct,   setR1Correct]   = useState(0);
+    const [r1Total,     setR1Total]     = useState(0);
+
+    // R2 — category is random, picked just before round2 starts
+    const [r2Category,  setR2Category]  = useState<Category>("Sport");
+    const [r2Score,     setR2Score]     = useState(0);
+    const [r2Correct,   setR2Correct]   = useState(0);
+    const [r2Total,     setR2Total]     = useState(0);
+
+    // R3
+    const [r3Bonus,     setR3Bonus]     = useState(0);
+
+    // Session tracking
+    const [sessionRounds,    setSessionRounds]    = useState<RoundRecord[]>([]);
+    const [lastSessionRounds, setLastSessionRounds] = useState<RoundRecord[]>([]);
+    const [showSummary,      setShowSummary]      = useState(false);
+    const [showHistory,      setShowHistory]      = useState(false);
+
+    const saveSession = async (r1: number, r2: number, r3: number, powerName: string) => {
+        const phone = localStorage.getItem("bongo_player_phone") ?? "";
+        try {
+            const save = httpsCallable(getFunctions(), "saveGameSession");
+            await save({ name: playerName, phone, power: powerName, r1Score: r1, r2Score: r2, r3Bonus: r3, correct: r1Correct + r2Correct, totalQuestions: r1Total + r2Total, maxStreak: r1MaxStreak });
+        } catch (e) {
+            console.error("saveGameSession failed:", e);
+        }
+    };
+
+
+    const handleMainNav = (tab: MainNavTab) => {
+        if (tab === 'home') setScreen("home");
+        else if (tab === 'spin') { setScreen("arena"); setTriggerPlay(true); }
+        else if (tab === 'leaderboard') setScreen("leaderboard");
+        else if (tab === 'community') setScreen("community");
+        else if (tab === 'profile') setScreen("profile");
+    };
+
+    const handleSidebarNav = (key: SidebarKey) => {
+        const navMap: Partial<Record<SidebarKey, GameScreen>> = {
+            home: "home",
+            tournaments: "community",
+            leaderboard: "leaderboard",
+            community: "community",
+            profile: "profile",
+            wallet: "wallet",
+            market: "home",
+            rewards: "home",
+            alerts: "home",
+        };
+        setScreen(navMap[key] ?? "home");
+    };
+
+    const renderWithDesktopSidebar = (active: SidebarKey, content: ReactNode) => (
+        <div className="bongo-desktop-shell">
+            <DesktopSidebar active={active} onNavigate={handleSidebarNav} playerName={playerName} collapsible={false} />
+            <div className="bongo-desktop-content">{content}</div>
+        </div>
+    );
+
+    const resetGame = () => {
+        clearQuestionsCache();
+        localStorage.removeItem("bongo_session_score");
+        const savedName = localStorage.getItem("bongo_player_name") ?? "Player";
+        setPlayerName(savedName);
+        setPower(null);
+        setR1Score(0); setR1TimeLeft(0); setR1MaxStreak(0); setR1Correct(0); setR1Total(0);
+        setR2Category("Sport"); setR2Score(0); setR2Correct(0); setR2Total(0);
+        setR3Bonus(0);
+        setSessionRounds([]);
+        setScreen("home");
+    };
+
+    // Community (incl. Refer & Earn) and Profile require a signed-in player.
+    // Anyone not logged in gets the sign-in form before the tab opens.
+    const isLoggedIn = /^07\d{8}$/.test(playerPhone || localStorage.getItem("bongo_player_phone") || "");
+    if ((screen === "community" || screen === "profile") && !isLoggedIn) {
+        authedInGateRef.current = false;
+        return <PlayerNameModal
+            currentName={playerName}
+            currentPhone={playerPhone}
+            initialMode="login"
+            onSave={(name, phone) => {
+                authedInGateRef.current = true;
+                setPlayerName(name);
+                setPlayerPhone(phone);
+            }}
+            onClose={() => { if (!authedInGateRef.current) setScreen("home"); }}
+        />;
+    }
+
+    if (screen === "community")
+        return renderWithDesktopSidebar("tournaments", <CommunityPage
+            onBack={() => setScreen("home")}
+            onEnterTournament={(tournament) => { setActiveTournament(tournament); setScreen("tournament_play"); }}
+            onLeaderboard={() => setScreen("leaderboard")}
+            onNavigate={handleMainNav}
+        />);
+
+    if (screen === "tournament_play" && activeTournament) {
+        const leaveTournament = (to: GameScreen) => { clearActiveTournamentSession(); setActiveTournament(null); setScreen(to); };
+        const navMap: Record<string, GameScreen> = {
+            home: "home", games: "home", leaderboard: "leaderboard", community: "community",
+            wallet: "wallet", market: "home", tournaments: "community", rewards: "home", alerts: "home",
+        };
+        return <TournamentPlayPage
+            tournament={activeTournament}
+            onBack={() => leaveTournament("community")}
+            onDone={() => leaveTournament("community")}
+            onNavigate={(key) => leaveTournament(navMap[key] ?? "home")}
+        />;
+    }
+
+    if (screen === "wallet")
+        return renderWithDesktopSidebar("wallet", <BongoWalletPage onBack={() => setScreen("home")} onMarket={() => setScreen("home")} />);
+
+    if (screen === "profile")
+        return renderWithDesktopSidebar("profile", <ProfilePage onBack={() => setScreen("home")} onNavigate={handleMainNav} />);
+
+    if (screen === "home" || screen === "arena")
+        return <>
+            <HomeScreen
+                variant={screen === "arena" ? "arena" : "landing"}
+                onPlayBongo={() => setScreen("arena")}
+                hasPaidSession={hasPaidSession}
+                triggerPlay={triggerPlay}
+                onTriggerPlayDone={() => setTriggerPlay(false)}
+                onViewAllGames={() => setScreen("home")}
+                onWallet={() => setScreen("wallet")}
+                onStart={(name: string) => {
+                    setPlayerName(name);
+                    setPlayerPhone(localStorage.getItem("bongo_player_phone") ?? "");
+                    setScreen("box_select");
+                }}
+                onLeaderboard={() => setScreen("leaderboard")}
+                onHistory={() => setShowHistory(true)}
+                onReviewSession={lastSessionRounds.length > 0 ? () => setShowSummary(true) : undefined}
+            />
+            <BottomNav active="home" onNavigate={handleMainNav} />
+            {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
+            {showSummary && <SessionSummary rounds={lastSessionRounds} onClose={() => setShowSummary(false)} />}
+            <SupportChat />
+        </>;
+
+    if (screen === "box_select")
+        return <><BoxSelectScreen onBack={() => setScreen("home")} onPowerSelected={p => { setPower(p); setScreen("power_reveal"); }} />
+            <BottomNav active="home" onNavigate={handleMainNav} /></>;
+
+    if (screen === "power_reveal" && power)
+        return <><PowerRevealScreen power={power} onBack={() => setScreen("home")} onContinue={() => {
+            if (hasPaidSessionRef.current) {
+                hasPaidSessionRef.current = false;
+                setHasPaidSession(false);
+                // Clean up granted session doc via Cloud Function
+                const phone = localStorage.getItem("bongo_player_phone") ?? "";
+                if (phone) httpsCallable(getFunctions(), "consumeGrantedSession")({ phone }).catch(() => {});
+                clearQuestionsCache();
+                setScreen("transition_r1");
+            } else {
+                setScreen("deduct_r1r2");
+            }
+        }} />
+        <BottomNav active="home" onNavigate={handleMainNav} /></>;
+
+    // ── Deduction confirmations ────────────────────────────────────────────────
+    if (screen === "deduct_r1r2")
+        return <DeductionModal
+            amount={20}
+            roundLabel="Rounds 1 & 2"
+            phone={playerPhone}
+            playerName={playerName}
+            onAccept={() => { clearQuestionsCache(); setScreen("transition_r1"); }}
+            onDecline={resetGame}
+        />;
+
+    if (screen === "deduct_r3") {
+        // Admin granted R3 session — skip payment
+        if (hasGrantedR3Session) {
+            const phone = localStorage.getItem("bongo_player_phone") ?? "";
+            if (phone) deleteDoc(doc(getFirestore(), "grantedR3Sessions", phone)).catch(() => {});
+            setHasGrantedR3Session(false);
+            setScreen("transition_r3");
+            return null;
+        }
+        return <DeductionModal
+            amount={10}
+            roundLabel="Round 3"
+            phone={playerPhone}
+            playerName={playerName}
+            onAccept={() => setScreen("transition_r3")}
+            onDecline={() => setScreen("round2_result")}
+        />;
+    }
+
+    // ── Transitions ────────────────────────────────────────────────────────────
+    if (screen === "transition_r1")
+        return <RoundTransitionScreen
+            roundNum={1} title="Quickfire" icon="⚡"
+            subtitle="75s · +100 correct · −50 wrong/pass"
+            color="#7B61FF"
+            onDone={() => setScreen("round1")}
+        />;
+
+    if (screen === "transition_r2")
+        return <RoundTransitionScreen
+            roundNum={2} title="Category Rush" icon="🗂️"
+            subtitle="40s · 10 questions · +500 correct · −250 wrong/pass"
+            color="#FF6B6B"
+            onDone={() => setScreen("round2_question")}
+        />;
+
+    if (screen === "transition_r3")
+        return <RoundTransitionScreen
+            roundNum={3} title="Risk Spins" icon="🎡"
+            subtitle="5 spins · answer to bank · wrong = lose all"
+            color="#FFD700"
+            onDone={() => setScreen("round3_spin")}
+        />;
+
+    // ── Round 1 ────────────────────────────────────────────────────────────────
+    if (screen === "round1" && power)
+        return <Round1Screen
+            power={power}
+            onComplete={(rawScore, correct, total, timeLeft, maxStreak, questions) => {
+                // Navigate immediately so the timer expiry doesn't leave the user stuck
+                setR1TimeLeft(timeLeft);
+                setR1MaxStreak(maxStreak); setR1Correct(correct); setR1Total(total);
+                setScreen("round1_result");
+                // Calculate score in background and update when ready
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                calcScore({ round: 1, rawScore, correct, total, powerName: power.name })
+                    .then(({ data }) => {
+                        const final = data.score;
+                        setR1Score(final);
+                        setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: final }]);
+                    })
+                    .catch(() => {
+                        // Fallback to raw score if cloud function fails
+                        setR1Score(rawScore);
+                        setSessionRounds(prev => [...prev, { roundNumber: 1, questions, score: rawScore }]);
+                    });
+            }}
+        />;
+
+    if (screen === "round1_result" && power)
+        return <Round1ResultScreen
+            power={power} rawScore={r1Score} finalScore={r1Score}
+            correct={r1Correct} totalQuestions={r1Total}
+            onContinue={() => setScreen("transition_r2")}
+        />;
+
+    // ── Round 2 — random category, no selection screen ─────────────────────────
+    if (screen === "round2_question" && power)
+        return <Round2QuestionScreen
+            power={power}
+            r1Score={r1Score}
+            onComplete={(rawScore, correct, total, questions) => {
+                setR2Correct(correct); setR2Total(total);
+                setScreen("round2_result");
+                const calcScore = httpsCallable<object, { score: number }>(getFunctions(), "calculateScore");
+                calcScore({ round: 2, rawScore, correct, total, powerName: power.name })
+                    .then(({ data }) => {
+                        setR2Score(data.score);
+                        setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: data.score, category: r2Category }]);
+                    })
+                    .catch(() => {
+                        setR2Score(rawScore);
+                        setSessionRounds(prev => [...prev, { roundNumber: 2, questions, score: rawScore, category: r2Category }]);
+                    });
+            }}
+        />;
+
+    if (screen === "round2_result" && power)
+        return <Round2ResultScreen
+            power={power} category={r2Category}
+            r1Score={r1Score} r2Score={r2Score}
+            correct={r2Correct} total={r2Total}
+            onContinue={() => setScreen("deduct_r3")}
+        />;
+
+    // ── Round 3 — self-contained spin + question flow ──────────────────────────
+    if (screen === "round3_spin")
+        return <Round3SpinScreen
+            currentScore={r1Score + r2Score}
+            onComplete={r3Score => {
+                setR3Bonus(r3Score);
+                const r3Record: RoundRecord = { roundNumber: 3, questions: [], score: r3Score };
+                const allRounds = [...sessionRounds, r3Record];
+                setSessionRounds(allRounds);
+                setLastSessionRounds(allRounds); // persist through reset
+                saveSession(r1Score, r2Score, r3Score, power?.name ?? "");
+                awardBongoCoinsForSession({
+                    sessionId: `${Date.now()}-${playerPhone}-${r1Score}-${r2Score}-${r3Score}`,
+                    points: r1Score + r2Score + r3Score,
+                    power: power?.name ?? "",
+                });
+                setScreen("final_result");
+            }}
+        />;
+
+    // ── Final ──────────────────────────────────────────────────────────────────
+    if (screen === "final_result" && power) {
+        const finalTotal = r1Score + r2Score + r3Bonus;
+        return <>
+            <FinalResultScreen
+                power={power} r1Score={r1Score} r2Score={r2Score} r3Bonus={r3Bonus}
+                segment={null} total={finalTotal}
+                playerName={playerName}
+                r1TimeLeft={r1TimeLeft} r2Correct={r2Correct}
+                r2Total={r2Total}       maxStreak={r1MaxStreak}
+                onPlayAgain={() => setScreen("box_select")}
+                onLeaderboard={() => setScreen("leaderboard")}
+                onHome={() => setScreen("home")}
+            />
+        </>;
+    }
+
+    if (screen === "leaderboard")
+        return renderWithDesktopSidebar("leaderboard", <>
+            <LeaderboardScreen
+                playerScore={r1Score + r2Score + r3Bonus}
+                playerName={playerName}
+                onPlayAgain={resetGame}
+                onClose={resetGame}
+            />
+            <BottomNav active="leaderboard" onNavigate={handleMainNav} />
+        </>);
+
+    return <>
+        <HomeScreen
+            variant="landing"
+            onPlayBongo={() => setScreen("arena")}
+            hasPaidSession={hasPaidSession}
+            onStart={(name: string) => { setPlayerName(name); setScreen("box_select"); }}
+            onLeaderboard={() => setScreen("leaderboard")}
+            onWallet={() => setScreen("wallet")}
+            onHistory={() => setShowHistory(true)}
+        />
+        <BottomNav active="home" onNavigate={handleMainNav} />
+        {showSummary && <SessionSummary rounds={sessionRounds} onClose={() => setShowSummary(false)} />}
+        {showHistory && <GameHistory onClose={() => setShowHistory(false)} />}
+        <SupportChat />
+    </>;
+};

@@ -1,0 +1,327 @@
+/* Add these styles to your existing style.css */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    /*animation: fadeIn 0.3s ease-out;*/
+}
+
+.modal-content {
+    position: relative;
+    width: 90vw;
+    height: 90vh;
+    max-width: 1200px;
+    max-height: 1200px;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    /*animation: slideUp 0.4s ease-out;*/
+    /*overflow: hidden;*/
+}
+
+/*.modal-content::before {*/
+/*    content: '';*/
+/*    position: absolute;*/
+/*    top: 0;*/
+/*    left: 0;*/
+/*    right: 0;*/
+/*    height: 4px;*/
+/*    background: linear-gradient(90deg, #FF6B6B, #4ECDC4, #06D6A0, #118AB2);*/
+/*}*/
+
+.modal-close-btn {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.3s ease;
+}
+
+.modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: white;
+    transform: scale(1.1);
+}
+
+.modal-header {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.modal-cell-preview {
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-cell-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.modal-title {
+    color: white;
+    font-size: 28px;
+    margin: 0 0 10px 0;
+    font-weight: 700;
+    background: linear-gradient(90deg, #FFD166, #06D6A0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.modal-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.modal-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+}
+.prize-display {
+    text-align: center;
+}
+
+.prize-emoji {
+    font-size: 80px;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.5));
+}
+
+.prize-title {
+    color: white;
+    font-size: 24px;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.prize-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.modal-footer {
+    text-align: center;
+}
+
+.modal-action-btn {
+    background: linear-gradient(90deg, #4ECDC4, #06D6A0);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 15px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(6, 214, 160, 0.3);
+    letter-spacing: 0.5px;
+}
+
+.modal-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(6, 214, 160, 0.4);
+}
+
+.modal-action-btn:active {
+    transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        padding: 20px;
+        margin: 20px;
+    }
+
+    .modal-cell-preview {
+        width: 80px;
+        height: 80px;
+    }
+
+    .modal-circle {
+        width: 50px;
+        height: 50px;
+    }
+
+    .modal-cell-number {
+        font-size: 20px;
+    }
+
+    .prize-emoji {
+        font-size: 60px;
+    }
+
+    .modal-title {
+        font-size: 24px;
+    }
+    .modal-close-btn {
+        top: -30px;
+        right: -30px;
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+
+    .modal-body {
+        position: relative;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+    }
+
+}
+@media (max-width: 480px) {
+    .modal-circle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .modal-cell-number {
+        font-size: 18px;
+    }
+
+    .modal-close-btn {
+        top: -25px;
+        right: -25px;
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+}
+
+/* Add these styles for prize images */
+.prize-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/*.prize-image {*/
+/*    max-width: 400px;*/
+/*    max-height: 450px;*/
+/*    object-fit: contain;*/
+/*    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.5));*/
+/*    animation: float 3s ease-in-out infinite;*/
+/*}*/
+.prize-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 0;
+    animation: float 3s ease-in-out infinite;
+
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Optional: Remove or modify the prize-emoji styles since we're using images */
+.prize-emoji {
+    display: none; /* Hide emoji if still present */
+}

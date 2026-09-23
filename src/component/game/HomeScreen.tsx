@@ -1,6 +1,7 @@
 // HomeScreen.tsx
 import {type FC, type KeyboardEvent, useEffect, useRef, useState} from "react";
-import {Home, Gamepad2, Trophy, Zap, FolderOpen, RotateCw, Clock3, Bell, Gift, ShieldCheck, Users, CalendarCheck, Sparkles, Megaphone, BookOpen, Coins, Trash2, ArrowLeft, PlusCircle, Wallet, LogIn, UserPlus, HelpCircle, UserCog, History, ClipboardList, Share2, Headphones, LogOut} from 'lucide-react';
+import {Home, Gamepad2, Trophy, Zap, FolderOpen, RotateCw, Clock3, Bell, Gift, ShieldCheck, Users, CalendarCheck, Sparkles, Megaphone, BookOpen, Coins, Trash2, ArrowLeft, PlusCircle, Wallet, LogIn, UserPlus, HelpCircle, UserCog, History, ClipboardList, Share2, Headphones, LogOut, Menu} from 'lucide-react';
+import { initials } from "../../utils/tournaments.ts";
 import {
     FaYoutube,
     FaFacebook,
@@ -740,7 +741,14 @@ export const HomeScreen: FC<Props> = ({
         <div className="home-root">
             <div className="bongo-top-bar">
                 <div className="topbar-left">
-                    <img src={logoBg} alt="Bongo Quiz" className="topbar-logo"/>
+                    <button
+                        className="topbar-menu-btn"
+                        onClick={() => window.dispatchEvent(new Event("bongo:toggle-sidebar"))}
+                        aria-label="Open menu"
+                    >
+                        <Menu size={20} strokeWidth={2.2} />
+                    </button>
+                    <img src={logoBg} alt="BongoQuiz" className="topbar-logo"/>
                     {hasValidPlayer && (
                         <div className="topbar-coins" tabIndex={0} aria-label={`BongoCoin balance: ${coinBalance.toLocaleString()}`}>
                             <Coins className="topbar-coin-icon" size={28} strokeWidth={2.6}/>
@@ -748,21 +756,6 @@ export const HomeScreen: FC<Props> = ({
                             <span className="topbar-coin-tooltip">BongoCoin balance</span>
                         </div>
                     )}
-                </div>
-                {/* Desktop nav links */}
-                <div className="topbar-desktop-nav">
-                    <button className="topbar-nav-link active" onClick={() => {
-                    }}><Home size={16} strokeWidth={2}/> Home
-                    </button>
-                    <button className="topbar-nav-link" onClick={onViewAllGames}><Gamepad2 size={16}
-                                                                                           strokeWidth={2}/> Games
-                    </button>
-                    <button className="topbar-nav-link" onClick={onLeaderboard}><Trophy size={16}
-                                                                                        strokeWidth={2}/> Leaderboard
-                    </button>
-                    <button className="topbar-nav-link" onClick={() => window.dispatchEvent(new Event('bongo:goto-community'))}><Users size={16}
-                                                                                        strokeWidth={2}/> Community
-                    </button>
                 </div>
                 <div className="topbar-right">
                     {hasValidPlayer && <>
@@ -987,6 +980,15 @@ export const HomeScreen: FC<Props> = ({
                                 </div>
                             )}
                         </div>
+
+                        {/* Profile avatar — taps to navigate to profile */}
+                        <button
+                            className="topbar-profile-btn"
+                            onClick={() => sidebarNavigate("profile")}
+                            aria-label="Profile"
+                        >
+                            {initials(playerName)}
+                        </button>
                     </>}
                     {!hasValidPlayer && <div className="topbar-guest-actions">
                         <button className="topbar-auth-btn topbar-auth-btn--login" onClick={() => { setAuthMode("login"); setStartAfterAuth(false); setShowNameModal(true); }}><LogIn size={15}/><span>Log in</span></button>
@@ -1024,15 +1026,11 @@ export const HomeScreen: FC<Props> = ({
 
                         <p className="home-hero-rounds">SCORE POINTS</p>
                         <p className="home-hero-win">CLIMB THE BOARD</p>
-                        {!hasPaidSession && freeTrialAvailable && (
-                            <div className="home-free-banner" role="status">
-                                🎁 <strong>Your first game is FREE</strong> — all 3 rounds, no charge.
-                            </div>
-                        )}
+
                         <div className="home-hero-actions">
                             <button className="home-btn" onClick={handlePlay}>
                                 <span className="home-btn-shine"/>
-                                {hasPaidSession ? "Continue" : freeTrialAvailable ? "Play Free 🎁" : "Start Quiz"}
+                                {hasPaidSession ? "Continue" : "Start Quiz"}
                             </button>
                             {hasValidPlayer && (
                                 <button className="home-hero-secondary home-invite-btn" onClick={handleInviteFriends}>

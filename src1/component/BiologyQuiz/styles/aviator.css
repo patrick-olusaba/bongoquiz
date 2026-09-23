@@ -1,0 +1,145 @@
+.aviator-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -10;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 0%, #3d0050 0%, #1a0030 40%, #0d001a 100%);
+}
+
+.aviator-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+          radial-gradient(2px 2px at 20px 30px, #fff, rgba(0,0,0,0)),
+          radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+          radial-gradient(2px 2px at 50px 160px, #fff, rgba(0,0,0,0)),
+          radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+          radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0)),
+          radial-gradient(2px 2px at 160px 120px, #fff, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  opacity: 0.3;
+}
+
+.aviator-sun {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #fcd34d 0%, #f59e0b 60%, transparent 70%);
+  border-radius: 50%;
+  opacity: 0.9;
+  box-shadow: 0 0 60px 20px rgba(245, 158, 11, 0.4);
+}
+
+.aviator-mountains {
+  position: absolute;
+  bottom: 0;
+  width: 200%;
+  height: 50vh;
+  background-repeat: repeat-x;
+  background-position: bottom;
+}
+
+.layer-1 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 400' preserveAspectRatio='none'%3E%3Cpath d='M0,400 L0,220 L35,160 L75,200 L110,130 L140,150 L195,65 L245,170 L285,115 L320,155 L380,50 L440,135 L490,95 L560,185 L605,120 L680,240 L735,125 L795,215 L850,100 L900,175 L955,110 L1015,195 L1065,115 L1130,220 L1175,170 L1200,205 L1200,400 Z' fill='%236b21a8' opacity='0.4'/%3E%3C/svg%3E");
+  background-size: 1000px 100%;
+  animation: bg-pan-slow 60s linear infinite;
+  z-index: -3;
+}
+
+.layer-2 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 400' preserveAspectRatio='none'%3E%3Cpath d='M0,400 L0,270 L40,210 L85,255 L135,145 L175,185 L225,125 L290,230 L345,165 L380,200 L445,115 L505,195 L550,155 L615,245 L675,170 L730,240 L810,140 L845,195 L905,115 L955,185 L1010,140 L1070,225 L1120,155 L1165,220 L1200,180 L1200,400 Z' fill='%234c1d95' opacity='0.7'/%3E%3C/svg%3E");
+  background-size: 800px 100%;
+  animation: bg-pan-medium 45s linear infinite;
+  z-index: -2;
+  height: 40vh;
+}
+
+.layer-3 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 150' preserveAspectRatio='none'%3E%3Cpath d='M0,150 L0,100 L5,70 L10,110 L15,80 L20,120 L25,60 L30,105 L35,50 L40,110 L45,65 L50,90 L55,40 L60,115 L65,75 L70,85 L75,55 L80,100 L85,80 L90,60 L95,120 L100,90 L105,70 L110,105 L115,50 L120,110 L125,65 L130,90 L135,40 L140,115 L145,75 L150,85 L155,55 L160,100 L165,80 L170,60 L175,120 L180,90 L185,70 L190,105 L195,50 L200,110 L205,65 L210,90 L215,40 L220,115 L225,75 L230,85 L235,55 L240,100 L245,80 L250,60 L255,120 L260,90 L265,70 L270,105 L275,50 L280,110 L285,65 L290,90 L295,40 L300,115 L305,75 L310,85 L315,55 L320,100 L325,80 L330,60 L335,120 L340,90 L345,70 L350,105 L355,50 L360,110 L365,65 L370,90 L375,40 L380,115 L385,75 L390,85 L395,55 L400,100 L405,80 L410,60 L415,120 L420,90 L425,70 L430,105 L435,50 L440,110 L445,65 L450,90 L455,40 L460,115 L465,75 L470,85 L475,55 L480,100 L485,80 L490,60 L495,120 L500,90 L505,70 L510,105 L515,50 L520,110 L525,65 L530,90 L535,40 L540,115 L545,75 L550,85 L555,55 L560,100 L565,80 L570,60 L575,120 L580,90 L585,70 L590,105 L595,50 L600,110 L600,150 Z' fill='%231e1b4b'/%3E%3C/svg%3E");
+  background-size: 600px 100%;
+  animation: bg-pan-fast 30s linear infinite;
+  z-index: -1;
+  height: 25vh;
+}
+
+.aviator-plane {
+  position: absolute;
+  top: 20%;
+  z-index: 10;
+  filter: drop-shadow(0 10px 10px rgba(0,0,0,0.3));
+}
+
+@keyframes bg-pan-slow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-1000px); }
+}
+
+@keyframes bg-pan-medium {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-800px); }
+}
+
+@keyframes bg-pan-fast {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-600px); }
+}
+
+/* Adjust the landing page title to look like the Aviator multiplier */
+.aviator-multiplier-style {
+  font-size: 6rem;
+  font-weight: 900;
+  color: white;
+  -webkit-text-stroke: 3px #1e293b;
+  text-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  letter-spacing: -2px;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.aviator-card-transparent {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+  .aviator-multiplier-style {
+    font-size: 3.5rem;
+    -webkit-text-stroke: 2px #1e293b;
+    margin-top: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .aviator-multiplier-style {
+    font-size: 4rem;
+  }
+}
+
+@keyframes textGlow {
+  0% {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4), 0 0 20px rgba(244, 114, 182, 0.6), 0 0 30px rgba(244, 114, 182, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(244, 114, 182, 0.9), 0 0 45px rgba(244, 114, 182, 0.8), 0 0 60px rgba(244, 114, 182, 0.6);
+  }
+  100% {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4), 0 0 20px rgba(244, 114, 182, 0.6), 0 0 30px rgba(244, 114, 182, 0.5);
+  }
+}
+
+.glow-animation {
+  animation: textGlow 2.5s ease-in-out infinite;
+}
