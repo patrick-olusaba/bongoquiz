@@ -1,31 +1,5 @@
 /* Shared sidebar — a collapsible left rail on desktop, a slide-in drawer on mobile. */
 
-/* ── Floating opener (reopens a collapsed rail) ───────────────────────────── */
-.app-sidebar-open {
-    position: fixed;
-    /* Align vertically with the top bar's content row (which is inset by the
-       safe-area plus the bar's top padding). */
-    top: calc(env(safe-area-inset-top) + 7px);
-    left: 10px;
-    z-index: 1100;
-    width: 38px;
-    height: 38px;
-    display: grid;
-    place-items: center;
-    border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.07);
-    color: #ECE9FF;
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-}
-
-/* Reserve room at the top-left of the home header so the opener never
-   overlaps the logo while the rail is a drawer (below 1024px). */
-@media (max-width: 1023px) {
-    .home-shell .bongo-top-bar { padding-left: 56px; }
-}
-
 /* ── Backdrop (mobile drawer only) ────────────────────────────────────────── */
 .app-sidebar-backdrop {
     position: fixed;
@@ -86,12 +60,25 @@
 .app-sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
 .app-sidebar-scroll::-webkit-scrollbar { display: none; }
 
-.app-sidebar-nav { display: flex; flex-direction: column; gap: 4px; margin-top: 22px; }
+/* Section labels */
+.app-sidebar-section-label {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #5e5882;
+    padding: 0 14px; margin-top: 18px; margin-bottom: 4px;
+}
+
+/* Thin divider between primary and secondary nav */
+.app-sidebar-divider {
+    height: 1px; background: rgba(255, 255, 255, 0.07);
+    margin: 14px 4px 0;
+}
+
+.app-sidebar-nav { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
 .app-sidebar-nav button {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; border-radius: 12px;
+    padding: 10px 14px; border-radius: 10px;
     border: 1px solid transparent; background: none; cursor: pointer;
-    color: #9890c4; font-family: inherit; font-size: 0.94rem; font-weight: 600;
+    color: #9890c4; font-family: inherit; font-size: 0.9rem; font-weight: 600;
     text-align: left; transition: all 0.15s ease;
 }
 .app-sidebar-nav button:hover { background: rgba(255, 255, 255, 0.04); color: #ECE9FF; }
@@ -99,26 +86,33 @@
     background: linear-gradient(135deg, rgba(124, 97, 255, 0.28), rgba(124, 97, 255, 0.08));
     border-color: rgba(124, 97, 255, 0.45);
     color: #fff;
-    box-shadow: 0 6px 18px rgba(124, 97, 255, 0.18);
+    box-shadow: 0 4px 14px rgba(124, 97, 255, 0.16);
 }
 
-/* Menu actions (How to Play, Share, Log Out, …) */
-.app-sidebar-actions {
-    display: flex; flex-direction: column; gap: 2px;
-    margin-top: 14px; padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+/* Secondary nav items use the same button shape but slightly muted */
+.app-sidebar-nav--secondary button {
+    font-size: 0.86rem;
+    padding: 9px 14px;
+}
+.app-sidebar-nav--secondary .app-sidebar-action-icon {
+    flex: none; display: grid; place-items: center; color: #7a72a8;
+}
+
+/* Danger zone (Log Out) */
+.app-sidebar-danger-zone {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .app-sidebar-action {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; border-radius: 12px;
+    padding: 9px 14px; border-radius: 10px;
     border: 1px solid transparent; background: none; cursor: pointer;
     color: #c9c3e8; font-family: inherit; text-align: left; transition: all 0.15s ease;
 }
 .app-sidebar-action:hover { background: rgba(255, 255, 255, 0.04); }
 .app-sidebar-action-icon { flex: none; display: grid; place-items: center; color: #9890c4; }
 .app-sidebar-action-text { display: flex; flex-direction: column; min-width: 0; }
-.app-sidebar-action-text strong { font-size: 0.9rem; font-weight: 700; color: #ECE9FF; }
-.app-sidebar-action-text small { font-size: 0.72rem; color: #9890c4; }
+.app-sidebar-action-text strong { font-size: 0.88rem; font-weight: 700; color: #ECE9FF; }
 .app-sidebar-action.danger .app-sidebar-action-text strong,
 .app-sidebar-action.danger .app-sidebar-action-icon { color: #ef4444; }
 
