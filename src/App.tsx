@@ -21,6 +21,7 @@ const SummaryView   = lazy(() => import("./component/summary/SummaryView.tsx").t
 const KCSEPastPapers = lazy(() => import("./component/KCSEPastPapers/KCSEPastPapers.tsx").then(m => ({ default: m.KCSEPastPapers })));
 const AdminKCSE     = lazy(() => import("./component/admin/AdminKCSE.tsx").then(m => ({ default: m.AdminKCSE })));
 const StreetBongoAdminRoute = lazy(() => import("./component/admin/StreetBongoAdminRoute.tsx"));
+const ControlPanel = lazy(() => import("./component/cp/ControlPanel.tsx").then(m => ({ default: m.ControlPanel })));
 const SupportView    = lazy(() => import("./component/support/SupportView.tsx").then(m => ({ default: m.SupportView })));
 const ContactSupport = lazy(() => import("./component/support/ContactSupport.tsx").then(m => ({ default: m.ContactSupport })));
 const AdminSupport   = lazy(() => import("./component/support/AdminSupport.tsx").then(m => ({ default: m.AdminSupport })));
@@ -144,6 +145,7 @@ function App() {
             <Routes>
                 <Route path="/"            element={<BongoMain />} />
                 <Route path="/docs"        element={<GameInfoDocs />} />
+                <Route path="/cp"          element={<ControlPanel />} />
                 <Route path="/admin-main"  element={<AdminView />} />
                 <Route path="/kcse"        element={<KCSEPastPapers onBack={() => navigate('/')} />} />
                 <Route path="/kcse-admin"  element={<KCSEAdminRoute />} />
