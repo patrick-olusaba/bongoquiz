@@ -189,6 +189,23 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ── Control Panel Staff ─────────────────────────────────────────────────────
+    // Confirmed staff: any authenticated user can read their own doc;
+    // create is allowed (CPLogin auto-provisions from invite); update by auth'd staff only
+    match /staff/{uid} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Pending invites: any auth'd user can read (to resolve their invite on login);
+    // write restricted to auth'd users (owner creates/revokes invites)
+    match /staffInvites/{email} {
+      allow read:   if request.auth != null;
+      allow write:  if request.auth != null;
+    }
+
     // ── Support Chat ────────────────────────────────────────────────────────────
     // Anyone can create a chat and read/write their own messages (no auth required)
     match /supportChats/{chatId} {

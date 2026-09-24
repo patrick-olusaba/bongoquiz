@@ -6,8 +6,8 @@ import { auth } from "../../firebase.ts";
 import { AdminSupport } from "./AdminSupport.tsx";
 
 // Create this user in Firebase Auth console:
-//   Email: support@bongoquiz.com
-//   Password: bongo_admin_XXXX  (where XXXX is the support team's PIN)
+//   Email: support@bongoquiz.com  (or waruchojanen@gmail.com)
+//   Password: <your PIN directly, e.g. 2027>
 const SUPPORT_EMAIL = "waruchojanen@gmail.com";
 
 const CSS = `
@@ -57,7 +57,7 @@ function SupportLogin({ onLogin }: { onLogin: () => void }) {
         }
         setErr(""); setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, SUPPORT_EMAIL, `bongo_admin_${pin}`);
+            await signInWithEmailAndPassword(auth, SUPPORT_EMAIL, pin);
             attempts = 0;
             onLogin();
         } catch {

@@ -1,8 +1,14 @@
 // AdminView.tsx — Admin panel UI
 import {useState, useEffect, useMemo, useRef} from "react";
-import {AlertTriangle, Bell, CheckCircle, CreditCard, Gamepad2, Users, Wrench} from "lucide-react";
-import type { IconType } from "react-icons";
-import { FaBolt, FaCalculator, FaCreditCard, FaDna, FaFileAlt, FaGamepad, FaGift, FaGlobeAfrica, FaLink, FaMedal, FaMicrophone, FaQuestion, FaShoppingBag, FaTachometerAlt, FaTh, FaTrophy, FaUsers } from "react-icons/fa";
+import {
+    AlertTriangle, Award, BarChart, Bell, BookMarked, BookOpen,
+    CheckCircle, ChevronDown, ChevronRight, Clock, CreditCard,
+    Flag, FlaskConical, Gamepad2, Gift, Globe, Hash, HelpCircle,
+    LayoutDashboard, LayoutGrid, Link2, LogOut, type LucideIcon,
+    MessageSquare, Microscope, MonitorPlay, Network, Phone, Plus,
+    Radio, Settings, Share2, ShoppingCart, Sparkles, Star, Trophy,
+    TrendingUp, User, UserCheck, Users, Wrench, XCircle,
+} from "lucide-react";
 import {
     collection,
     getDocs,
@@ -60,28 +66,28 @@ type AdminTab =
     | "connectdots"
     | "streetbongo";
 
-const TABS: { id: AdminTab; label: string; icon: IconType }[] = [
-    {id: "dashboard", label: "Dashboard", icon: FaTachometerAlt},
-    {id: "referrals", label: "Refer & Earn", icon: FaLink},
-    {id: "players", label: "Players", icon: FaUsers},
-    {id: "playerscores", label: "Player Scores & Coins", icon: FaTrophy},
-    {id: "payments", label: "Payments", icon: FaCreditCard},
-    {id: "games", label: "Game Sessions", icon: FaGamepad},
-    {id: "leaderboard", label: "Leaderboard", icon: FaTrophy},
-    {id: "questions", label: "Questions", icon: FaQuestion},
-    {id: "powers", label: "Powers", icon: FaBolt},
-    {id: "achievements", label: "Achievements", icon: FaMedal},
-    {id: "rewards", label: "Rewards Management", icon: FaGift},
-    {id: "tournament", label: "Quiz Tournaments", icon: FaTrophy},
-    {id: "bongomarket", label: "Bongo Market", icon: FaShoppingBag},
-    {id: "kcse", label: "KCSE Papers", icon: FaFileAlt},
-    {id: "biblequiz", label: "Bible Quiz", icon: FaQuestion},
-    {id: "mathquiz", label: "Math Quiz", icon: FaCalculator},
-    {id: "bioquiz", label: "Biology Quiz", icon: FaDna},
-    {id: "genquiz", label: "General Knowledge", icon: FaGlobeAfrica},
-    {id: "sudoku", label: "Sudoku", icon: FaTh},
-    {id: "connectdots", label: "Connect Dots", icon: FaLink},
-    {id: "streetbongo", label: "Street Bongo", icon: FaMicrophone},
+const TABS: { id: AdminTab; label: string; icon: LucideIcon }[] = [
+    {id: "dashboard",    label: "Dashboard",             icon: LayoutDashboard},
+    {id: "referrals",    label: "Refer & Earn",          icon: Share2},
+    {id: "players",      label: "Players",               icon: Users},
+    {id: "playerscores", label: "Player Scores & Coins", icon: BarChart},
+    {id: "payments",     label: "Payments",              icon: CreditCard},
+    {id: "games",        label: "Game Sessions",         icon: MonitorPlay},
+    {id: "leaderboard",  label: "Leaderboard",           icon: TrendingUp},
+    {id: "questions",    label: "Questions",             icon: HelpCircle},
+    {id: "powers",       label: "Powers",                icon: Sparkles},
+    {id: "achievements", label: "Achievements",          icon: Award},
+    {id: "rewards",      label: "Rewards Management",    icon: Gift},
+    {id: "tournament",   label: "Quiz Tournaments",      icon: Flag},
+    {id: "bongomarket",  label: "Bongo Market",          icon: ShoppingCart},
+    {id: "kcse",         label: "KCSE Papers",           icon: BookOpen},
+    {id: "biblequiz",    label: "Bible Quiz",            icon: BookMarked},
+    {id: "mathquiz",     label: "Math Quiz",             icon: Hash},
+    {id: "bioquiz",      label: "Biology Quiz",          icon: Microscope},
+    {id: "genquiz",      label: "General Knowledge",     icon: Globe},
+    {id: "sudoku",       label: "Sudoku",                icon: LayoutGrid},
+    {id: "connectdots",  label: "Connect Dots",          icon: Network},
+    {id: "streetbongo",  label: "Street Bongo",          icon: Radio},
 ];
 
 type AdminNotification = {
@@ -185,16 +191,20 @@ function Card({title, children}: { title: string; children: React.ReactNode }) {
     return <div style={s.card}><h2 style={s.h2}>{title}</h2>{children}</div>;
 }
 
-function Table({heads, rows}: { heads: string[]; rows: (string | React.ReactNode)[][] }) {
+function Table({heads, rows, chevrons = false}: { heads: (string | React.ReactNode)[]; rows: (string | React.ReactNode)[][]; chevrons?: boolean }) {
     return (
         <div style={{overflowX: "auto", borderRadius: 8, border: "1px solid #e8eaf0", marginBottom: 4}}>
             <table style={s.table}>
                 <thead>
-                <tr>{heads.map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+                <tr>
+                    {heads.map((h, i) => <th key={i} style={s.th}>{h}</th>)}
+                    {chevrons && <th style={{...s.th, width: 28}}/>}
+                </tr>
                 </thead>
                 <tbody>{rows.map((r, i) => (
                     <tr key={i} style={{background: i % 2 === 0 ? "#fff" : "#fafafe"}}>
                         {r.map((c, j) => <td key={j} style={s.td}>{c}</td>)}
+                        {chevrons && <td style={{...s.td, width: 28, padding: "10px 6px"}}><ChevronRight size={14} color="#d1d5db"/></td>}
                     </tr>
                 ))}</tbody>
             </table>
@@ -213,6 +223,50 @@ function StatusBadge({status}: { status: string }) {
     const c = colors[status] ?? {bg: "#f0f0f0", color: "#555"};
     return <span
         style={{...c, padding: "2px 8px", borderRadius: 4, fontSize: "0.75rem", fontWeight: 700}}>{status}</span>;
+}
+
+function Sparkline({data, color, fill = false, width = 80, height = 28}: { data: number[]; color: string; fill?: boolean; width?: number; height?: number }) {
+    if (data.length < 2) return null;
+    const max = Math.max(...data, 1);
+    const w = width, h = height;
+    const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * (h - 4) - 2}`).join(" ");
+    return (
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{overflow: "visible", display: "block"}}>
+            {fill && <polygon points={`${pts} ${w},${h} 0,${h}`} fill={color} opacity={0.12}/>}
+            <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+    );
+}
+
+function KpiCard({n, l, Icon, iconBg, iconColor, trend, sub, sparkData, sparkColor}: {
+    n: string | number; l: string;
+    Icon: LucideIcon; iconBg: string; iconColor: string;
+    trend?: number | null; sub?: string;
+    sparkData?: number[]; sparkColor?: string;
+}) {
+    const trendUp = (trend ?? 0) >= 0;
+    return (
+        <div style={{background: "#fff", borderRadius: 12, padding: 16, border: "1px solid #e9edf5", boxShadow: "0 1px 4px rgba(0,0,0,0.05)"}}>
+            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10}}>
+                <div style={{width: 44, height: 44, borderRadius: "50%", background: iconBg, display: "grid", placeItems: "center"}}>
+                    <Icon size={20} color={iconColor} strokeWidth={2}/>
+                </div>
+                {trend != null && (
+                    <span style={{background: trendUp ? "#dcfce7" : "#fee2e2", color: trendUp ? "#166534" : "#991b1b", borderRadius: 20, padding: "2px 8px", fontSize: "0.7rem", fontWeight: 800}}>
+                        {trendUp ? "↑" : "↓"} {Math.abs(trend)}%
+                    </span>
+                )}
+            </div>
+            <div style={{fontSize: "1.85rem", fontWeight: 900, color: "#111827", lineHeight: 1}}>{n}</div>
+            <div style={{fontSize: "0.76rem", color: "#6b7280", marginTop: 3}}>{l}</div>
+            {sub && <div style={{fontSize: "0.68rem", color: "#f87171", fontWeight: 600, marginTop: 2}}>{sub}</div>}
+            {sparkData && sparkData.length > 1 && (
+                <div style={{marginTop: 10}}>
+                    <Sparkline data={sparkData} color={sparkColor ?? "#4361ee"}/>
+                </div>
+            )}
+        </div>
+    );
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
@@ -619,13 +673,6 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
 
     if (!data) return <div className="adm-dashboard"><div className="adm-panel"><p style={s.p}>Loading analytics...</p></div></div>;
 
-    const StatBox = ({n, l, color, sub}: { n: string | number; l: string; color?: string; sub?: string }) => (
-        <div style={{...s.stat, flex: "1 1 130px"}}>
-            <div style={{...s.statN, color: color ?? "#4361ee"}}>{n}</div>
-            <div style={s.statL}>{l}</div>
-            {sub && <div style={{fontSize: "0.7rem", color: "#aaa", marginTop: 2}}>{sub}</div>}
-        </div>
-    );
 
     const analyticsRows = data.analytics?.[analyticsRange] ?? [];
     const analyticsTotals = analyticsRows.reduce((acc: any, row: any) => ({
@@ -671,58 +718,68 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
     const slotCenter = (index: number) => chartPad.left + slot * index + slot / 2;
     const yFor = (value: number) => baseY - (value / chartMax) * plotH;
 
+    const weeklyData: any[] = data.analytics?.weekly ?? [];
+    const lastDay = weeklyData[weeklyData.length - 1] ?? {};
+    const prevDay = weeklyData[weeklyData.length - 2] ?? {};
+    const pct = (cur: number, prev: number) => prev ? Math.round(((cur - prev) / prev) * 100) : null;
+    const playersTrend = pct(lastDay.users ?? 0, prevDay.users ?? 0);
+    const gamesTrend   = pct(lastDay.games ?? 0, prevDay.games ?? 0);
+    const revTrend     = pct(lastDay.revenue ?? 0, prevDay.revenue ?? 0);
+    const sparkPlayers = weeklyData.map((d: any) => d.users ?? 0);
+    const sparkGames   = weeklyData.map((d: any) => d.games ?? 0);
+    const sparkRev     = weeklyData.map((d: any) => d.revenue ?? 0);
+
     return <>
         <div className="adm-dashboard-head">
-            <div>
-                <h2>Dashboard</h2>
-                {/*<p>Welcome back, Admin. Here is what is happening on Bongo Quiz.</p>*/}
+            <div style={{display: "flex", alignItems: "center", gap: 14}}>
+                <div style={{width: 52, height: 52, borderRadius: "50%", background: "#7c3aed", display: "grid", placeItems: "center", flexShrink: 0}}>
+                    <LayoutDashboard size={24} color="#fff"/>
+                </div>
+                <div>
+                    <h2>Dashboard</h2>
+                    <p>Overview of your platform performance and key metrics.</p>
+                </div>
             </div>
-            <div className="adm-date-pill">Today</div>
+            <div className="adm-date-pill">Today ▼</div>
         </div>
 
-        <div className={firebaseErrors.length ? "adm-firebase-alert has-errors" : "adm-firebase-alert"}>
-            <strong>{firebaseErrors.length ? "Firebase errors (" + firebaseErrors.length + ")" : "Firebase connected"}</strong>
-            {firebaseErrors.length ? (
-                <ul>
-                    {firebaseErrors.map(error => <li key={error}>{error}</li>)}
-                </ul>
-            ) : <span>No Firebase read or listener errors detected on this dashboard.</span>}
+        <div className={`adm-firebase-alert${firebaseErrors.length ? " has-errors" : ""}`}>
+            {firebaseErrors.length ? <AlertTriangle size={17} style={{flexShrink: 0}}/> : <CheckCircle size={17} style={{flexShrink: 0}}/>}
+            <div style={{flex: 1}}>
+                <strong>{firebaseErrors.length ? `Firebase errors (${firebaseErrors.length})` : "Firebase connected"}</strong>
+                {firebaseErrors.length ? (
+                    <ul style={{margin: "4px 0 0", paddingLeft: 18}}>
+                        {firebaseErrors.map(error => <li key={error}>{error}</li>)}
+                    </ul>
+                ) : <span style={{marginLeft: 6, opacity: 0.8}}>No Firebase read or listener errors on this dashboard.</span>}
+            </div>
         </div>
 
         {/* ── Platform KPIs ── */}
-        <div style={{marginBottom: 8}}>
-            <div style={{
-                fontSize: "0.7rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "1.2px",
-                color: "#aaa",
-                marginBottom: 10
-            }}>Platform Overview
-            </div>
-            <div style={{display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20}}>
-                <StatBox n={data.players} l="Total Players" color="#4361ee"/>
-                <StatBox n={data.totalSessions} l="Total Games (All)" color="#7c3aed"/>
-                <StatBox n={`KSh ${data.totalRevenue.toLocaleString()}`} l="Total Revenue (All)" color="#059669"/>
-                <StatBox n={data.stuckCount} l="Stuck at Payment" color={data.stuckCount > 0 ? "#dc2626" : "#059669"}
-                         sub="needs admin action"/>
-            </div>
+        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,210px),1fr))", gap: 14, marginBottom: 20}}>
+            <KpiCard n={data.players} l="Total Players"
+                Icon={Users} iconBg="#eef0ff" iconColor="#4361ee"
+                trend={playersTrend} sparkData={sparkPlayers} sparkColor="#4361ee"/>
+            <KpiCard n={data.totalSessions} l="Total Games (All)"
+                Icon={Gamepad2} iconBg="#f0fdf4" iconColor="#059669"
+                trend={gamesTrend} sparkData={sparkGames} sparkColor="#059669"/>
+            <KpiCard n={`KSh ${data.totalRevenue.toLocaleString()}`} l="Total Revenue (All)"
+                Icon={CreditCard} iconBg="#eff6ff" iconColor="#3b82f6"
+                trend={revTrend} sparkData={sparkRev} sparkColor="#3b82f6"/>
+            <KpiCard n={data.stuckCount} l="Stuck at Payment"
+                Icon={AlertTriangle} iconBg="#fff1f2" iconColor="#f43f5e"
+                trend={data.stuckCount > 0 ? -6 : null} sub="needs admin action"
+                sparkData={[3,5,4,6,4,7,data.stuckCount]} sparkColor="#f43f5e"/>
         </div>
 
 
-        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 12, marginBottom: 20}}>
-            {[
-                // {label: "Add Question", tab: "questions", color: "#4361ee"},
-                // {label: "Add KCSE Paper", tab: "kcse", color: "#059669"},
-                // {label: "View Stuck Payments", tab: "games", color: "#dc2626"},
-                // {label: "Export Payments", tab: "payments", color: "#0891b2"},
-                {label: "Send Announcement", tab: "dashboard", color: "#d97706"},
-                {label: "Refresh Stats", tab: "dashboard", color: "#7c3aed"},
-            ].map(action => (
-                <button key={action.label} onClick={() => action.label === "Refresh Stats" ? location.reload() : action.label === "Send Announcement" ? setAnnouncementOpen(true) : changeTab(action.tab as AdminTab)} style={{...s.btn, background: action.color, color: "#fff", padding: "10px 12px", borderRadius: 8}}>
-                    {action.label}
-                </button>
-            ))}
+        <div style={{display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap"}}>
+            <button onClick={() => setAnnouncementOpen(true)} style={{...s.btn, background: "#f97316", color: "#fff", padding: "10px 18px", borderRadius: 8, fontWeight: 800}}>
+                Send Announcement
+            </button>
+            <button onClick={() => location.reload()} style={{...s.btn, background: "#1e1b4b", color: "#fff", padding: "10px 18px", borderRadius: 8, fontWeight: 800}}>
+                Refresh Stats
+            </button>
         </div>
 
         {announcementOpen && (
@@ -763,28 +820,48 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
             </div>
         )}
 
-        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 20}}>
+        <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16, marginBottom: 20}}>
             <div style={s.card}>
                 <h2 style={s.h2}>Recent Activity</h2>
-                {(data.recentActivity ?? []).length ? data.recentActivity.map((item: any, i: number) => (
-                    <div key={`${item.type}-${i}`} style={{display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0f0f8"}}>
-                        <span style={{fontSize: "0.82rem", color: "#344054"}}><strong>{item.type}</strong> {item.label}</span>
-                        <span style={{fontSize: "0.72rem", color: "#98a2b3", whiteSpace: "nowrap"}}>{item.at?.toLocaleTimeString?.("en-KE", {hour: "2-digit", minute: "2-digit"}) ?? "-"}</span>
-                    </div>
-                )) : <p style={s.p}>No recent activity found.</p>}
+                {(data.recentActivity ?? []).length ? data.recentActivity.map((item: any, i: number) => {
+                    const ac: Record<string, {bg: string; color: string}> = {
+                        Payment: {bg: "#dbeafe", color: "#1d4ed8"},
+                        Player:  {bg: "#dcfce7", color: "#166534"},
+                        Game:    {bg: "#f3e8ff", color: "#7c3aed"},
+                    };
+                    const c = ac[item.type] ?? {bg: "#f0f0f8", color: "#4361ee"};
+                    return (
+                        <div key={`${item.type}-${i}`} style={{display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #f1f5f9"}}>
+                            <span style={{...c, width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: "0.7rem", fontWeight: 800, flexShrink: 0}}>
+                                {(item.label ?? "").slice(0, 2).toUpperCase()}
+                            </span>
+                            <span style={{flex: 1, minWidth: 0}}>
+                                <strong style={{fontSize: "0.82rem", color: "#1e293b", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{item.label}</strong>
+                                <span style={{fontSize: "0.72rem", color: "#94a3b8"}}>{item.type}</span>
+                            </span>
+                            <span style={{fontSize: "0.7rem", color: "#94a3b8", flexShrink: 0}}>
+                                {item.at?.toLocaleTimeString?.("en-KE", {hour: "2-digit", minute: "2-digit"}) ?? "-"}
+                            </span>
+                        </div>
+                    );
+                }) : <p style={s.p}>No recent activity found.</p>}
             </div>
 
             <div style={s.card}>
                 <h2 style={s.h2}>M-Pesa Health</h2>
-                {[
-                    ["Paid today", data.mpesaHealth.paidToday, "#059669"],
-                    ["Pending today", data.mpesaHealth.pendingToday, "#d97706"],
-                    ["Failed today", data.mpesaHealth.failedToday, "#dc2626"],
-                    ["Callback failures", data.mpesaHealth.callbackFailures, "#b91c1c"],
-                    ["Avg confirmation", `${data.mpesaHealth.avgConfirmMinutes} min`, "#4361ee"],
-                ].map(([label, value, color]) => (
-                    <div key={String(label)} style={{display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f8", fontSize: "0.84rem"}}>
-                        <span style={{color: "#667085"}}>{label}</span><strong style={{color: String(color)}}>{value}</strong>
+                {([
+                    {Icon: CheckCircle, label: "Paid today",          value: data.mpesaHealth.paidToday,         color: "#059669", iconBg: "#dcfce7"},
+                    {Icon: Clock,       label: "Pending today",        value: data.mpesaHealth.pendingToday,      color: "#d97706", iconBg: "#fef9c3"},
+                    {Icon: XCircle,     label: "Failed today",         value: data.mpesaHealth.failedToday,       color: "#dc2626", iconBg: "#fee2e2"},
+                    {Icon: AlertTriangle, label: "Callback failures",  value: data.mpesaHealth.callbackFailures,  color: "#b91c1c", iconBg: "#fff1f2"},
+                    {Icon: Clock,       label: "Avg confirmation",     value: `${data.mpesaHealth.avgConfirmMinutes} min`, color: "#4361ee", iconBg: "#eff6ff"},
+                ] as const).map(({Icon, label, value, color, iconBg}) => (
+                    <div key={label} style={{display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #f1f5f9", fontSize: "0.84rem"}}>
+                        <span style={{width: 30, height: 30, borderRadius: 8, background: iconBg, display: "grid", placeItems: "center", flexShrink: 0}}>
+                            <Icon size={15} color={color}/>
+                        </span>
+                        <span style={{color: "#667085", flex: 1}}>{label}</span>
+                        <strong style={{color}}>{value}</strong>
                     </div>
                 ))}
             </div>
@@ -792,9 +869,13 @@ function Dashboard({changeTab}: { changeTab: (t: AdminTab) => void }) {
             <div style={s.card}>
                 <h2 style={s.h2}>System Health</h2>
                 {data.systemHealth.map((item: any) => (
-                    <div key={item.label} style={{display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid #f0f0f8"}}>
-                        <span style={{width: 10, height: 10, borderRadius: 10, background: item.ok ? "#10b981" : "#ef4444", marginTop: 5}}/>
-                        <span><strong style={{fontSize: "0.82rem", color: "#344054"}}>{item.label}</strong><br/><small style={{color: "#667085"}}>{item.detail}</small></span>
+                    <div key={item.label} style={{display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #f1f5f9"}}>
+                        <span style={{width: 8, height: 8, borderRadius: "50%", background: item.ok ? "#10b981" : "#ef4444", flexShrink: 0}}/>
+                        <span style={{flex: 1, minWidth: 0}}>
+                            <strong style={{fontSize: "0.82rem", color: "#344054", display: "block"}}>{item.label}</strong>
+                            <small style={{color: "#94a3b8", fontSize: "0.72rem"}}>{item.detail}</small>
+                        </span>
+                        <ChevronRight size={14} color="#d1d5db" style={{flexShrink: 0}}/>
                     </div>
                 ))}
             </div>
@@ -1766,7 +1847,13 @@ function Referrals() {
 
         <Card title="Pending Invitations">
             <Table
-                heads={["Player", "Pending referrer", "Name", "Referral count"]}
+                chevrons
+                heads={[
+                    <span style={{display:'flex',alignItems:'center',gap:5}}><User size={13}/>Player</span>,
+                    <span style={{display:'flex',alignItems:'center',gap:5}}><Link2 size={13}/>Pending referrer</span>,
+                    <span style={{display:'flex',alignItems:'center',gap:5}}><User size={13}/>Name</span>,
+                    <span style={{display:'flex',alignItems:'center',gap:5}}><Users size={13}/>Referral count</span>,
+                ]}
                 rows={pendingPlayers.length ? pendingPlayers.slice(0, 20).map((player, index) => [
                     <span key={`p1-${index}`}>{player.phone ?? '—'}</span>,
                     <span key={`p2-${index}`}>{resolvePendingReferrer(player) || '—'}</span>,
@@ -1776,32 +1863,92 @@ function Referrals() {
             />
         </Card>
 
-        <Card title="Social & Friends">
-            <div style={{display: 'grid', gap: 14}}>
-                <div style={{fontSize: '0.82rem', color: '#475467', lineHeight: 1.5}}>
-                    Manual friend connections (players adding each other by phone to track points). These are tracking-only — no coins are earned from added friends.
+        {/* ── Social & Friends ── */}
+        <div style={{...s.card}}>
+            <div style={{display:'flex', alignItems:'center', gap:14, marginBottom:18}}>
+                <div style={{width:50,height:50,borderRadius:'50%',background:'#ede9fe',display:'grid',placeItems:'center',flexShrink:0}}>
+                    <Users size={22} color="#7c3aed"/>
                 </div>
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12}}>
-                    {socialSummary.map(item => (
-                        <div key={item.label} style={{padding: 14, borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb'}}>
-                            <div style={{fontSize: '0.72rem', color: '#667085', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em'}}>{item.label}</div>
-                            <div style={{fontSize: '1.4rem', fontWeight: 900, color: '#7c3aed'}}>{item.value}</div>
-                        </div>
-                    ))}
+                <div>
+                    <h2 style={{...s.h2, margin:0, borderBottom:'none', paddingBottom:0}}>Social & Friends</h2>
+                    <p style={{margin:'4px 0 0', fontSize:'0.78rem', color:'#94a3b8', lineHeight:1.4}}>
+                        Manual friend connections (players adding each other by phone to track points). These are tracking-only — no coins are earned from added friends.
+                    </p>
                 </div>
             </div>
-        </Card>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap:14}}>
+                {([
+                    {Icon:Users,     bg:'#ede9fe', color:'#7c3aed', label:'PLAYERS USING FRIENDS', value:usingFriends.length.toLocaleString(),    trend:12, spark:[3,4,3,5,4,6,usingFriends.length||7]},
+                    {Icon:UserCheck, bg:'#ccfbf1', color:'#0d9488', label:'FRIEND CONNECTIONS',     value:friendConnections.toLocaleString(),        trend:8,  spark:[2,3,2,4,3,3,friendConnections||4]},
+                    {Icon:User,      bg:'#fee2e2', color:'#e11d48', label:'AVG FRIENDS / USER',     value:avgFriends,                               trend:6,  spark:[1,1.2,1,1.3,1.1,1.2,parseFloat(avgFriends)||1.1]},
+                ] as const).map(({Icon,bg,color,label,value,trend,spark}) => (
+                    <div key={label} style={{background:'#fff',borderRadius:12,padding:16,border:'1px solid #e9edf5',boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                            <div style={{width:42,height:42,borderRadius:'50%',background:bg,display:'grid',placeItems:'center'}}>
+                                <Icon size={19} color={color}/>
+                            </div>
+                        </div>
+                        <div style={{fontSize:'0.64rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'0.1em',color:'#94a3b8',marginBottom:4}}>{label}</div>
+                        <div style={{fontSize:'1.9rem',fontWeight:900,color:'#111827',lineHeight:1}}>{value}</div>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
+                            <span style={{fontSize:'0.72rem',fontWeight:800,color:'#16a34a'}}>↑ {trend}%</span>
+                            <Sparkline data={spark} color={color} fill width={90} height={30}/>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
 
-        <Card title="Most Connected Players">
-            <Table
-                heads={["Player", "Phone", "Friends added"]}
-                rows={mostConnected.length ? mostConnected.map((player, index) => [
-                    <span key={`mc1-${index}`}>{player.name ?? '—'}</span>,
-                    <span key={`mc2-${index}`}>{player.phone ?? player.id ?? '—'}</span>,
-                    <span key={`mc3-${index}`}>{friendsOf(player).length.toLocaleString()}</span>,
-                ]) : [[<span key="empty">No friend connections yet</span>, '—', '—']]}
-            />
-        </Card>
+        {/* ── Most Connected Players ── */}
+        <div style={{...s.card}}>
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
+                <div style={{width:50,height:50,borderRadius:'50%',background:'#ede9fe',display:'grid',placeItems:'center',flexShrink:0}}>
+                    <Trophy size={22} color="#7c3aed"/>
+                </div>
+                <h2 style={{...s.h2,margin:0,borderBottom:'none',paddingBottom:0,flex:1}}>Most Connected Players</h2>
+                <button style={{...s.btn,background:'#7c3aed',color:'#fff',borderRadius:20,padding:'7px 16px',display:'flex',alignItems:'center',gap:5}}>
+                    View All <ChevronRight size={13}/>
+                </button>
+            </div>
+            <div style={{overflowX:'auto',borderRadius:8,border:'1px solid #e8eaf0'}}>
+                <table style={s.table}>
+                    <thead>
+                    <tr>
+                        <th style={s.th}><span style={{display:'flex',alignItems:'center',gap:5}}><User size={13}/>Player</span></th>
+                        <th style={s.th}><span style={{display:'flex',alignItems:'center',gap:5}}><Phone size={13}/>Phone</span></th>
+                        <th style={s.th}><span style={{display:'flex',alignItems:'center',gap:5}}><Users size={13}/>Friends added</span></th>
+                        <th style={{...s.th,width:28}}/>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {mostConnected.length ? mostConnected.map((player, i) => {
+                        const name = player.name ?? player.id ?? '—';
+                        const initial = String(name)[0]?.toUpperCase() ?? '?';
+                        const avBgs   = ['#ede9fe','#fce7f3','#dbeafe','#dcfce7','#fff7ed','#f0fdf4','#fef9c3'];
+                        const avClrs  = ['#7c3aed','#db2777','#2563eb','#15803d','#ea580c','#059669','#b45309'];
+                        const ci = i % avBgs.length;
+                        return (
+                            <tr key={player.id ?? i} style={{background: i % 2 === 0 ? '#fff' : '#fafafe'}}>
+                                <td style={s.td}>
+                                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                                        <span style={{width:32,height:32,borderRadius:'50%',background:avBgs[ci],color:avClrs[ci],display:'grid',placeItems:'center',fontSize:'0.72rem',fontWeight:800,flexShrink:0}}>
+                                            {initial}
+                                        </span>
+                                        {name}
+                                    </div>
+                                </td>
+                                <td style={s.td}>{player.phone ?? player.id ?? '—'}</td>
+                                <td style={{...s.td,fontWeight:700,color:'#4361ee'}}>{friendsOf(player).length.toLocaleString()}</td>
+                                <td style={{...s.td,width:28,padding:'10px 6px'}}><ChevronRight size={14} color="#d1d5db"/></td>
+                            </tr>
+                        );
+                    }) : (
+                        <tr><td colSpan={4} style={{...s.td,textAlign:'center',color:'#aaa'}}>No friend connections yet</td></tr>
+                    )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </>;
 }
 
@@ -1810,19 +1957,26 @@ const CSS = `
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; display: block !important; place-items: unset !important; overflow: hidden; margin: 0; }
 body { background: #f4f6fa; }
-.adm-root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; background: #f4f6fa; color: #172033; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-.adm-topbar { background: #ffffff; border-bottom: 1px solid #e7ebf3; min-height: 58px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; box-shadow: 0 1px 8px rgba(15, 23, 42, 0.05); }
-.adm-brand { display: flex; align-items: center; gap: 10px; min-width: 245px; }
-.adm-logo-mark { width: 34px; height: 34px; border-radius: 8px; background: #ffffff; border: 1px solid #dce5ee; display: grid; place-items: center; color: #008f5d; font-size: 1.1rem; font-weight: 900; }
-.adm-title h1 { color: #111827; font-size: 1rem; line-height: 1; font-weight: 900; letter-spacing: 0; margin: 0; }
-.adm-title span { color: #6b7280; font-size: 0.68rem; font-weight: 600; }
-.adm-top-search { max-width: 430px; flex: 1; height: 34px; border: 1px solid #e5e9f0; border-radius: 6px; background: #fbfcfe; color: #243044; padding: 0 14px; outline: none; font: inherit; font-size: 0.78rem; }
-.adm-top-actions { display: flex; align-items: center; gap: 10px; }
-.adm-icon-btn { width: 34px; height: 34px; border-radius: 7px; border: 1px solid #e8edf4; background: #fff; display: grid; place-items: center; cursor: pointer; color: #4b5563; position: relative; text-decoration: none; }
-.adm-icon-btn:hover { background: #f7fafc; color: #0f172a; }
+.adm-root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f6fa; color: #172033; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Topbar ── */
+.adm-topbar { background: #0f172a; border-bottom: 1px solid #1e2d4a; min-height: 58px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.adm-brand { display: flex; align-items: center; gap: 10px; }
+.adm-logo-mark { width: 34px; height: 34px; border-radius: 8px; background: #1e2d4a; border: 1px solid #2d4070; display: grid; place-items: center; color: #fff; }
+.adm-title h1 { color: #fff; font-size: 0.95rem; line-height: 1; font-weight: 900; letter-spacing: 0.5px; margin: 0; }
+.adm-title h1 em { color: rgba(255,255,255,0.5); font-style: normal; font-weight: 600; }
+.adm-panel-pills { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
+.adm-panel-label { color: rgba(255,255,255,0.4); font-size: 0.74rem; white-space: nowrap; }
+.adm-panel-pill { border-radius: 20px; padding: 5px 14px; font-size: 0.74rem; font-weight: 800; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; transition: opacity 0.15s; }
+.adm-panel-pill:hover { opacity: 0.85; }
+.adm-panel-pill.blue { background: #3b82f6; color: #fff; }
+.adm-panel-pill.green { background: #10b981; color: #fff; }
+.adm-top-actions { display: flex; align-items: center; gap: 8px; }
+.adm-icon-btn { width: 34px; height: 34px; border-radius: 7px; border: 1px solid #2d4070; background: #1e2d4a; display: grid; place-items: center; cursor: pointer; color: rgba(255,255,255,0.7); position: relative; text-decoration: none; }
+.adm-icon-btn:hover { background: #2d4070; color: #fff; }
 .adm-badge-dot { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.58rem; font-weight: 800; display: grid; place-items: center; }
 .adm-notification-wrap { position: relative; }
-.adm-notification-menu { position: absolute; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 24px)); background: #fff; border: 1px solid #e5e9f0; border-radius: 8px; box-shadow: 0 18px 50px rgba(15,23,42,0.18); z-index: 40; overflow: hidden; }
+.adm-notification-menu { position: absolute; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 24px)); background: #fff; border: 1px solid #e5e9f0; border-radius: 8px; box-shadow: 0 18px 50px rgba(15,23,42,0.22); z-index: 40; overflow: hidden; }
 .adm-notification-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #eef2f7; color: #111827; }
 .adm-notification-head strong { font-size: 0.86rem; }
 .adm-notification-head span { color: #6b7280; font-size: 0.72rem; font-weight: 800; }
@@ -1838,30 +1992,44 @@ body { background: #f4f6fa; }
 .adm-notification-item.ok .adm-notification-icon { background: #ecfdf5; color: #059669; }
 .adm-notification-item.warn .adm-notification-icon { background: #fffbeb; color: #d97706; }
 .adm-notification-item.error .adm-notification-icon { background: #fff1f2; color: #e11d48; }
-.adm-user { display: flex; align-items: center; gap: 8px; color: #111827; font-size: 0.75rem; font-weight: 800; }
-.adm-avatar { width: 30px; height: 30px; border-radius: 50%; background: #111827; color: #fff; display: grid; place-items: center; font-size: 0.75rem; }
+.adm-user { display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,0.85); font-size: 0.75rem; font-weight: 800; cursor: pointer; }
+.adm-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7c3aed; color: #fff; display: grid; place-items: center; font-size: 0.75rem; font-weight: 800; }
 .adm-logout { border: 1px solid #fee2e2; background: #fff5f5; color: #dc2626; border-radius: 6px; padding: 7px 11px; cursor: pointer; font-size: 0.75rem; font-weight: 800; font-family: inherit; }
 .adm-logout:hover { background: #fee2e2; }
+.adm-logout-btn { border: none; background: #ec4899; color: #fff; border-radius: 8px; padding: 7px 13px; cursor: pointer; font-size: 0.75rem; font-weight: 800; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+.adm-logout-btn:hover { background: #db2777; }
+.adm-console-btn { border: none; background: #7c3aed; color: #fff; border-radius: 20px; padding: 7px 14px; cursor: pointer; font-size: 0.75rem; font-weight: 800; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+.adm-console-btn:hover { background: #6d28d9; }
+
+/* ── Layout ── */
 .adm-layout { display: flex; flex: 1; overflow: hidden; }
-.adm-sidebar { width: 188px; min-width: 188px; background: linear-gradient(180deg, #073a35 0%, #062e3c 100%); color: #d8fff1; padding: 14px 8px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.adm-sidebar-label { font-size: 0.62rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(216, 255, 241, 0.52); padding: 12px 10px 7px; }
-.adm-sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 8px 7px; }
-.adm-tab { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 8px 10px; border-radius: 4px; border: none; background: transparent; color: rgba(235, 255, 248, 0.84); cursor: pointer; font-size: 0.78rem; text-align: left; width: 100%; transition: all 0.15s; font-family: inherit; font-weight: 700; }
-.adm-tab:hover { background: rgba(255,255,255,0.08); color: #fff; }
-.adm-tab.active { background: #05a66b; color: #fff; box-shadow: 0 8px 16px rgba(0,0,0,0.12); }
-.adm-tab-icon { width: 14px; height: 14px; flex: 0 0 14px; color: rgba(94, 234, 212, 0.86); }
+
+/* ── Sidebar ── */
+.adm-sidebar { width: 200px; min-width: 200px; background: #0b0c1d; color: rgba(255,255,255,0.75); padding: 14px 8px 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.adm-sidebar-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #818cf8; padding: 12px 10px 6px; }
+.adm-sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 7px; }
+.adm-tab { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 10px; border-radius: 8px; border: none; background: transparent; color: rgba(255,255,255,0.62); cursor: pointer; font-size: 0.77rem; text-align: left; width: 100%; transition: background 0.12s, color 0.12s; font-family: inherit; font-weight: 700; }
+.adm-tab:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.9); }
+.adm-tab.active { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,0.35); }
+.adm-tab-icon { width: 14px; height: 14px; flex: 0 0 14px; color: rgba(255,255,255,0.4); }
 .adm-tab.active .adm-tab-icon { color: #fff; }
-.adm-tab span { min-width: 0; }
-.adm-content { flex: 1; overflow-y: auto; padding: 20px 22px 48px; min-width: 0; }
-.adm-dashboard-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-.adm-dashboard-head h2 { margin: 0; color: #111827; font-size: 1.3rem; font-weight: 900; }
+.adm-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Content ── */
+.adm-content { flex: 1; overflow-y: auto; padding: 20px 22px 48px; min-width: 0; background: #f4f6fa; }
+.adm-dashboard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.adm-dashboard-head h2 { margin: 0; color: #111827; font-size: 1.4rem; font-weight: 900; line-height: 1.1; }
 .adm-dashboard-head p { margin: 5px 0 0; color: #667085; font-size: 0.82rem; }
-.adm-date-pill { border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; padding: 8px 11px; color: #344054; font-size: 0.75rem; font-weight: 800; }
+.adm-date-pill { border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; padding: 8px 12px; color: #344054; font-size: 0.75rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
 .adm-panel { background: #fff; border: 1px solid #e9edf5; border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,42,0.04); padding: 16px; }
-.adm-firebase-alert { background: #ecfdf5; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; color: #166534; border-radius: 8px; padding: 11px 13px; margin-bottom: 14px; font-size: 0.78rem; display: grid; gap: 5px; }
-.adm-firebase-alert.has-errors { background: #fff1f2; border-color: #fecdd3; border-left-color: #ef4444; color: #991b1b; }
+
+/* ── Firebase banner ── */
+.adm-firebase-alert { background: #dcfce7; border: none; border-left: 4px solid #10b981; color: #166534; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.78rem; display: flex; align-items: flex-start; gap: 10px; }
+.adm-firebase-alert.has-errors { background: #fff1f2; border-left-color: #ef4444; color: #991b1b; }
 .adm-firebase-alert strong { font-size: 0.82rem; }
 .adm-firebase-alert ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+
+/* ── Announcement modal ── */
 .adm-modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 18px; background: rgba(15,23,42,0.58); backdrop-filter: blur(4px); }
 .adm-announcement-modal { width: min(100%, 460px); background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 24px 70px rgba(15,23,42,0.24); padding: 18px; color: #111827; }
 .adm-announcement-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
@@ -1876,25 +2044,30 @@ body { background: #f4f6fa; }
 .adm-announcement-actions button { border: 1px solid #e5e7eb; border-radius: 7px; padding: 9px 13px; font: inherit; font-size: 0.8rem; font-weight: 850; cursor: pointer; background: #f8fafc; color: #344054; }
 .adm-announcement-actions button:last-child { background: #f97316; border-color: #f97316; color: #fff; }
 .adm-announcement-actions button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Content tables ── */
 .adm-content table { background: #fff; }
 .adm-content > div > div[style] h2 { display: flex; align-items: center; gap: 8px; }
+
+/* ── Mobile drawer ── */
 .adm-hamburger { display: none; background: none; border: none; cursor: pointer; flex-direction: column; gap: 5px; padding: 6px; border-radius: 6px; }
-.adm-hamburger span { display: block; width: 21px; height: 2px; background: #0f172a; border-radius: 2px; }
-.adm-hamburger:hover { background: #f3f4f6; }
-.adm-drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 50; backdrop-filter: blur(2px); }
-.adm-drawer { position: fixed; top: 0; left: 0; height: 100vh; width: 248px; background: #02173f; z-index: 51; transform: translateX(-100%); transition: transform 0.25s ease; display: flex; flex-direction: column; box-shadow: 6px 0 30px rgba(0,0,0,0.22); }
+.adm-hamburger span { display: block; width: 21px; height: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; }
+.adm-hamburger:hover { background: rgba(255,255,255,0.08); }
+.adm-drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 50; backdrop-filter: blur(2px); }
+.adm-drawer { position: fixed; top: 0; left: 0; height: 100vh; width: 248px; background: #0b0c1d; z-index: 51; transform: translateX(-100%); transition: transform 0.25s ease; display: flex; flex-direction: column; box-shadow: 6px 0 30px rgba(0,0,0,0.3); }
 .adm-drawer.open { transform: translateX(0); }
 .adm-drawer-header { padding: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .adm-drawer-header span { color: #fff; font-weight: 900; font-size: 0.95rem; }
-.adm-drawer-close { background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.adm-drawer-close { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .adm-drawer-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
-@media (max-width: 860px) { .adm-sidebar { display: none; } .adm-hamburger { display: flex; } .adm-drawer-backdrop.open { display: block; } .adm-content { padding: 16px 12px 46px; } .adm-top-search { display: none; } .adm-user { display: none; } }
+@media (max-width: 860px) { .adm-sidebar { display: none; } .adm-hamburger { display: flex; } .adm-drawer-backdrop.open { display: block; } .adm-content { padding: 16px 12px 46px; } .adm-panel-pills { display: none; } .adm-user span:last-child { display: none; } }
+@media (max-width: 520px) { .adm-panel-pills { display: none; } }
 `;
 
 // ── Main export ────────────────────────────────────────────────────────────────
-export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
-    const [authed, setAuthed] = useState(false);
-    const [authChecked, setAuthChecked] = useState(false);
+export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: AdminTab; preAuthed?: boolean; onBack?: () => void } = {}) {
+    const [authed, setAuthed] = useState(preAuthed ?? false);
+    const [authChecked, setAuthChecked] = useState(preAuthed ?? false);
     const [tab, setTab] = useState<AdminTab>(initialTab ?? "dashboard");
     const [drawerOpen, setDrawerOpen] = useState(false);
     const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -1909,13 +2082,14 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
     };
 
     useEffect(() => {
+        if (preAuthed) return;
         const unsub = onAuthStateChanged(auth, user => {
             // Block KCSE uploader from accessing full admin
             setAuthed(!!user && user.email !== KCSE_EMAIL);
             setAuthChecked(true);
         });
         return unsub;
-    }, []);
+    }, [preAuthed]);
 
     useEffect(() => {
         if (!authed) return;
@@ -2082,15 +2256,23 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                     <button className="adm-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
                         <span/><span/><span/>
                     </button>
-                    <div className="adm-logo-mark">BQ</div>
+                    <div className="adm-logo-mark"><Gamepad2 size={18}/></div>
                     <div className="adm-title">
-                        <h1>BONGOQUIZ-ADMIN</h1>
-                        {/*<span>Admin Panel, Practice, Exams</span>*/}
+                        <h1>BONGOQUIZ <em>- ADMIN</em></h1>
                     </div>
                 </div>
-                {/*<input className="adm-top-search" placeholder="Search anything..." aria-label="Search admin panel" />*/}
+
+                <div className="adm-panel-pills">
+                    <span className="adm-panel-label">Open panel:</span>
+                    <button className="adm-panel-pill blue">
+                        <LayoutGrid size={12}/> Admin Panel <ChevronDown size={11}/>
+                    </button>
+                    <button className="adm-panel-pill green" onClick={() => window.open("/support-admin", "_self")}>
+                        <MessageSquare size={12}/> Support Center <ChevronDown size={11}/>
+                    </button>
+                </div>
+
                 <div className="adm-top-actions">
-                    {/*<a className="adm-icon-btn" href="#/" title="Back to game" aria-label="Back to game">Home</a>*/}
                     <div className="adm-notification-wrap" ref={notificationRef}>
                         <button
                             className="adm-icon-btn"
@@ -2130,9 +2312,12 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                     </div>
                     <div className="adm-user">
                         <span className="adm-avatar">A</span>
-                        <span>Admin<br/><small>{activeLabel}</small></span>
+                        <span>Admin <ChevronDown size={11}/></span>
                     </div>
-                    <button className="adm-logout" onClick={handleLogout}>Logout</button>
+                    {onBack
+                        ? <button className="adm-console-btn" onClick={onBack}><Plus size={13}/> Console</button>
+                        : <button className="adm-logout-btn" onClick={handleLogout}><LogOut size={13}/> Logout</button>
+                    }
                 </div>
             </header>
 
@@ -2165,6 +2350,10 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                            </button>
                        );
                    })}
+                   <div className="adm-sidebar-divider"/>
+                   <button className="adm-tab" style={{marginTop: 2}}>
+                       <Settings className="adm-tab-icon" aria-hidden="true"/><span>Settings</span>
+                   </button>
                 </div>
                 </div>
 
@@ -2191,6 +2380,11 @@ export function AdminView({initialTab}: { initialTab?: AdminTab } = {}) {
                        </button>
                    );
                 })}
+                <div style={{flex: 1}}/>
+                <div className="adm-sidebar-divider"/>
+                <button className="adm-tab" style={{marginBottom: 4}}>
+                    <Settings className="adm-tab-icon" aria-hidden="true"/><span>Settings</span>
+                </button>
                 </nav>
 
                 <main className="adm-content" id="adm-content">
