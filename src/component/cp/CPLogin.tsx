@@ -11,7 +11,7 @@ export interface StaffMember {
   role: "owner" | "admin" | "support";
 }
 
-const OWNER_EMAILS = ["waruchojanen@gmail.com", "greatech1ltd@gmail.com"];
+const OWNER_EMAILS = (import.meta.env.VITE_OWNER_EMAILS as string ?? "").split(",").map((e: string) => e.trim()).filter(Boolean);
 const F = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 const PURPLE = "#6d28d9";
 const PURPLE_LIGHT = "#7c3aed";

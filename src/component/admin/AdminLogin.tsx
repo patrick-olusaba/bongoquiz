@@ -3,8 +3,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Gamepad2 } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../firebase.ts";
 
-const ADMIN_EMAIL = "waruchojanen@gmail.com";
-export const KCSE_EMAIL = "kcseuploader@bongoquiz.com";
+export const KCSE_EMAIL = import.meta.env.VITE_KCSE_EMAIL as string;
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS   = 5 * 60 * 1000;
@@ -39,7 +38,7 @@ function BgShapes() {
 
 export function AdminLogin({
     onLogin,
-    email: defaultEmail = ADMIN_EMAIL,
+    email: defaultEmail = "",
     label = "Admin",
 }: {
     onLogin: () => void;
