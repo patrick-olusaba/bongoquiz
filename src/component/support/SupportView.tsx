@@ -5,10 +5,7 @@ import { useEffect } from "react";
 import { auth } from "../../firebase.ts";
 import { AdminSupport } from "./AdminSupport.tsx";
 
-// Create this user in Firebase Auth console:
-//   Email: support@bongoquiz.com  (or waruchojanen@gmail.com)
-//   Password: <your PIN directly, e.g. 2027>
-const SUPPORT_EMAIL = "waruchojanen@gmail.com";
+const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL as string;
 
 const CSS = `
 .sp-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
