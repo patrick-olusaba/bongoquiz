@@ -2083,8 +2083,12 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
 
     useEffect(() => {
         if (preAuthed) return;
+        if (sessionStorage.getItem("admin_pin_auth")) {
+            setAuthed(true);
+            setAuthChecked(true);
+            return;
+        }
         const unsub = onAuthStateChanged(auth, user => {
-            // Block KCSE uploader from accessing full admin
             setAuthed(!!user && user.email !== KCSE_EMAIL);
             setAuthChecked(true);
         });
@@ -2229,7 +2233,11 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
         return () => document.removeEventListener("mousedown", handleOutsideClick);
     }, [notificationsOpen]);
 
-    const handleLogout = () => signOut(auth);
+    const handleLogout = () => {
+        sessionStorage.removeItem("admin_pin_auth");
+        setAuthed(false);
+        signOut(auth);
+    };
     const activeLabel = TABS.find(t => t.id === tab)?.label.replace(/^\S+\s*/, "") ?? "Dashboard";
     const timeAgo = (ms?: number) => {
         if (!ms) return "just now";
@@ -2244,8 +2252,7 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
     const notificationCount = unreadNotifications.length;
 
     if (!authChecked) return null;
-    if (!authed) return <AdminLogin onLogin={() => {
-    }}/>;
+    if (!authed) return <AdminLogin onLogin={() => setAuthed(true)}/>;
 
     return (
         <>
