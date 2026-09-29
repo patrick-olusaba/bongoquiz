@@ -41,7 +41,7 @@ service cloud.firestore {
 
     // Admins — no client access
     match /admins/{id} {
-      allow read:  if false;
+      allow read:  if true;
       allow write: if false;
     }
 
