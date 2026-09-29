@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { AlertTriangle, Award, BarChart3, CalendarClock, Clock, Coins, Copy, FileUp, Gift, ListChecks, Medal, Plus, RefreshCw, Save, Search, Settings, Shirt, Star, Trophy, Users, Zap } from "lucide-react";
@@ -410,25 +410,27 @@ export function AdminTournament() {
             else if (result.action === "publish") { status = "active"; activeFlag = true; }
             else { status = "scheduled"; activeFlag = true; }
 
-            const payload: Record<string, unknown> = {
-                title: result.title,
-                subtitle: result.subtitle,
+            const docRef = result.id
+                ? doc(db, "quizTournaments", result.id)
+                : doc(collection(db, "quizTournaments"));
+            const existingSnap = await getDoc(docRef);
+            await setDoc(docRef, {
+                title: result.title.trim().slice(0, 90),
+                subtitle: result.subtitle.trim().slice(0, 260),
                 quizType: result.quizType,
                 status,
                 active: activeFlag,
                 entryFeeCoins: 0,
                 durationSeconds: 80,
-                dailyStartTime: result.dailyStartTime || "08:00",
                 tournamentCycle: "weekly",
                 startsAt: result.startsAt ? new Date(result.startsAt).toISOString() : null,
                 endsAt: result.endsAt ? new Date(result.endsAt).toISOString() : null,
                 rewards: result.rewards.map(r => ({ ...r, items: r.items.map(i => i.trim()).filter(Boolean) })),
                 questionIds: result.questionIds || [],
-            };
-            if (result.id) payload.id = result.id;
-            const fn = httpsCallable(getFunctions(), "saveQuizTournament");
-            const res = await fn(payload);
-            const id = (res.data as any)?.id || result.id;
+                updatedAt: serverTimestamp(),
+                createdAt: existingSnap.exists() ? (existingSnap.data()?.createdAt || serverTimestamp()) : serverTimestamp(),
+            }, { merge: true });
+            const id = docRef.id;
             if (id) { setSelectedId(id); seededIdRef.current = ""; }
             await writeAdminAudit({ action: "Quiz tournament saved via wizard", target: id || result.title, details: { action: result.action, status } });
             setWizardOpen(false);
@@ -459,30 +461,31 @@ export function AdminTournament() {
         setSaving(true);
         setMessage("");
         try {
-            const payload: Record<string, unknown> = {
-                title: draft.title,
-                subtitle: draft.subtitle,
+            const docRef = draft.id
+                ? doc(db, "quizTournaments", draft.id)
+                : doc(collection(db, "quizTournaments"));
+            const existingSnap = await getDoc(docRef);
+            await setDoc(docRef, {
+                title: draft.title.trim().slice(0, 90),
+                subtitle: draft.subtitle.trim().slice(0, 260),
                 quizType: currentQuizType,
                 status: draft.status,
                 active: draft.active,
                 entryFeeCoins: 0,
                 durationSeconds: 80,
-                dailyStartTime: draft.dailyStartTime || "08:00",
                 tournamentCycle: "weekly",
                 startsAt: startsAt ? new Date(startsAt).toISOString() : null,
                 endsAt: endsAt ? new Date(endsAt).toISOString() : null,
                 rewards: draft.rewards.map(reward => ({ ...reward, items: reward.items.map(item => item.trim()).filter(Boolean) })),
-            };
-            const payloadId = draft.id;
-            if (payloadId) payload.id = payloadId;
-            const fn = httpsCallable(getFunctions(), "saveQuizTournament");
-            const result = await fn(payload);
-            const id = (result.data as any)?.id || payloadId;
+                updatedAt: serverTimestamp(),
+                createdAt: existingSnap.exists() ? (existingSnap.data()?.createdAt || serverTimestamp()) : serverTimestamp(),
+            }, { merge: true });
+            const id = docRef.id;
             if (id) {
                 setSelectedId(id);
                 setDraft(current => ({ ...current, id }));
             }
-            await writeAdminAudit({ action: "Quiz tournament saved", target: id || draft.title, details: payload });
+            await writeAdminAudit({ action: "Quiz tournament saved", target: id || draft.title, details: { status: draft.status } });
             setMessage("Tournament saved.");
         } catch (error) {
             setMessage("Failed to save tournament: " + String(error));
