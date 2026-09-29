@@ -60,7 +60,15 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     const [notifOpen, setNotifOpen] = useState(false);
     const [myEntries, setMyEntries] = useState<{ tournament: QuizTournament; entry: TournamentEntry; rank: number; field: number }[]>([]);
     const [tick, setTick] = useState(0);
+    const [toast, setToast] = useState<{ msg: string; id: number } | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
     const howRef = useRef<HTMLDivElement>(null);
+
+    const showToast = (msg: string) => {
+        const id = Date.now();
+        setToast({ msg, id });
+        window.setTimeout(() => setToast(t => t?.id === id ? null : t), 4000);
+    };
 
     const playerName = localStorage.getItem("bongo_player_name") || "Player";
     const currentPhone = localStorage.getItem("bongo_player_phone") ?? "";
@@ -255,6 +263,15 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
 
     const isLive = !!selected && selected.status === "active";
 
+    const isEndingSoon = (t: QuizTournament) => {
+        const end = toDate(t.endsAt);
+        if (!end || t.status !== "active") return false;
+        const diff = end.getTime() - Date.now();
+        return diff > 0 && diff < 2 * 60 * 60 * 1000;
+    };
+
+    const selectedEndingSoon = !!selected && isEndingSoon(selected);
+
     const handleReferAndEarn = () => {
         void ensureReferralCode(currentPhone);
         const link = getReferralLink(currentPhone);
@@ -276,14 +293,20 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         const phone = localStorage.getItem("bongo_player_phone") || "";
         const name = localStorage.getItem("bongo_player_name") || "";
         if (!/^07\d{8}$/.test(phone) || !name.trim()) {
-            window.alert("Please sign in with your player name and phone number before entering a tournament.");
+            showToast("Enter your name and phone number to join tournaments.");
             return;
         }
         const played = await getDoc(doc(db, "quizTournaments", selected.id, "entries", phone));
         if (played.exists()) {
-            window.alert("You have already played this tournament. Please join a different tournament when one is available.");
+            showToast("You've already entered this tournament. Check My Activity to see your result.");
             return;
         }
+        setPreviewOpen(true);
+    };
+
+    const confirmJoin = () => {
+        if (!selected) return;
+        setPreviewOpen(false);
         writeActiveTournamentSession({ tournament: selected, questions: [], answers: {}, currentIndex: 0, deadline: 0 });
         onEnterTournament(selected);
     };
@@ -324,7 +347,8 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
 
                 <div className="cm-tabs-row">
                     <div className="cm-tabs">
-                        <button className={tab === "ongoing" ? "active" : ""} onClick={() => setTab("ongoing")}><Zap size={16} /> Ongoing</button>
+                        <button className={tab === "ongoing" ? "active" : ""} onClick={() => setTab("ongoing")}><Zap size={16} /> Live{grouped.ongoing.length > 0 ? ` (${grouped.ongoing.length})` : ""}</button>
+                        <button className={tab === "upcoming" ? "active" : ""} onClick={() => setTab("upcoming")}><CalendarDays size={16} /> Upcoming{grouped.upcoming.length > 0 ? ` (${grouped.upcoming.length})` : ""}</button>
                         <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}><Clock3 size={16} /> Past Results</button>
                         <button className={tab === "activity" ? "active" : ""} onClick={() => setTab("activity")}><User size={16} /> My Activity</button>
                     </div>
@@ -444,8 +468,9 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                 ) : (
                     <>
                         {/* Featured tournament */}
-                        <section className={`cm-feature ${isLive ? "is-live" : ""}`}>
-                            {isLive && <div className="cm-live-pill"><i /> LIVE NOW</div>}
+                        <section className={`cm-feature ${isLive ? "is-live" : ""} ${selectedEndingSoon ? "ending-soon" : ""}`}>
+                            {isLive && <div className={`cm-live-pill ${selectedEndingSoon ? "urgent" : ""}`}><i /> {selectedEndingSoon ? "🔥 ENDING SOON" : "LIVE NOW"}</div>}
+                            {selectedEndingSoon && <div className="cm-ending-banner">Hurry — this tournament closes soon!</div>}
                             <div className="cm-feature-grid">
                                 <div className="cm-feature-art">{quizTypeIcons[normalizeTournamentQuizType(selected.quizType)]}</div>
                                 <div className="cm-feature-body">
@@ -688,6 +713,54 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                         )}
                     </div>
                 </>
+            )}
+
+            {/* Toast notifications */}
+            {toast && (
+                <div className="cm-toast" role="status" aria-live="polite">{toast.msg}</div>
+            )}
+
+            {/* Join preview bottom sheet */}
+            {previewOpen && selected && (
+                <div className="cm-preview-backdrop" onClick={() => setPreviewOpen(false)}>
+                    <div className="cm-preview-sheet" onClick={e => e.stopPropagation()}>
+                        <div className="cm-preview-handle" />
+                        <div className="cm-preview-head">
+                            <span className="cm-preview-icon">{quizTypeIcons[normalizeTournamentQuizType(selected.quizType)]}</span>
+                            <div>
+                                <h3>{selected.title}</h3>
+                                <small>{quizTypeLabels[normalizeTournamentQuizType(selected.quizType)]} · {selected.tournamentCycle === "weekly" ? "Weekly" : "Daily"}</small>
+                            </div>
+                        </div>
+                        <div className="cm-preview-meta">
+                            <div><Clock3 size={15} /> <span>1 min 20 sec per question</span></div>
+                            <div><Star size={15} /> <span>Up to 15 questions</span></div>
+                            <div><Gift size={15} /> <span>Entry: Free</span></div>
+                        </div>
+                        <div className="cm-preview-prizes">
+                            <strong>Prizes</strong>
+                            {[0, 1, 2, 3].map(index => {
+                                const reward = selected.rewards?.[index];
+                                if (!reward) return null;
+                                return (
+                                    <div key={`${reward.rank}-${index}`} className="cm-preview-prize-row">
+                                        <Medal className={`medal-${index + 1}`} size={18} />
+                                        <div>
+                                            <b>{reward.rank}</b>
+                                            <span>{reward.items.join(" + ")}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="cm-preview-actions">
+                            <button type="button" className="cm-preview-cancel" onClick={() => setPreviewOpen(false)}>Cancel</button>
+                            <button type="button" className="cm-preview-start" onClick={confirmJoin}>
+                                <Rocket size={16} /> Start Tournament
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <BottomNav active="community" onNavigate={onNavigate} />

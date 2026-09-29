@@ -1,0 +1,292 @@
+═══════════════════════════════════════════════════════════
+BONGOQUIZ — TOURNAMENT UX IMPROVEMENT PLAN
+Date: 2026-09-29
+═══════════════════════════════════════════════════════════
+
+
+═══════════════════════════════════════════════════════════
+OPTION A — ADMIN TOURNAMENT WIZARD
+═══════════════════════════════════════════════════════════
+
+CHANGE 1 — TOURNAMENT LIST (Tournaments tab)
+─────────────────────────────────────────────
+Current row shows:
+  [icon] Title + subtitle | status badge | timer | entry fee | Delete
+
+New row shows:
+  [icon] Title | status pill (click to toggle) | cycle badge | [Edit] [Duplicate] [Delete]
+
+- Status pill is CLICKABLE:
+    active    → click → confirms "Mark as Completed?" → yes → flips to completed
+    completed → click → confirms "Re-activate?"       → yes → flips to active
+    scheduled → click → confirms "Launch now?"        → yes → flips to active
+
+- [Duplicate] button:
+    Creates a copy of the tournament with:
+      - Same title + " (Copy)"
+      - Same game type, questions, rewards
+      - Status = scheduled
+      - Start/End dates = blank (admin fills them in the wizard)
+      - Opens the wizard immediately on Step 1 pre-filled
+
+- [Edit] button:
+    Opens the wizard in edit mode, pre-filled with existing data
+
+- [Create Tournament] button (top right):
+    Opens the wizard from scratch
+
+
+CHANGE 2 — CREATE / EDIT WIZARD (replaces 5-tab flow)
+───────────────────────────────────────────────────────
+A slide-in panel (right drawer on desktop, full-screen on mobile)
+with a progress bar at the top showing 3 steps.
+
+Progress bar:  [● Step 1 Details] ── [○ Step 2 Questions] ── [○ Step 3 Rewards]
+
+
+────────────────────────────────
+STEP 1 — DETAILS
+────────────────────────────────
+Fields (same as current Settings tab):
+  - Title                (text input, required)
+  - Game type            (dropdown: Trick Questions, Kenya Trivia, Sports, etc.)
+  - Cycle                (Daily / Weekly toggle button)
+  - Start date & time    (date-time picker)
+  - End date & time      (date-time picker)
+  - Entry fee            (0 = Free, else number of coins)
+  - Visibility           (Visible to players / Hidden)
+  - Subtitle             (textarea, optional description)
+
+Bottom buttons:
+  [Cancel]                                        [Next: Questions →]
+
+Validation before Next:
+  - Title must not be empty
+  - End date must be after start date
+  - Shows inline red error message if either fails
+
+
+────────────────────────────────
+STEP 2 — QUESTIONS
+────────────────────────────────
+Left panel — Question bank (filtered to selected game type):
+  - Search bar to filter questions by keyword
+  - Each row: question text | difficulty badge (Easy/Medium/Hard) | [+ Add]
+  - Bulk buttons: [Add All Easy]  [Add All Medium]  [Add All Hard]
+
+Right panel — Selected questions for this tournament:
+  - Counter: "8 / 15 questions selected"
+  - Each added question: [drag handle] question text | [✕ Remove]
+  - Questions can be dragged to reorder
+
+Bottom buttons:
+  [← Back: Details]                               [Next: Rewards →]
+
+Validation before Next:
+  - At least 1 question must be selected
+  - Warning shown (not a block) if fewer than 5 questions selected:
+    "Tip: Tournaments with fewer than 5 questions may feel too short."
+
+
+────────────────────────────────
+STEP 3 — REWARDS
+────────────────────────────────
+Pre-filled with the default 4 reward tiers:
+  1st Place : Champion Pack        — 5 Coins + Winner Badge
+  2nd Place : Silver Pack          — 3 Coins + Silver Medal
+  3rd Place : Bronze Pack          — 1 Coin  + Bronze Medal
+  Top 10    : Community Recognition — 10 points + Badge
+
+Each reward row is editable:
+  Rank label | Pack title (text input) | Items (textarea)
+  [Remove] button on each row
+  [+ Add Reward Tier] button at the bottom to add more tiers
+
+Final status selector at bottom of this step:
+  "How should this tournament launch?"
+    ○ Schedule — goes live automatically at the start date/time
+    ● Publish now — immediately sets status to active
+
+Bottom buttons:
+  [← Back: Questions]       [Save as Draft]       [Publish Tournament ✓]
+
+  - [Save as Draft]        → saves with status = scheduled, closes wizard
+                             shows toast: "Tournament saved as draft."
+  - [Publish Tournament]   → saves with chosen launch status, closes wizard
+                             shows toast: "Tournament created and published!"
+
+
+CHANGE 3 — OVERVIEW TAB (minor refresh)
+─────────────────────────────────────────
+Current: Timer + stats cards + reward snapshot (not very actionable)
+
+New: Quick-action dashboard with 3 alert cards + stats row
+
+  Card 1 — "Currently Live"
+    Lists all active tournaments with live player counts.
+    [Go to tournament] link per row.
+
+  Card 2 — "Ending Soon"
+    Tournaments ending within the next 2 hours.
+    Shows player count and time remaining.
+    [Extend] shortcut button (opens Edit wizard on Step 1 with end date focused).
+
+  Card 3 — "Needs Attention"
+    Scheduled tournaments whose start time has already passed
+    but are still in "scheduled" status (admin forgot to publish).
+    [Publish Now] button per row.
+
+  Stats row stays unchanged:
+    Active Quizzes | Tournaments | Total Questions | Players | Rewards
+
+
+═══════════════════════════════════════════════════════════
+OPTION B — PLAYER (USER) EXPERIENCE IMPROVEMENTS
+═══════════════════════════════════════════════════════════
+
+CHANGE 1 — REPLACE window.alert() WITH INLINE TOASTS
+──────────────────────────────────────────────────────
+Current behaviour:
+  window.alert("You have already played this tournament...")
+  window.alert("Please sign in with your player name and phone number...")
+
+  These are browser-native blocking popups — ugly and jarring.
+
+New behaviour:
+  A small toast banner slides up from the bottom of the screen.
+  Auto-dismisses after 4 seconds. No button to click.
+
+  Toast — Already played:
+    ⚡  You've already entered this tournament.
+        Check My Activity to see your result.
+
+  Toast — Not signed in:
+    👤  Enter your name and phone number to join tournaments.
+
+
+CHANGE 2 — ADD "UPCOMING" TAB
+───────────────────────────────
+Current tabs:
+  [Ongoing]  [Past Results]  [My Activity]  [Refer & Earn]
+
+New tabs:
+  [Live ⚡]  [Upcoming 🗓]  [Past Results]  [My Activity]  [Refer & Earn]
+
+  - "Ongoing" renamed to "Live ⚡" — clearer meaning for players
+  - "Upcoming" tab added — shows all tournaments with status = scheduled
+
+Upcoming tab content per tournament card:
+  Title
+  Game type icon + name
+  Starts in: X hours  /  X days  (countdown to start date)
+  Prizes preview:  🥇 5 Coins + Badge   🥈 3 Coins   🥉 1 Coin
+  [Remind Me] button — saves a reminder locally
+                        (no push notification for now, just a note)
+
+Empty state:
+  "No tournaments scheduled right now. Check back soon!"
+
+
+CHANGE 3 — REWARD PREVIEW SHEET BEFORE JOINING
+────────────────────────────────────────────────
+Current flow:
+  Player taps [Join Tournament]
+    → immediately enters the game with no summary or confirmation
+
+New flow:
+  Player taps [Join Tournament]
+    → bottom sheet slides up (covers lower 60% of screen)
+
+  ┌──────────────────────────────────────┐
+  │  🏆  Weekly Tricky Questions         │
+  │  Trick Questions  ·  Weekly          │
+  │                                      │
+  │  ⏱   1 min 20 sec per question       │
+  │  ❓  10 questions                    │
+  │  🎯  Entry: Free                     │
+  │                                      │
+  │  ── Prizes ──────────────────────    │
+  │  🥇 1st   Champion Pack              │
+  │           5 Coins + Winner Badge     │
+  │  🥈 2nd   Silver Pack                │
+  │           3 Coins + Silver Medal     │
+  │  🥉 3rd   Bronze Pack                │
+  │           1 Coin + Bronze Medal      │
+  │  ⭐ Top 10  Community Recognition    │
+  │           10 Points + Badge          │
+  │                                      │
+  │  [Cancel]      [Start Tournament →]  │
+  └──────────────────────────────────────┘
+
+  [Start Tournament →] → enters the game
+  [Cancel] or swipe down → closes the sheet, returns to list
+
+
+CHANGE 4 — URGENCY SIGNAL FOR ENDING-SOON TOURNAMENTS
+───────────────────────────────────────────────────────
+Current:
+  All live tournament cards look identical regardless of time remaining.
+
+New:
+  When a live tournament has less than 2 hours remaining,
+  the card gets a visual urgency treatment:
+
+  Normal card (plenty of time):
+    Purple border
+    Timer shows: "Ends in 3d 4h"
+
+  Ending soon card (under 2 hours):
+    Amber/orange border + subtle glow
+    Pulsing icon: "🔥 Ends in 1h 23m"
+    Small text below: "Hurry — this tournament closes soon!"
+
+  This uses the existing countdown logic (countdownParts) already
+  in the code — only CSS class + conditional label changes needed.
+
+
+═══════════════════════════════════════════════════════════
+WHAT STAYS EXACTLY THE SAME
+═══════════════════════════════════════════════════════════
+- All existing admin tabs remain:
+    Overview / Tournaments / Leaderboard / Settings / Questions / Rewards
+  The wizard is an additional path — power users can still use tabs directly.
+
+- The Questions tab (CSV upload, question bank management) — unchanged.
+
+- The Leaderboard tab — unchanged.
+
+- The My Activity tab — unchanged.
+
+- The Refer & Earn tab — unchanged.
+
+- All Firestore collection shapes — no data migration needed.
+
+- The TournamentPlayPage (the actual quiz game itself) — unchanged.
+
+
+═══════════════════════════════════════════════════════════
+SUGGESTED BUILD ORDER (if everything is approved)
+═══════════════════════════════════════════════════════════
+1. B1  Replace window.alert() with toast notifications    ~30 min
+2. B4  Urgency signal on ending-soon tournament cards     ~30 min
+3. B2  Add Upcoming tab to player tournament view         ~1 hour
+4. B3  Reward preview bottom sheet before joining         ~1.5 hours
+5. A1  Inline status toggle + Duplicate button on list    ~1 hour
+6. A2  3-step create/edit wizard drawer                   ~3-4 hours
+7. A3  Overview tab quick-action dashboard                ~1 hour
+
+
+═══════════════════════════════════════════════════════════
+QUESTIONS FOR YOUR FEEDBACK
+═══════════════════════════════════════════════════════════
+1. Wizard style: right-side drawer or full-screen modal?
+2. Should [Duplicate] open the wizard immediately or just
+   create the copy silently and show it in the list?
+3. Should the Upcoming tab show a real countdown timer that
+   ticks live, or just a static "Starts in X days" label?
+4. Should [Remind Me] do anything visible beyond changing
+   the button to "Reminded ✓", or link to something?
+5. Any wording changes on the toast messages or the
+   reward preview sheet?
+6. Should the wizard allow adding NEW questions on the fly
+   (Step 2), or only pick from the existing question bank?

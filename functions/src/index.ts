@@ -797,7 +797,7 @@ export const saveQuizTournament = functions.https.onCall(async (data, context) =
     const quizType = normalizePublicTournamentGame(data?.quizType);
     const title = typeof data?.title === "string" && data.title.trim() ? data.title.trim().slice(0, 90) : "Weekly Tournament Cup";
     const subtitle = typeof data?.subtitle === "string" ? data.subtitle.trim().slice(0, 260) : "";
-    const status = ["active", "scheduled", "completed"].includes(String(data?.status)) ? String(data.status) : "scheduled";
+    const status = ["draft", "active", "scheduled", "completed", "archived"].includes(String(data?.status)) ? String(data.status) : "scheduled";
     const rewards = sanitizeTournamentRewards(data);
     const payload: any = {
         title,

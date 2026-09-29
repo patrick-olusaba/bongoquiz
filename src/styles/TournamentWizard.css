@@ -1,0 +1,491 @@
+/* ── Wizard overlay ─────────────────────────────────────────────────────── */
+.wiz-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+}
+
+.wiz-panel {
+    background: #fff;
+    width: min(680px, 100vw);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    animation: wiz-slide-in 0.22s ease;
+}
+
+@keyframes wiz-slide-in {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.wiz-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #ede9fe;
+    background: linear-gradient(135deg, #f5f3ff, #fff);
+    flex-shrink: 0;
+}
+
+.wiz-header h2 {
+    margin: 0 0 14px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.wiz-close {
+    float: right;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: #9ca3af;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+}
+.wiz-close:hover { color: #374151; }
+
+/* ── Step progress bar ─────────────────────────────────────────────────── */
+.wiz-progress {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.wiz-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-weight: 500;
+    flex: 1;
+    position: relative;
+}
+
+.wiz-step:not(:last-child)::after {
+    content: "";
+    display: block;
+    height: 2px;
+    flex: 1;
+    background: #e5e7eb;
+    margin: 0 8px;
+}
+
+.wiz-step.done::after { background: #6d28d9; }
+
+.wiz-step i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    font-style: normal;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.wiz-step.active i  { background: #6d28d9; color: #fff; }
+.wiz-step.done i    { background: #059669; color: #fff; }
+.wiz-step.active    { color: #6d28d9; font-weight: 700; }
+.wiz-step.done      { color: #059669; }
+
+/* ── Body (scrollable) ─────────────────────────────────────────────────── */
+.wiz-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.wiz-alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+}
+.wiz-alert.error { background: #fee2e2; color: #991b1b; }
+.wiz-alert.tip   { background: #fef9c3; color: #92400e; }
+
+/* ── Step 1: Details form ─────────────────────────────────────────────── */
+.wiz-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.wiz-form label,
+.wiz-reward-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.wiz-form label.wiz-wide,
+.wiz-reward-fields label.wiz-wide { grid-column: 1 / -1; }
+
+.wiz-form input,
+.wiz-form select,
+.wiz-form textarea,
+.wiz-reward-fields input,
+.wiz-reward-fields select,
+.wiz-reward-fields textarea {
+    padding: 8px 10px;
+    border: 1.5px solid #e2d9ff;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #1a1a2e;
+    background: #f9f7ff;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+.wiz-form input:focus,
+.wiz-form select:focus,
+.wiz-form textarea:focus,
+.wiz-reward-fields input:focus,
+.wiz-reward-fields textarea:focus { border-color: #7c3aed; outline: none; }
+
+.req { color: #ef4444; }
+
+/* ── Step 2: Questions ────────────────────────────────────────────────── */
+.wiz-questions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    height: 100%;
+    min-height: 400px;
+}
+
+.wiz-q-left,
+.wiz-q-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wiz-q-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.wiz-q-head strong { font-size: 0.82rem; color: #374151; }
+
+.wiz-q-search {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f4f0ff;
+    border: 1.5px solid #e2d9ff;
+    border-radius: 8px;
+    padding: 5px 9px;
+    flex: 1;
+    min-width: 0;
+}
+.wiz-q-search input {
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 0.8rem;
+    width: 100%;
+    color: #1a1a2e;
+}
+.wiz-q-search svg { color: #9ca3af; flex-shrink: 0; }
+
+.wiz-q-filters {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.wiz-q-filters button {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    border: 1.5px solid #e2d9ff;
+    background: #fff;
+    color: #6d28d9;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.wiz-q-filters button.active { background: #6d28d9; color: #fff; border-color: #6d28d9; }
+.wiz-q-filters button:hover:not(.active) { background: #f4f0ff; }
+
+.wiz-addall {
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
+    border-color: #6d28d9 !important;
+    font-size: 0.73rem;
+}
+
+.wiz-q-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    max-height: 380px;
+}
+
+.wiz-q-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 11px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-family: inherit;
+}
+.wiz-q-row:last-child { border-bottom: none; }
+.wiz-q-row:hover { background: #f5f3ff; }
+
+.wiz-q-text {
+    flex: 1;
+    font-size: 0.78rem;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wiz-q-diff {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.diff-easy   { background: #d1fae5; color: #065f46; }
+.diff-medium { background: #fef9c3; color: #92400e; }
+.diff-hard   { background: #fee2e2; color: #991b1b; }
+
+.wiz-q-add { color: #6d28d9; flex-shrink: 0; }
+
+.wiz-q-empty {
+    padding: 20px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+/* Right panel */
+.wiz-q-right > strong {
+    font-size: 0.82rem;
+    color: #374151;
+}
+
+.wiz-q-selected {
+    flex: 1;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    overflow-y: auto;
+    max-height: 380px;
+}
+
+.wiz-q-sel-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 11px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: grab;
+}
+.wiz-q-sel-row:last-child { border-bottom: none; }
+.wiz-q-sel-row:hover { background: #fafafa; }
+
+.wiz-drag {
+    color: #d1d5db;
+    font-size: 1rem;
+    cursor: grab;
+    flex-shrink: 0;
+}
+
+.wiz-sel-text {
+    flex: 1;
+    font-size: 0.78rem;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wiz-q-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.wiz-q-remove:hover { background: #fca5a5; }
+
+.wiz-q-empty-r {
+    padding: 24px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+/* ── Step 3: Rewards ─────────────────────────────────────────────────── */
+.wiz-rewards {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.wiz-rewards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wiz-reward-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: #f9f7ff;
+    border: 1.5px solid #ede9fe;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.wiz-reward-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding-top: 4px;
+}
+
+.wiz-reward-rm {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px;
+}
+.wiz-reward-rm:hover { color: #ef4444; }
+
+.wiz-reward-fields {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.wiz-add-reward {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    border: 1.5px dashed #c4b5fd;
+    border-radius: 10px;
+    background: none;
+    color: #6d28d9;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-family: inherit;
+}
+.wiz-add-reward:hover { background: #f5f3ff; }
+
+/* Launch choice */
+.wiz-launch { background: #f9f7ff; border-radius: 12px; padding: 16px; }
+.wiz-launch h4 { margin: 0 0 12px; font-size: 0.88rem; color: #374151; }
+
+.wiz-radio {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    background: #fff;
+    transition: border-color 0.15s;
+}
+.wiz-radio:last-child { margin-bottom: 0; }
+.wiz-radio.chosen { border-color: #6d28d9; background: #f5f3ff; }
+.wiz-radio input { margin-top: 3px; accent-color: #6d28d9; flex-shrink: 0; }
+.wiz-radio div { display: flex; flex-direction: column; gap: 2px; }
+.wiz-radio strong { font-size: 0.85rem; color: #1a1a2e; }
+.wiz-radio span { font-size: 0.78rem; color: #6b7280; }
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.wiz-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-top: 1px solid #ede9fe;
+    background: #fafafa;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.wiz-footer-left,
+.wiz-footer-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.wiz-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: filter 0.12s, transform 0.1s;
+    font-family: inherit;
+}
+.wiz-btn:active { transform: scale(0.98); }
+.wiz-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.wiz-btn.primary  { background: #6d28d9; color: #fff; box-shadow: 0 4px 12px rgba(109,40,217,0.3); }
+.wiz-btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+.wiz-btn.secondary { background: #f3f4f6; color: #374151; border: 1.5px solid #e5e7eb; }
+.wiz-btn.secondary:hover:not(:disabled) { background: #e5e7eb; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .wiz-panel { width: 100%; border-radius: 0; }
+    .wiz-questions { grid-template-columns: 1fr; }
+    .wiz-q-right { display: none; }
+    .wiz-form { grid-template-columns: 1fr; }
+    .wiz-reward-fields { grid-template-columns: 1fr; }
+    .wiz-step span { display: none; }
+}

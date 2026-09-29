@@ -11,7 +11,7 @@ export type QuizTournament = {
     title: string;
     subtitle: string;
     quizType: TournamentQuizType;
-    status: "active" | "scheduled" | "completed";
+    status: "draft" | "active" | "scheduled" | "completed" | "archived";
     active: boolean;
     entryFeeCoins: number;
     durationSeconds?: number;
@@ -20,6 +20,7 @@ export type QuizTournament = {
     startsAt?: any;
     endsAt?: any;
     rewards: TournamentReward[];
+    questionIds?: string[];
     deleted?: boolean;
     deletedAt?: any;
     createdAt?: any;

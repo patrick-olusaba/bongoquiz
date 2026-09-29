@@ -100,9 +100,11 @@ export const TournamentPlayPage: FC<Props> = ({ tournament, onBack, onDone, onNa
         };
         const q = query(collection(db, TOURNAMENT_QUESTION_BANK), where("quizType", "==", tournamentQuizType), limit(200));
         const unsubscribe = onSnapshot(q, async snap => {
-            const pool = snap.docs
+            const allPool = snap.docs
                 .map(d => ({ id: d.id, ...d.data() } as TournamentQuestion))
                 .filter(question => question.active !== false && Array.isArray(question.options));
+            const qIds = tournament.questionIds;
+            const pool = qIds?.length ? allPool.filter(q => qIds.includes(q.id)) : allPool;
             const fallbackPool = pool.length ? [] : await loadFallbackQuestions(tournamentQuizType).catch(() => []);
             startSession(shuffleQuestions(pool.length ? pool : fallbackPool).slice(0, 15));
         }, async () => {

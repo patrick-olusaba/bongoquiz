@@ -196,3 +196,41 @@
 .question-pagination button { min-height: 34px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: #344054; padding: 0 14px; font: inherit; font-size: .8rem; font-weight: 900; cursor: pointer; }
 .question-pagination button:disabled { opacity: .45; cursor: not-allowed; }
 .question-form-admin button.secondary { background: #fff; color: #344054; border-color: #d0d5dd; }
+
+/* ── Overview dashboard cards ─────────────────────────────────────────── */
+.adm-overview-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.adm-ov-card { border: 1px solid #e4e7ec; border-radius: 10px; background: #fff; padding: 14px 16px; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+.adm-ov-card.live  { border-color: #bbf7d0; background: #f0fdf4; }
+.adm-ov-card.ending { border-color: #fed7aa; background: #fff7ed; }
+.adm-ov-card.attention { border-color: #fde68a; background: #fefce8; }
+.adm-ov-card-head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+.adm-ov-card-head svg { flex-shrink: 0; }
+.adm-ov-card.live svg { color: #16a34a; }
+.adm-ov-card.ending svg { color: #ea580c; }
+.adm-ov-card.attention svg { color: #d97706; }
+.adm-ov-card-head strong { font-size: .82rem; color: #111827; flex: 1; }
+.adm-ov-card-head span { font-size: .72rem; color: #667085; }
+.adm-ov-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.06); font-size: .78rem; color: #344054; }
+.adm-ov-row:last-child { border-bottom: 0; }
+.adm-ov-timer { color: #ea580c; font-style: normal; font-size: .72rem; font-weight: 700; }
+.adm-ov-link { border: none; background: none; color: #6d28d9; font: inherit; font-size: .73rem; font-weight: 700; cursor: pointer; white-space: nowrap; text-decoration: underline; }
+.adm-ov-link:hover { color: #4c1d95; }
+.adm-ov-empty { font-size: .78rem; color: #9ca3af; padding: 4px 0; }
+
+/* ── Status pills ─────────────────────────────────────────────────────── */
+.status.draft    { color: #92400e; background: #fef9c3; }
+.status.scheduled { color: #1d4ed8; background: #dbeafe; }
+.status.archived { color: #6b7280; background: #f3f4f6; }
+
+/* ── Tournament table action buttons ─────────────────────────────────── */
+.tournament-row-actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.delete-btn  { border: 1px solid #fecaca; border-radius: 6px; background: #fff1f2; color: #b91c1c; min-height: 30px; padding: 0 9px; font: inherit; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.publish-btn { border: 1px solid #bbf7d0; border-radius: 6px; background: #f0fdf4; color: #166534; min-height: 30px; padding: 0 9px; font: inherit; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.launch-btn  { border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; min-height: 30px; padding: 0 9px; font: inherit; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.dup-btn     { border: 1px solid #e9d5ff; border-radius: 6px; background: #fdf4ff; color: #7c3aed; min-height: 30px; padding: 0 9px; font: inherit; font-size: .72rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+
+/* Updated tournament list table columns */
+.adm-tournament-table.compact.tournament-list-table .thead,
+.adm-tournament-table.compact.tournament-list-table .trow { grid-template-columns: 1.8fr .7fr .7fr .5fr 1.2fr; }
+
+@media (max-width: 900px) { .adm-overview-cards { grid-template-columns: 1fr; } }

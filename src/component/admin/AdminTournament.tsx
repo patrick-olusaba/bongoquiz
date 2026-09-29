@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { Award, BarChart3, CalendarClock, Coins, FileUp, Gift, ListChecks, Medal, Plus, RefreshCw, Save, Search, Settings, Shirt, Star, Trophy, Users } from "lucide-react";
+import { AlertTriangle, Award, BarChart3, CalendarClock, Clock, Coins, Copy, FileUp, Gift, ListChecks, Medal, Plus, RefreshCw, Save, Search, Settings, Shirt, Star, Trophy, Users, Zap } from "lucide-react";
 import { db, storage, auth } from "../../firebase.ts";
 import { writeAdminAudit } from "./auditLog.ts";
 import {
@@ -22,6 +22,7 @@ import {
     type TournamentQuizType,
     type TournamentReward,
 } from "../../utils/tournaments.ts";
+import { TournamentWizard, type WizardResult } from "./TournamentWizard.tsx";
 import "../../styles/AdminTournament.css";
 
 type EditableTournament = Omit<QuizTournament, "id"> & { id?: string };
@@ -196,6 +197,8 @@ export function AdminTournament() {
     const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
     const [questionPage, setQuestionPage] = useState(1);
     const PAGE_SIZE = 20;
+    const [wizardOpen, setWizardOpen] = useState(false);
+    const [wizardSeed, setWizardSeed] = useState<QuizTournament | null>(null);
 
     useEffect(() => {
         const q = query(collection(db, "quizTournaments"), orderBy("updatedAt", "desc"), limit(30));
@@ -380,21 +383,76 @@ export function AdminTournament() {
     const csvTemplateHref = "data:text/csv;charset=utf-8," + encodeURIComponent(csvTemplateRows.map(row => row.map(csvEscape).join(",")).join("\n"));
 
     const createTournament = () => {
-        const next = makeDraft({
-            title: "Weekly BongoQuiz Cup",
-            subtitle: "Answer tournament-only questions and climb the leaderboard.",
-            quizType: "generalKnowledge",
-            status: "scheduled",
-            active: true,
-        });
-        setSelectedId("");
-        setDraft(next);
-        setStartsAt(dateInputValue(new Date().toISOString()));
-        setEndsAt(defaultEndsAt());
-        setEntries([]);
-        setActiveTab("settings");
-        setMessage("Creating a new tournament. Save when ready.");
-        setDifficultyFilter("all");
+        setWizardSeed(null);
+        setWizardOpen(true);
+    };
+
+    const duplicateTournament = (tournament: QuizTournament) => {
+        setWizardSeed({
+            ...tournament,
+            id: "",  // no id = create new
+            title: tournament.title + " (Copy)",
+            status: "draft",
+            active: false,
+            startsAt: undefined,
+            endsAt: undefined,
+        } as QuizTournament);
+        setWizardOpen(true);
+    };
+
+    const handleWizardSave = async (result: WizardResult) => {
+        setSaving(true);
+        setMessage("");
+        try {
+            let status: QuizTournament["status"];
+            let activeFlag: boolean;
+            if (result.action === "draft") { status = "draft"; activeFlag = false; }
+            else if (result.action === "publish") { status = "active"; activeFlag = true; }
+            else { status = "scheduled"; activeFlag = true; }
+
+            const payload: Record<string, unknown> = {
+                title: result.title,
+                subtitle: result.subtitle,
+                quizType: result.quizType,
+                status,
+                active: activeFlag,
+                entryFeeCoins: 0,
+                durationSeconds: 80,
+                dailyStartTime: result.dailyStartTime || "08:00",
+                tournamentCycle: result.tournamentCycle || "daily",
+                startsAt: result.startsAt ? new Date(result.startsAt).toISOString() : null,
+                endsAt: result.endsAt ? new Date(result.endsAt).toISOString() : null,
+                rewards: result.rewards.map(r => ({ ...r, items: r.items.map(i => i.trim()).filter(Boolean) })),
+                questionIds: result.questionIds || [],
+            };
+            if (result.id) payload.id = result.id;
+            const fn = httpsCallable(getFunctions(), "saveQuizTournament");
+            const res = await fn(payload);
+            const id = (res.data as any)?.id || result.id;
+            if (id) { setSelectedId(id); seededIdRef.current = ""; }
+            await writeAdminAudit({ action: "Quiz tournament saved via wizard", target: id || result.title, details: { action: result.action, status } });
+            setWizardOpen(false);
+            setMessage(`Tournament ${result.action === "draft" ? "saved as draft" : "published"} successfully.`);
+        } catch (error) {
+            setMessage("Failed to save tournament: " + String(error));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const changeStatus = async (tournament: QuizTournament, newStatus: QuizTournament["status"], newActive?: boolean) => {
+        setMessage("");
+        try {
+            await updateDoc(doc(db, "quizTournaments", tournament.id), {
+                status: newStatus,
+                active: newActive ?? tournament.active,
+                updatedAt: serverTimestamp(),
+            });
+            await writeAdminAudit({ action: "Tournament status changed", target: tournament.id, details: { from: tournament.status, to: newStatus } });
+            setMessage(`Tournament moved to ${newStatus}.`);
+        } catch (err) {
+            setMessage("Failed to update status: " + String(err));
+        }
     };
 
     const saveTournament = async () => {
@@ -626,16 +684,8 @@ export function AdminTournament() {
     };
 
     const editTournament = (tournament: QuizTournament) => {
-        setSelectedId(tournament.id);
-        setDraft(makeDraft(tournament));
-        setStartsAt(dateInputValue(tournament.startsAt));
-        setEndsAt(dateInputValue(tournament.endsAt) || defaultEndsAt());
-        setQuestionDraft({...blankQuestion, difficulty: "easy"});
-        setImageFile(null);
-        setImagePreview("");
-        setEditingQuestionId(null);
-        setActiveTab("settings");
-        setMessage("Editing " + tournament.title + ". Save when ready.");
+        setWizardSeed(tournament);
+        setWizardOpen(true);
     };
 
     const deleteTournament = (tournament: QuizTournament) => {
@@ -705,10 +755,50 @@ export function AdminTournament() {
             </div>}
 
             {activeTab === "overview" && <section className="adm-tournament-tab-panel">
+                {/* Dashboard alert cards */}
+                {(() => {
+                    const liveTours = tournaments.filter(t => t.status === "active" && t.active);
+                    const now = Date.now();
+                    const endingSoon = tournaments.filter(t => t.status === "active" && t.active && toDate(t.endsAt) && (toDate(t.endsAt)!.getTime() - now) < 2 * 3600000 && (toDate(t.endsAt)!.getTime() - now) > 0);
+                    const needsAttention = tournaments.filter(t => t.status === "scheduled" && t.active && toDate(t.startsAt) && toDate(t.startsAt)!.getTime() < now);
+                    return (
+                        <div className="adm-overview-cards">
+                            <div className="adm-ov-card live">
+                                <div className="adm-ov-card-head"><Zap size={16} /><strong>Currently Live</strong><span>{liveTours.length} tournament{liveTours.length !== 1 ? "s" : ""}</span></div>
+                                {liveTours.length ? liveTours.map(t => (
+                                    <div key={t.id} className="adm-ov-row">
+                                        <span>{t.title}</span>
+                                        <button className="adm-ov-link" onClick={() => { setSelectedId(t.id); setActiveTab("leaderboard"); }}>View</button>
+                                    </div>
+                                )) : <div className="adm-ov-empty">No live tournaments right now.</div>}
+                            </div>
+                            <div className="adm-ov-card ending">
+                                <div className="adm-ov-card-head"><Clock size={16} /><strong>Ending Soon</strong><span>Within 2 hours</span></div>
+                                {endingSoon.length ? endingSoon.map(t => {
+                                    const cp = countdownParts(toDate(t.endsAt));
+                                    return <div key={t.id} className="adm-ov-row">
+                                        <span>{t.title} <em className="adm-ov-timer">{cp.hours}h {cp.minutes}m left</em></span>
+                                        <button className="adm-ov-link" onClick={() => editTournament(t)}>Extend</button>
+                                    </div>;
+                                }) : <div className="adm-ov-empty">No tournaments ending soon.</div>}
+                            </div>
+                            <div className="adm-ov-card attention">
+                                <div className="adm-ov-card-head"><AlertTriangle size={16} /><strong>Needs Attention</strong><span>Past start time, still scheduled</span></div>
+                                {needsAttention.length ? needsAttention.map(t => (
+                                    <div key={t.id} className="adm-ov-row">
+                                        <span>{t.title}</span>
+                                        <button className="adm-ov-link" onClick={() => changeStatus(t, "active", true)}>Publish Now</button>
+                                    </div>
+                                )) : <div className="adm-ov-empty">Nothing needs attention.</div>}
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 <div className="adm-tournament-kpis">
                     <div><Users /><span>Participants</span><strong>{entries.length.toLocaleString()}</strong><em>{draft.title}</em></div>
                     <div><Trophy /><span>Active Tournaments</span><strong>{activeCount}</strong><em>{tournaments.length} total</em></div>
-                    <div><Star /><span>Points Awarded</span><strong>{totalPoints.toLocaleString()}</strong><em>selected tournament</em></div>
+                    <div><Star /><span>Points Awarded</span><strong>{totalPoints.toLocaleString()}</strong><em>all tournaments</em></div>
                     <div><Coins /><span>Reward Coins</span><strong>{totalCoinsAwarded.toLocaleString()}</strong><em>configured rewards</em></div>
                     <div><Shirt /><span>Shirts Awarded</span><strong>{shirtsAwarded}</strong><em>top performers</em></div>
                 </div>
@@ -737,20 +827,60 @@ export function AdminTournament() {
                 <div className="adm-tournament-card">
                     <div className="adm-tournament-card-head"><h2>Tournaments</h2><button onClick={createTournament}><Plus size={15} /> Create Tournament</button></div>
                     <div className="adm-tournament-table compact tournament-list-table">
-                        <div className="thead"><span>Tournament</span><span>Quiz</span><span>Status</span><span>Ends In</span><span>Players</span><span>Action</span></div>
+                        <div className="thead"><span>Tournament</span><span>Status</span><span>Schedule</span><span>Players</span><span>Actions</span></div>
                         {tournaments.length ? tournaments.map(tournament => {
                             const isSelected = tournament.id === selectedId;
-                            const count = isSelected ? entries.length : "--";
+                            const count = isSelected ? entries.length : "—";
                             const time = countdownParts(toDate(tournament.endsAt));
+                            const statusCls =
+                                tournament.status === "active" ? "status live" :
+                                tournament.status === "scheduled" ? "status scheduled" :
+                                tournament.status === "draft" ? "status draft" :
+                                tournament.status === "archived" ? "status archived" : "status completed";
                             return <div className={isSelected ? "trow current" : "trow"} key={tournament.id}>
-                                <span className="tour-title"><Trophy size={18} /><strong>{tournament.title}</strong><small>{tournament.subtitle}</small></span>
-                                <span>{quizTypeLabels[normalizeTournamentQuizType(tournament.quizType)]}</span>
-                                <span><em className={tournament.status === "active" ? "status live" : "status ongoing"}>{tournament.active ? tournament.status : "hidden"}</em></span>
-                                <span className="countdown-mini">{tournament.status === "completed" ? "DONE" : `${time.days}:${time.hours}:${time.minutes}`}</span>
+                                <span className="tour-title">
+                                    <Trophy size={18} />
+                                    <strong>{tournament.title}</strong>
+                                    <small>{quizTypeLabels[normalizeTournamentQuizType(tournament.quizType)]}</small>
+                                </span>
+                                <span>
+                                    <em className={statusCls}>{tournament.active ? tournament.status : "hidden"}</em>
+                                </span>
+                                <span className="countdown-mini">
+                                    {tournament.status === "completed" || tournament.status === "archived" ? "DONE" :
+                                     tournament.status === "draft" ? "Draft" :
+                                     `${time.days}d ${time.hours}h`}
+                                </span>
                                 <span>{count}</span>
-                                <span className="tournament-row-actions"><button className="manage-btn" onClick={() => editTournament(tournament)}>Edit</button><button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button></span>
+                                <span className="tournament-row-actions">
+                                    {/* Status-based actions */}
+                                    {tournament.status === "draft" && <>
+                                        <button className="manage-btn" onClick={() => editTournament(tournament)}>Edit</button>
+                                        <button className="publish-btn" onClick={() => changeStatus(tournament, "scheduled", true)}>Publish</button>
+                                        <button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button>
+                                    </>}
+                                    {tournament.status === "scheduled" && <>
+                                        <button className="manage-btn" onClick={() => editTournament(tournament)}>Edit</button>
+                                        <button className="launch-btn" onClick={() => changeStatus(tournament, "active", true)}>Launch Now</button>
+                                        <button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button>
+                                    </>}
+                                    {tournament.status === "active" && <>
+                                        <button className="manage-btn" onClick={() => editTournament(tournament)}>Edit</button>
+                                        <button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button>
+                                    </>}
+                                    {(tournament.status === "completed" || tournament.status === "archived") && <>
+                                        <button className="manage-btn" onClick={() => { setSelectedId(tournament.id); setActiveTab("leaderboard"); }}>Results</button>
+                                        <button className="dup-btn" onClick={() => duplicateTournament(tournament)}><Copy size={13} /> Duplicate</button>
+                                        <button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button>
+                                    </>}
+                                    {/* Fallback for any other status */}
+                                    {!["draft","scheduled","active","completed","archived"].includes(tournament.status) && <>
+                                        <button className="manage-btn" onClick={() => editTournament(tournament)}>Edit</button>
+                                        <button className="delete-btn" onClick={() => deleteTournament(tournament)}>Delete</button>
+                                    </>}
+                                </span>
                             </div>;
-                        }) : <div className="admin-empty-row">No tournaments yet. Create one from admin.</div>}
+                        }) : <div className="admin-empty-row">No tournaments yet. Create one using the button above.</div>}
                     </div>
                 </div>
             </section>}
@@ -925,6 +1055,15 @@ export function AdminTournament() {
                     </div>
                 </div>
             </section>}
+
+            {wizardOpen && (
+                <TournamentWizard
+                    seed={wizardSeed}
+                    onSave={handleWizardSave}
+                    onClose={() => setWizardOpen(false)}
+                    saving={saving}
+                />
+            )}
         </div>
     );
 }
