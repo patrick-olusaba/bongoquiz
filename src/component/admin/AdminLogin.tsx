@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { Mail, Lock, ArrowRight, Gamepad2 } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { db, auth } from "../../firebase.ts";
 
 export const KCSE_EMAIL = import.meta.env.VITE_KCSE_EMAIL as string;
 
@@ -87,6 +88,15 @@ export function AdminLogin({
                 return;
             }
             attempts = 0;
+            // Sign into Firebase Auth so request.auth is set for Firestore rules.
+            // Admin accounts use their 4-digit PIN as the Firebase Auth password.
+            try {
+                await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), pin.join(""));
+            } catch {
+                // Auth sign-in failed — admin can still use the panel but Firestore
+                // writes that require auth will be limited. This can happen if the
+                // Firebase Auth account doesn't exist yet or has a different password.
+            }
             onLogin();
         } catch {
             setErr("Login error. Check your connection and try again.");
