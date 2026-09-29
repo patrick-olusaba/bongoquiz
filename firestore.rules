@@ -2,6 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Named email accounts only — excludes anonymous Firebase Auth sessions
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
     // Players — anyone can read/write their own record (keyed by phone)
     match /players/{phone} {
       allow read, create, update: if true;
@@ -10,33 +15,33 @@ service cloud.firestore {
     // Questions — public read, authenticated admin can write
     match /questions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // Leaderboard — public read, writes only via Admin SDK (saveGameSession Cloud Function)
     match /leaderboard/{phone} {
       allow read:             if true;
       allow create, update:   if false;
-      allow delete:           if request.auth != null;
+      allow delete:           if isAdmin();
     }
 
     // Game sessions — public read, writes only via Admin SDK (saveGameSession Cloud Function)
     match /gameSessions/{id} {
       allow read:             if true;
       allow create:           if false;
-      allow update, delete:   if request.auth != null;
+      allow update, delete:   if isAdmin();
     }
 
     // Dismissed payments — admin only
     match /dismissedPayments/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // Granted sessions — admin writes, player reads their own (delete handled server-side)
     match /grantedSessions/{phone} {
       allow read:   if true;
-      allow delete: if request.auth != null;
-      allow write:  if request.auth != null;
+      allow delete: if isAdmin();
+      allow write:  if isAdmin();
     }
 
     // Admins — no client access
@@ -49,10 +54,10 @@ service cloud.firestore {
     // Announcements are broadcast by admins and visible to players
     match /announcements/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /adminAudit/{id} {
-      allow read, create: if request.auth != null;
+      allow read, create: if isAdmin();
       allow update, delete: if false;
     }
 
@@ -67,7 +72,7 @@ service cloud.firestore {
     // Quests and Rewards — admin manages, server tracks progress
     match /quests/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /playerQuests/{id} {
       allow read: if true; // Players can see their own progress if needed
@@ -77,7 +82,7 @@ service cloud.firestore {
     // Achievements — admin manages badges
     match /badges/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // Payments — public read (phone-filtered queries from client), server writes via Admin SDK
@@ -89,19 +94,19 @@ service cloud.firestore {
     // Powers — public read, authenticated admin can write
     match /powers/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // KCSE Papers metadata — public read, authenticated admin can write
     match /kcsePapers/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // ── Bible Quiz ──────────────────────────────────────────────────────────────
     match /bibleQuizQuestions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /bibleQuizPayments/{id} {
       allow read:  if true;
@@ -110,25 +115,25 @@ service cloud.firestore {
     match /bibleQuizSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /bibleQuizLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /grantedBibleSessions/{phone} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /dismissedBiblePayments/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // ── Math Quiz ───────────────────────────────────────────────────────────────
     match /mathQuizQuestions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /mathQuizPayments/{id} {
       allow read:  if true;
@@ -137,18 +142,18 @@ service cloud.firestore {
     match /mathQuizSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /mathQuizLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
 
     // ── General Knowledge Quiz ──────────────────────────────────────────────────
     match /genQuizQuestions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /genQuizPayments/{id} {
       allow read:  if true;
@@ -157,35 +162,35 @@ service cloud.firestore {
     match /genQuizSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /genQuizLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /grantedGenSessions/{phone} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /dismissedGenPayments/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // ── Street Bongo ─────────────────────────────────────────────────────────────
     match /streetBongoQuestions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /streetBongoSessions/{id} {
       allow read:           if true;
       allow create:         if true;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
 
     // Agents — any authenticated user can read; only own doc can be written
     match /agents/{uid} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin();
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
@@ -193,17 +198,17 @@ service cloud.firestore {
     // Confirmed staff: any authenticated user can read their own doc;
     // create is allowed (CPLogin auto-provisions from invite); update by auth'd staff only
     match /staff/{uid} {
-      allow read:   if request.auth != null;
+      allow read:   if isAdmin();
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null;
+      allow update: if isAdmin();
       allow delete: if false;
     }
 
     // Pending invites: any auth'd user can read (to resolve their invite on login);
     // write restricted to auth'd users (owner creates/revokes invites)
     match /staffInvites/{email} {
-      allow read:   if request.auth != null;
-      allow write:  if request.auth != null;
+      allow read:   if isAdmin();
+      allow write:  if isAdmin();
     }
 
     // ── Support Chat ────────────────────────────────────────────────────────────
@@ -224,7 +229,7 @@ service cloud.firestore {
     // ── Biology Quiz ────────────────────────────────────────────────────────────
     match /bioQuizQuestions/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /bioQuizPayments/{id} {
       allow read:  if true;
@@ -233,31 +238,31 @@ service cloud.firestore {
     match /bioQuizSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /bioQuizLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /grantedBioSessions/{phone} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /dismissedBioPayments/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // ── Sudoku ─────────────────────────────────────────────────────────────────
     match /sudokuSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /sudokuLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /sudokuPayments/{id} {
       allow read:  if true;
@@ -274,12 +279,12 @@ service cloud.firestore {
     match /connectDotsSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /connectDotsLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /connectDotsPayments/{id} {
       allow read:  if true;
@@ -296,12 +301,12 @@ service cloud.firestore {
     match /sumTenSessions/{id} {
       allow read:           if true;
       allow create:         if false;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /sumTenLeaderboard/{id} {
       allow read:           if true;
       allow create, update: if false;
-      allow delete:         if request.auth != null;
+      allow delete:         if isAdmin();
     }
     match /sumTenPayments/{id} {
       allow read:  if true;
@@ -317,17 +322,17 @@ service cloud.firestore {
     // ── Bongo Market ───────────────────────────────────────────────────────────
     match /playerCoinBalances/{phone} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /bongoMarketProducts/{id} {
       allow read:  if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /bongoMarketOrders/{id} {
       allow read:   if true;
       allow create: if true;
-      allow update, delete: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
 
 
@@ -342,15 +347,15 @@ service cloud.firestore {
     // Shared tournament question bank — keyed by quizType, reused across tournaments.
     match /tournamentQuestionBank/{questionId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /quizTournaments/{tournamentId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
       match /questions/{questionId} {
         allow read: if true;
-        allow write: if request.auth != null;
+        allow write: if isAdmin();
       }
       match /entries/{phone} {
         allow read: if true;
@@ -365,14 +370,14 @@ service cloud.firestore {
     // Top Scorers Tournament - public read, admin manages settings, Cloud Functions writes standings
     match /tournamentSettings/{id} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     match /topScorersTournament/{phone} {
       allow read: if true;
       allow write: if false;
     }
     match /topScorersTournamentEvents/{id} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin();
       allow write: if false;
     }
     match /topScorersTournamentWeeks/{weekId} {
