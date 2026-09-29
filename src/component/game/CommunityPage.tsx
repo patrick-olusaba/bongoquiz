@@ -54,7 +54,6 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     const [referrals, setReferrals] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [tab, setTab] = useState<"ongoing" | "upcoming" | "past" | "activity" | "referrals">("ongoing");
-    const [ongoingSub, setOngoingSub] = useState<"daily" | "weekly">("daily");
     const [playedIds, setPlayedIds] = useState<Set<string>>(new Set());
     const [rewardsOpen, setRewardsOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
@@ -117,7 +116,6 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         return () => { cancelled = true; };
     }, [tournamentIdsKey, currentPhone]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const cycleOf = (t: QuizTournament) => (t.tournamentCycle === "weekly" ? "weekly" : "daily");
 
     // A tournament hasn't begun yet if it's scheduled or its start time is in the future.
     const notStarted = (t: QuizTournament) => {
@@ -131,14 +129,9 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         const openToPlay = ongoing.filter(t => !playedIds.has(t.id));
         return {
             ongoing,
+            openToPlay,
             upcoming: tournaments.filter(t => t.status === "scheduled"),
             past: tournaments.filter(t => t.status === "completed"),
-            // Ongoing sub-lists: only tournaments the player has NOT finished yet,
-            // split by cycle, so they can go attend the ones still open to them.
-            daily: openToPlay.filter(t => cycleOf(t) === "daily"),
-            weekly: openToPlay.filter(t => cycleOf(t) === "weekly"),
-            // Tournaments the player already finished — but never future/scheduled
-            // ones (a rescheduled tournament keeps the old entry; it isn't "played").
             participated: recordTournaments.filter(t => playedIds.has(t.id) && !notStarted(t)),
         };
     }, [tournaments, recordTournaments, playedIds]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -158,8 +151,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         tab === "upcoming" ? grouped.upcoming
         : tab === "past" ? grouped.past
         : tab === "activity" ? grouped.participated
-        : ongoingSub === "weekly" ? grouped.weekly
-        : grouped.daily;
+        : grouped.openToPlay;
 
     // Desktop search narrows the current list by title; an empty query is a no-op.
     const searchTerm = search.trim().toLowerCase();
@@ -172,7 +164,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
     const selected = visibleList.find(t => t.id === selectedId) || visibleList[0] || (searchTerm ? undefined : currentList[0]);
 
     const upNext = useMemo(() => {
-        const pool = grouped.upcoming.length ? grouped.upcoming : [...grouped.daily, ...grouped.weekly].filter(t => t.id !== selected?.id);
+        const pool = grouped.upcoming.length ? grouped.upcoming : grouped.openToPlay.filter(t => t.id !== selected?.id);
         return pool.slice(0, 6);
     }, [grouped, selected?.id]);
 
@@ -285,7 +277,6 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
         if (tournament.status === "completed") { setTab("past"); return; }
         if (playedIds.has(tournament.id)) { setTab("activity"); return; }
         setTab("ongoing");
-        setOngoingSub(cycleOf(tournament));
     };
 
     const joinTournament = async () => {
@@ -355,12 +346,6 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                     <button className={`cm-refer-btn ${tab === "referrals" ? "active" : ""}`} onClick={() => setTab("referrals")}><Gift size={16} /> Refer &amp; Earn</button>
                 </div>
 
-                {tab === "ongoing" && (
-                    <div className="cm-tabs cm-subtabs">
-                        <button className={ongoingSub === "daily" ? "active" : ""} onClick={() => setOngoingSub("daily")}>Daily{grouped.daily.length ? ` (${grouped.daily.length})` : ""}</button>
-                        <button className={ongoingSub === "weekly" ? "active" : ""} onClick={() => setOngoingSub("weekly")}>Weekly{grouped.weekly.length ? ` (${grouped.weekly.length})` : ""}</button>
-                    </div>
-                )}
 
                 {tab === "referrals" ? (
                     <section className="cm-referrals-panel">
@@ -457,10 +442,8 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                         <Trophy size={44} />
                         {searchTerm
                             ? <><strong>No tournaments match "{search.trim()}"</strong><span>Try a different search term.</span></>
-                        : tab === "ongoing" && ongoingSub === "weekly"
-                            ? <><strong>No weekly tournaments open</strong><span>You're all caught up — check the Daily tab or come back later.</span></>
                         : tab === "ongoing"
-                            ? <><strong>No daily tournaments open</strong><span>You're all caught up — try the Weekly tab or come back later.</span></>
+                            ? <><strong>No live tournaments right now</strong><span>Check back later — new weekly tournaments are added regularly.</span></>
                         : tab === "upcoming"
                             ? <><strong>No upcoming tournaments</strong><span>Scheduled tournaments will appear here.</span></>
                             : <><strong>No past results</strong><span>Completed tournaments will appear here.</span></>}
@@ -729,7 +712,7 @@ export const CommunityPage: FC<Props> = ({ onBack, onEnterTournament, onNavigate
                             <span className="cm-preview-icon">{quizTypeIcons[normalizeTournamentQuizType(selected.quizType)]}</span>
                             <div>
                                 <h3>{selected.title}</h3>
-                                <small>{quizTypeLabels[normalizeTournamentQuizType(selected.quizType)]} · {selected.tournamentCycle === "weekly" ? "Weekly" : "Daily"}</small>
+                                <small>{quizTypeLabels[normalizeTournamentQuizType(selected.quizType)]} · Weekly</small>
                             </div>
                         </div>
                         <div className="cm-preview-meta">

@@ -104,7 +104,7 @@ export function emptyTournament(): Omit<QuizTournament, "id"> {
         entryFeeCoins: 0,
         durationSeconds: 80,
         dailyStartTime: "08:00",
-        tournamentCycle: "daily",
+        tournamentCycle: "weekly",
         rewards: defaultTournamentRewards,
     };
 }

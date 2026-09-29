@@ -62,7 +62,7 @@ function makeDraft(seed?: Partial<QuizTournament>): EditableTournament {
         entryFeeCoins: 0,
         durationSeconds: 80,
         dailyStartTime: seed?.dailyStartTime || "08:00",
-        tournamentCycle: seed?.tournamentCycle || "daily",
+        tournamentCycle: "weekly" as const,
         rewards: seed?.rewards?.length ? seed.rewards : defaultTournamentRewards,
     };
 }
@@ -419,7 +419,7 @@ export function AdminTournament() {
                 entryFeeCoins: 0,
                 durationSeconds: 80,
                 dailyStartTime: result.dailyStartTime || "08:00",
-                tournamentCycle: result.tournamentCycle || "daily",
+                tournamentCycle: "weekly",
                 startsAt: result.startsAt ? new Date(result.startsAt).toISOString() : null,
                 endsAt: result.endsAt ? new Date(result.endsAt).toISOString() : null,
                 rewards: result.rewards.map(r => ({ ...r, items: r.items.map(i => i.trim()).filter(Boolean) })),
@@ -468,7 +468,7 @@ export function AdminTournament() {
                 entryFeeCoins: 0,
                 durationSeconds: 80,
                 dailyStartTime: draft.dailyStartTime || "08:00",
-                tournamentCycle: draft.tournamentCycle || "daily",
+                tournamentCycle: "weekly",
                 startsAt: startsAt ? new Date(startsAt).toISOString() : null,
                 endsAt: endsAt ? new Date(endsAt).toISOString() : null,
                 rewards: draft.rewards.map(reward => ({ ...reward, items: reward.items.map(item => item.trim()).filter(Boolean) })),
@@ -810,7 +810,6 @@ export function AdminTournament() {
                         <dl>
                             <dt><CalendarClock size={15} /> End Date</dt><dd>{endsAt ? new Date(endsAt).toLocaleString("en-KE") : "Not set"}</dd>
                             <dt><CalendarClock size={15} /> Question Timer</dt><dd>1 min 20 sec</dd>
-                            <dt><CalendarClock size={15} /> Daily Start</dt><dd>{draft.dailyStartTime || "08:00"}</dd>
                             <dt><Star size={15} /> Questions</dt><dd>{questions.length}/15</dd>
                             <dt><Coins size={15} /> Entry Fee</dt><dd>Free</dd>
                             <dt><Users size={15} /> Participants</dt><dd>{entries.length.toLocaleString()}</dd>
@@ -958,8 +957,6 @@ export function AdminTournament() {
                         <label>Title<input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label>
                         <label>Quiz Game<select value={currentQuizType} onChange={e => setDraft({ ...draft, quizType: e.target.value as TournamentQuizType })}>{tournamentQuizTypes.map(type => <option key={type} value={type}>{quizTypeIcons[type]} {quizTypeLabels[type]}</option>)}</select></label>
                         <label>Status<select value={draft.status} onChange={e => setDraft({ ...draft, status: e.target.value as QuizTournament["status"] })}><option value="active">Active</option><option value="scheduled">Scheduled</option><option value="completed">Completed</option></select></label>
-                        <label>Tournament Cycle<select value={draft.tournamentCycle || "daily"} onChange={e => setDraft({ ...draft, tournamentCycle: e.target.value as "daily" | "weekly" })}><option value="daily">Daily Tournament</option><option value="weekly">Weekly Tournament</option></select></label>
-                        <label>Daily Start Time<input type="time" value={draft.dailyStartTime || "08:00"} onChange={e => setDraft({ ...draft, dailyStartTime: e.target.value })} /></label>
                         <label>Starts At<input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} /></label>
                         <label>Ends At<input type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} /></label>
                         <label>Entry Fee<input value="Free" disabled /></label>

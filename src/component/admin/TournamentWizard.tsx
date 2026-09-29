@@ -60,8 +60,8 @@ export function TournamentWizard({ seed, onSave, onClose, saving }: Props) {
     const [title, setTitle] = useState(seed?.title || "Weekly BongoQuiz Cup");
     const [subtitle, setSubtitle] = useState(seed?.subtitle || "Answer tournament questions and climb the leaderboard.");
     const [quizType, setQuizType] = useState<TournamentQuizType>(normalizeTournamentQuizType(seed?.quizType));
-    const [cycle, setCycle] = useState<"daily" | "weekly">(seed?.tournamentCycle || "daily");
-    const [dailyStartTime, setDailyStartTime] = useState(seed?.dailyStartTime || "08:00");
+    const cycle = "weekly" as const;
+    const dailyStartTime = seed?.dailyStartTime || "08:00";
     const [startsAt, setStartsAt] = useState(seed?.startsAt ? dateInputValue(seed.startsAt) : "");
     const [endsAt, setEndsAt] = useState(seed?.endsAt ? dateInputValue(seed.endsAt) : defaultEndsAt());
     const [active, setActive] = useState(seed ? seed.active : true);
@@ -200,17 +200,6 @@ export function TournamentWizard({ seed, onSave, onClose, saving }: Props) {
                                         <option key={t} value={t}>{quizTypeIcons[t]} {quizTypeLabels[t]}</option>
                                     ))}
                                 </select>
-                            </label>
-                            <label>
-                                Cycle
-                                <select value={cycle} onChange={e => setCycle(e.target.value as "daily" | "weekly")}>
-                                    <option value="daily">Daily Tournament</option>
-                                    <option value="weekly">Weekly Tournament</option>
-                                </select>
-                            </label>
-                            <label>
-                                Daily Start Time
-                                <input type="time" value={dailyStartTime} onChange={e => setDailyStartTime(e.target.value)} />
                             </label>
                             <label>
                                 Starts At
