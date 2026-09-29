@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Gamepad2 } from "lucide-react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../firebase.ts";
+import { useState, useRef } from "react";
+import { Mail, Lock, ArrowRight, Gamepad2 } from "lucide-react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../firebase.ts";
 
 export const KCSE_EMAIL = import.meta.env.VITE_KCSE_EMAIL as string;
 
@@ -45,11 +45,20 @@ export function AdminLogin({
     email?: string;
     label?: string;
 }) {
-    const [email,    setEmail]    = useState(defaultEmail);
-    const [password, setPassword] = useState("");
-    const [err,      setErr]      = useState("");
-    const [loading,  setLoading]  = useState(false);
-    const [showPwd,  setShowPwd]  = useState(false);
+    const [email,   setEmail]  = useState(defaultEmail);
+    const [pin,     setPin]    = useState(["", "", "", ""]);
+    const [err,     setErr]    = useState("");
+    const [loading, setLoading] = useState(false);
+    const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    const handlePinChange = (idx: number, val: string) => {
+        if (!/^\d?$/.test(val)) return;
+        const next = [...pin]; next[idx] = val; setPin(next);
+        if (val && idx < 3) pinRefs.current[idx + 1]?.focus();
+    };
+    const handlePinKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace" && !pin[idx] && idx > 0) pinRefs.current[idx - 1]?.focus();
+    };
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,19 +70,26 @@ export function AdminLogin({
         }
         setErr(""); setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email.trim(), password);
+            const snap = await getDocs(
+                query(collection(db, "admins"), where("email", "==", email.trim().toLowerCase()))
+            );
+            const match = !snap.empty && snap.docs[0].data().pin === pin.join("");
+            if (!match) {
+                attempts += 1;
+                const remaining = MAX_ATTEMPTS - attempts;
+                if (attempts >= MAX_ATTEMPTS) {
+                    lockedUntil = Date.now() + LOCKOUT_MS;
+                    attempts = 0;
+                    setErr("Too many failed attempts. Locked for 5 minutes.");
+                } else {
+                    setErr(`Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`);
+                }
+                return;
+            }
             attempts = 0;
             onLogin();
         } catch {
-            attempts += 1;
-            const remaining = MAX_ATTEMPTS - attempts;
-            if (attempts >= MAX_ATTEMPTS) {
-                lockedUntil = Date.now() + LOCKOUT_MS;
-                attempts = 0;
-                setErr("Too many failed attempts. Locked for 5 minutes.");
-            } else {
-                setErr(`Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`);
-            }
+            setErr("Login error. Check your connection and try again.");
         } finally { setLoading(false); }
     };
 
@@ -150,24 +166,30 @@ export function AdminLogin({
                     </div>
 
                     <div>
-                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
-                        <div className="al2-wrap" style={{ ...fieldWrap }}>
-                            <Lock size={16} color="#7c3aed" strokeWidth={2}/>
-                            <input
-                                type={showPwd ? "text" : "password"}
-                                placeholder="Enter your password"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                                style={fieldInput}
-                            />
-                            <button type="button" onClick={() => setShowPwd(s => !s)}
-                                style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", color: "#9ca3af" }}>
-                                {showPwd ? <EyeOff size={16}/> : <Eye size={16}/>}
-                            </button>
-                        </div>
-                        <div style={{ textAlign: "right", marginTop: 6 }}>
-                            <span style={{ fontSize: "0.78rem", color: PURPLE_LIGHT, fontWeight: 600, cursor: "default" }}>Forgot password?</span>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                            <Lock size={14} color="#7c3aed" style={{ verticalAlign: "middle", marginRight: 5 }}/>
+                            4-Digit PIN
+                        </label>
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                            {pin.map((digit, idx) => (
+                                <input
+                                    key={idx}
+                                    ref={el => { pinRefs.current[idx] = el; }}
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={e => handlePinChange(idx, e.target.value)}
+                                    onKeyDown={e => handlePinKeyDown(idx, e)}
+                                    required
+                                    style={{
+                                        width: 56, height: 56, textAlign: "center", fontSize: "1.4rem",
+                                        fontWeight: 700, fontFamily: F, border: "1.5px solid #e2d9ff",
+                                        borderRadius: 12, background: "#f4f0ff", outline: "none",
+                                        color: "#1a1a2e", caretColor: PURPLE,
+                                    }}
+                                />
+                            ))}
                         </div>
                     </div>
 

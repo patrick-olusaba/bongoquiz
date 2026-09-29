@@ -2068,6 +2068,7 @@ body { background: #f4f6fa; }
 export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: AdminTab; preAuthed?: boolean; onBack?: () => void } = {}) {
     const [authed, setAuthed] = useState(preAuthed ?? false);
     const [authChecked, setAuthChecked] = useState(preAuthed ?? false);
+    const pinAuthed = useRef(false);
     const [tab, setTab] = useState<AdminTab>(initialTab ?? "dashboard");
     const [drawerOpen, setDrawerOpen] = useState(false);
     const notificationRef = useRef<HTMLDivElement | null>(null);
@@ -2084,7 +2085,7 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
     useEffect(() => {
         if (preAuthed) return;
         const unsub = onAuthStateChanged(auth, user => {
-            // Block KCSE uploader from accessing full admin
+            if (pinAuthed.current) return;
             setAuthed(!!user && user.email !== KCSE_EMAIL);
             setAuthChecked(true);
         });
@@ -2229,7 +2230,7 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
         return () => document.removeEventListener("mousedown", handleOutsideClick);
     }, [notificationsOpen]);
 
-    const handleLogout = () => signOut(auth);
+    const handleLogout = () => { pinAuthed.current = false; setAuthed(false); signOut(auth); };
     const activeLabel = TABS.find(t => t.id === tab)?.label.replace(/^\S+\s*/, "") ?? "Dashboard";
     const timeAgo = (ms?: number) => {
         if (!ms) return "just now";
@@ -2244,8 +2245,7 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
     const notificationCount = unreadNotifications.length;
 
     if (!authChecked) return null;
-    if (!authed) return <AdminLogin onLogin={() => {
-    }}/>;
+    if (!authed) return <AdminLogin onLogin={() => { pinAuthed.current = true; setAuthed(true); setAuthChecked(true); }}/>;
 
     return (
         <>
