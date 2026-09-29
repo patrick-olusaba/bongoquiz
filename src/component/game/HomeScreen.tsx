@@ -776,7 +776,8 @@ export const HomeScreen: FC<Props> = ({
                             <span className="topbar-action-label">Wallet</span>
                         </button>
 
-                        <div className="topbar-notification-wrap" ref={rewardsRef}>
+                        {/* REWARDS TOPBAR BUTTON — disabled, do not remove */}
+                        {false && <div className="topbar-notification-wrap" ref={rewardsRef}>
                             <button
                                 className="topbar-notification-btn"
                                 onClick={() => setRewardsOpen(open => !open)}
@@ -926,7 +927,8 @@ export const HomeScreen: FC<Props> = ({
                                     <div className="home-notification-footer">Come back daily for more rewards!</div>
                                 </div>
                             )}
-                        </div>
+                        </div>}
+                        {/* END REWARDS TOPBAR BUTTON */}
 
                         <div className="topbar-notification-wrap" ref={notificationRef}>
                             <button
@@ -1120,7 +1122,8 @@ export const HomeScreen: FC<Props> = ({
             </div>
 
 
-            {showRewardModal && (
+            {/* REWARD MODAL — disabled, do not remove */}
+            {false && showRewardModal && (
                 <div className="reward-modal-overlay">
                     <div className="reward-modal-content">
                         <button className="reward-modal-close" onClick={() => setShowRewardModal(false)}>✕</button>
@@ -1154,6 +1157,7 @@ export const HomeScreen: FC<Props> = ({
                     </div>
                 </div>
             )}
+            {/* END REWARD MODAL */}
             {showNameModal && (
                 <PlayerNameModal
                     currentName={playerName}

@@ -284,7 +284,8 @@ export const LeaderboardScreen: FC<Props> = ({ playerScore, playerName = "You", 
                 <div className="lb-balance"><Coins size={28}/><strong>{balance.toLocaleString()}</strong></div>
                 <div className="lb-top-actions">
                     <button type="button"><Wallet size={28}/><span>Wallet</span></button>
-                    <button type="button"><Gift size={28}/><em>1</em><span>Rewards</span></button>
+                    {/* Rewards button — disabled, do not remove */}
+                    {false && <button type="button"><Gift size={28}/><em>1</em><span>Rewards</span></button>}
                     <button type="button"><Bell size={28}/><span>Alerts</span></button>
                     <button type="button"><Menu size={30}/><span>Menu</span></button>
                 </div>
