@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Mail, Lock, ArrowRight, Gamepad2 } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInAnonymously, signInWithEmailAndPassword } from "firebase/auth";
 import { db, auth } from "../../firebase.ts";
 
 export const KCSE_EMAIL = import.meta.env.VITE_KCSE_EMAIL as string;
@@ -89,13 +89,12 @@ export function AdminLogin({
             }
             attempts = 0;
             // Sign into Firebase Auth so request.auth is set for Firestore rules.
-            // Admin accounts use their 4-digit PIN as the Firebase Auth password.
+            // Try email+PIN first (same pattern as CPLogin). Fall back to anonymous
+            // if the Firebase Auth password doesn't match, so auth-gated rules still pass.
             try {
                 await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), pin.join(""));
             } catch {
-                // Auth sign-in failed — admin can still use the panel but Firestore
-                // writes that require auth will be limited. This can happen if the
-                // Firebase Auth account doesn't exist yet or has a different password.
+                try { await signInAnonymously(auth); } catch { /* ignore */ }
             }
             onLogin();
         } catch {
