@@ -2083,11 +2083,6 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
 
     useEffect(() => {
         if (preAuthed) return;
-        if (sessionStorage.getItem("admin_pin_auth")) {
-            setAuthed(true);
-            setAuthChecked(true);
-            return;
-        }
         const unsub = onAuthStateChanged(auth, user => {
             setAuthed(!!user && user.email !== KCSE_EMAIL);
             setAuthChecked(true);
@@ -2233,11 +2228,7 @@ export function AdminView({ initialTab, preAuthed, onBack }: { initialTab?: Admi
         return () => document.removeEventListener("mousedown", handleOutsideClick);
     }, [notificationsOpen]);
 
-    const handleLogout = () => {
-        sessionStorage.removeItem("admin_pin_auth");
-        setAuthed(false);
-        signOut(auth);
-    };
+    const handleLogout = () => signOut(auth);
     const activeLabel = TABS.find(t => t.id === tab)?.label.replace(/^\S+\s*/, "") ?? "Dashboard";
     const timeAgo = (ms?: number) => {
         if (!ms) return "just now";

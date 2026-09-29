@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Mail, Lock, ArrowRight, Gamepad2 } from "lucide-react";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../../firebase.ts";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../firebase.ts";
 
 export const KCSE_EMAIL = import.meta.env.VITE_KCSE_EMAIL as string;
 
@@ -70,27 +70,19 @@ export function AdminLogin({
         }
         setErr(""); setLoading(true);
         try {
-            const snap = await getDocs(
-                query(collection(db, "admins"), where("email", "==", email.trim().toLowerCase()))
-            );
-            const valid = !snap.empty && snap.docs[0].data().pin === pin.join("");
-            if (!valid) {
-                attempts += 1;
-                const remaining = MAX_ATTEMPTS - attempts;
-                if (attempts >= MAX_ATTEMPTS) {
-                    lockedUntil = Date.now() + LOCKOUT_MS;
-                    attempts = 0;
-                    setErr("Too many failed attempts. Locked for 5 minutes.");
-                } else {
-                    setErr(`Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`);
-                }
-                return;
-            }
+            await signInWithEmailAndPassword(auth, email.trim(), pin.join(""));
             attempts = 0;
-            sessionStorage.setItem("admin_pin_auth", email.trim().toLowerCase());
             onLogin();
         } catch {
-            setErr("Login error. Check your connection and try again.");
+            attempts += 1;
+            const remaining = MAX_ATTEMPTS - attempts;
+            if (attempts >= MAX_ATTEMPTS) {
+                lockedUntil = Date.now() + LOCKOUT_MS;
+                attempts = 0;
+                setErr("Too many failed attempts. Locked for 5 minutes.");
+            } else {
+                setErr(`Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`);
+            }
         } finally { setLoading(false); }
     };
 
