@@ -63,7 +63,7 @@ function makeDraft(seed?: Partial<QuizTournament>): EditableTournament {
         durationSeconds: 80,
         dailyStartTime: seed?.dailyStartTime || "08:00",
         tournamentCycle: "weekly" as const,
-        rewards: seed?.rewards?.length ? seed.rewards : defaultTournamentRewards,
+        rewards: seed?.rewards?.length ? seed.rewards : [],
     };
 }
 

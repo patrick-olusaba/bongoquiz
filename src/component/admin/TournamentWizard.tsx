@@ -75,7 +75,7 @@ export function TournamentWizard({ seed, onSave, onClose, saving }: Props) {
 
     // Step 3
     const [rewards, setRewards] = useState<TournamentReward[]>(
-        seed?.rewards?.length ? seed.rewards : defaultTournamentRewards
+        seed?.rewards?.length ? seed.rewards : []
     );
     const [launchAction, setLaunchAction] = useState<"schedule" | "publish">("schedule");
 
